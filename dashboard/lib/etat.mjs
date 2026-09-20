@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 
 const SERVICES = [
       { nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
-      { nom: 'Assistant IA', url: 'http://ia:8080/health', lien: ':8081/' }
+      { nom: 'Assistant IA', url: 'http://ia:8080/health', lien: '#', port: '8081' }
 ];
 
 export async function etatServices() {

@@ -56,6 +56,12 @@ if [ "$(hostname)" != "$NOM_HOTE" ]; then
     && sed -i "s/^127.0.1.1.*/127.0.1.1\t$NOM_HOTE/" /etc/hosts \
     || echo -e "127.0.1.1\t$NOM_HOTE" >> /etc/hosts
 fi
+if ! grep -q "^deny-interfaces=" /etc/avahi/avahi-daemon.conf; then
+  sed -i '/^\[server\]/a deny-interfaces=docker0,br-' /etc/avahi/avahi-daemon.conf
+fi
+if ! grep -q "^deny-interfaces=" /etc/avahi/avahi-daemon.conf; then
+  sed -i '/^\[server\]/a deny-interfaces=docker0' /etc/avahi/avahi-daemon.conf
+fi
 systemctl enable avahi-daemon >/dev/null 2>&1 || true
 systemctl restart avahi-daemon >/dev/null 2>&1 || true
 

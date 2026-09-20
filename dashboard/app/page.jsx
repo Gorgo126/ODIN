@@ -9,6 +9,8 @@ export default async function Page() {
 
   const pct = disque ? Math.round((disque.utilise / disque.total) * 100) : 0;
 
+  const script = "document.querySelectorAll('[data-port]').forEach(function(a){var p=a.dataset.port;if(p){a.href=location.protocol+'//'+location.hostname+':'+p+'/';}});";
+
   return (
     <main>
       <h1>ODIN</h1>
@@ -16,10 +18,10 @@ export default async function Page() {
       <section>
         <h2>Services</h2>
         {services.map((s) => (
-          <a key={s.nom} href={s.lien} className="carte">
+          <a key={s.nom} href={s.lien} data-port={s.port || ''} className="carte">
             <span className={s.ok ? 'pastille ok' : 'pastille ko'} />
             <strong>{s.nom}</strong>
-            <em>{s.ok ? 'en ligne' : 'arrêté'}</em>
+            <em>{s.ok ? 'en ligne' : 'arrete'}</em>
           </a>
         ))}
       </section>
@@ -28,14 +30,14 @@ export default async function Page() {
         <h2>Stockage</h2>
         {disque ? (
           <>
-            <div className="jauge"><div style={{ width: `${pct}%` }} /></div>
-            <p>{octets(disque.utilise)} utilisés sur {octets(disque.total)} — {octets(disque.libre)} libres</p>
+            <div className="jauge"><div style={{ width: pct + '%' }} /></div>
+            <p>{octets(disque.utilise)} utilises sur {octets(disque.total)} — {octets(disque.libre)} libres</p>
           </>
         ) : <p>Indisponible</p>}
       </section>
 
       <section>
-        <h2>Contenu installé ({livres.length})</h2>
+        <h2>Contenu installe ({livres.length})</h2>
         {livres.length === 0 && <p>Aucun contenu.</p>}
         {livres.map((l, i) => (
           <div key={i} className="carte">
@@ -45,6 +47,8 @@ export default async function Page() {
           </div>
         ))}
       </section>
+
+      <script dangerouslySetInnerHTML={{ __html: script }} />
     </main>
   );
 }
