@@ -41,6 +41,7 @@ if [ -d "$CIBLE/.git" ]; then
   git -C "$CIBLE" pull --ff-only
 else
   mkdir -p "$CIBLE"
+  [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
   git clone --depth 1 "$DEPOT" "$CIBLE"
 fi
 

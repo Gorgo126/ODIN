@@ -16,5 +16,7 @@ for f in "$ZIM_DIR"/*.zim; do
     /data/library.xml add "/data/$nom"
 done
 
+[ -f "$LIB" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' | sudo tee "$LIB" > /dev/null
+
 sudo chown ubuntu:ubuntu "$LIB"
 echo "Bibliothèque régénérée."
