@@ -56,7 +56,8 @@ if [ "$(hostname)" != "$NOM_HOTE" ]; then
     && sed -i "s/^127.0.1.1.*/127.0.1.1\t$NOM_HOTE/" /etc/hosts \
     || echo -e "127.0.1.1\t$NOM_HOTE" >> /etc/hosts
 fi
-systemctl enable --now avahi-daemon >/dev/null 2>&1 || true
+systemctl enable avahi-daemon >/dev/null 2>&1 || true
+systemctl restart avahi-daemon >/dev/null 2>&1 || true
 
 msg "Démarrage des services"
 cd "$CIBLE"
