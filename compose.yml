@@ -1,0 +1,57 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "${IA_PORT}:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - kiwix
+      - dashboard
+
+  dashboard:
+    build: ./dashboard
+    container_name: dashboard
+    volumes:
+      - ${DATA_DIR}/zim:/data:ro
+    restart: unless-stopped
+
+  kiwix:
+    image: ghcr.io/kiwix/kiwix-serve:latest
+    container_name: kiwix
+    command: ["--urlRootLocation=/kiwix", "--monitorLibrary", "--skipInvalid", "--library", "/data/library.xml"]
+    volumes:
+      - ${DATA_DIR}/zim:/data
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ${DATA_DIR}/ollama:/root/.ollama
+    restart: unless-stopped
+
+  ia:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ia
+    ports:
+      - "8081:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_AUTH=false
+      - ENABLE_OPENAI_API=false
+      - HF_HUB_OFFLINE=1
+      - WEBUI_URL=/ia
+    volumes:
+      - ${DATA_DIR}/openwebui:/app/backend/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
