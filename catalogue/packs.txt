@@ -1,0 +1,19 @@
+# identifiant|nom kiwix|variante|description
+essentiel|wikipedia_fr_top|maxi|Wikipédia, les articles les plus consultés, avec images
+encyclopedie|wikipedia_fr_all|nopic|Wikipédia complète, sans images
+encyclopedie-images|wikipedia_fr_all|maxi|Wikipédia complète avec images (très volumineux)
+medecine|wikipedia_fr_medicine|maxi|Encyclopédie médicale
+mathematiques|wikipedia_fr_mathematics|maxi|Mathématiques
+physique|wikipedia_fr_physics|maxi|Physique
+chimie|wikipedia_fr_chemistry|maxi|Chimie
+histoire|wikipedia_fr_history|maxi|Histoire
+geographie|wikipedia_fr_geography|maxi|Géographie
+informatique|wikipedia_fr_computer|maxi|Informatique
+climat|wikipedia_fr_climate-change|maxi|Changement climatique
+vikidia|vikidia_fr_all|maxi|Encyclopédie pour les 8-13 ans
+dictionnaire|wiktionary_fr_all|nopic|Wiktionnaire, le dictionnaire libre
+textes|wikisource_fr_all|nopic|Wikisource, bibliothèque de textes libres
+livres|gutenberg_fr_all|-|Livres du domaine public (Projet Gutenberg)
+manuels|wikibooks_fr_all|nopic|Wikilivres, manuels libres
+cours|wikiversity_fr_all|nopic|Wikiversité, cours libres
+voyage|wikivoyage_fr_all|nopic|Wikivoyage, guides de voyage
