@@ -17,7 +17,7 @@ const CONNEXION = 15000;
 const MARGE = 1.15;
 const ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-const etat = globalThis.__odinLivres ??= { taches: new Map(), controles: new Map() };
+const etat = globalThis.__odinLivres ??= { taches: new Map(), controles: new Map(), demarrages: new Map() };
 
 const texte = (v) => typeof v === 'string' && v.trim() !== '';
 const https = (v) => texte(v) && /^https:\/\/[^\s]+$/.test(v);
@@ -164,10 +164,20 @@ async function installer(livre, t, c) {
   throw new Error(messageEchec(echecs));
 }
 
-export async function demarrer(id) {
+// Concurrent requests for the same book (double click, two devices) share one start:
+// the reservation is taken synchronously, before any await, so only one download runs
+export function demarrer(id) {
   const courante = etat.taches.get(id);
-  if (courante?.etat === 'en cours') return courante;
+  if (courante?.etat === 'en cours') return Promise.resolve(courante);
+  let demarrage = etat.demarrages.get(id);
+  if (!demarrage) {
+    demarrage = lancer(id).finally(() => etat.demarrages.delete(id));
+    etat.demarrages.set(id, demarrage);
+  }
+  return demarrage;
+}
 
+async function lancer(id) {
   const livre = (await lireCatalogue()).find((l) => l.id === id);
   if (!livre) throw new Error('Livre inconnu');
   if (await lireFiche(id)) throw new Error('Livre déjà installé');
