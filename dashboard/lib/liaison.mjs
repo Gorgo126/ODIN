@@ -136,4 +136,4 @@ export async function enLigne() {
   return (await liaison()).enLigne;
 }
 
-export const HORS_LIAISON = 'Nécessite la liaison monde';
+export const HORS_LIAISON = 'Indisponible hors ligne';

@@ -47,7 +47,7 @@ export default function Packs({ liaisonInitiale }) {
 
   return (
     <>
-      {!enLigne && <p className="hors-liaison">{HORS_LIAISON} pour ajouter ou mettre à jour du contenu. Le contenu installé reste disponible.</p>}
+      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Le contenu installé reste consultable.</p>}
       {enLigne && packs.length > 0 && packs.every((p) => !p.disponible) && (
         <p>Catalogue Kiwix injoignable pour le moment.</p>
       )}

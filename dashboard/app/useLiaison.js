@@ -41,4 +41,4 @@ export function useLiaison(initiale = null) {
   return useSyncExternalStore(abonner, () => valeur ?? initiale, () => initiale);
 }
 
-export const HORS_LIAISON = 'Nécessite la liaison monde';
+export const HORS_LIAISON = 'Indisponible hors ligne';

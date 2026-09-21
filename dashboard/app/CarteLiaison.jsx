@@ -1,15 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useLiaison } from './useLiaison';
+import { useLiaison, HORS_LIAISON } from './useLiaison';
 
 const LIBELLES = {
-  etablie: 'ÉTABLIE',
-  degradee: 'DÉGRADÉE',
-  rompue: 'ROMPUE',
-  silence: 'SILENCE RADIO',
-  inconnu: 'VÉRIFICATION'
+  etablie: 'EN LIGNE',
+  degradee: 'CONNEXION DÉGRADÉE',
+  rompue: 'HORS LIGNE',
+  silence: 'SONDES DÉSACTIVÉES',
+  inconnu: 'VÉRIFICATION EN COURS'
 };
-const MODES = { 'hors-ligne': 'FORCÉ HORS LIGNE', 'en-ligne': 'FORCÉ EN LIGNE' };
+const MODES = { 'hors-ligne': 'Mode manuel : hors ligne', 'en-ligne': 'Mode manuel : en ligne' };
 
 function depuis(t, maintenant) {
   const s = Math.max(0, Math.floor((maintenant - t) / 1000));
@@ -21,11 +21,23 @@ function depuis(t, maintenant) {
   return `il y a ${Math.floor(h / 24)} j ${h % 24} h`;
 }
 
-const date = (t) => new Date(t).toLocaleString('fr-BE', { dateStyle: 'long', timeStyle: 'short' });
+// JJ/MM/AAAA – HH:MM
+function date(t) {
+  const d = new Date(t);
+  const deux = (n) => String(n).padStart(2, '0');
+  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)}/${d.getFullYear()} – ${deux(d.getHours())}:${deux(d.getMinutes())}`;
+}
+
+function diagnostic(l) {
+  if (l.silence) return 'Diagnostic : aucun test (sondes désactivées)';
+  if (!l.dernierTest) return 'Diagnostic : premier test en cours';
+  const n = l.cibles.filter((c) => c.ok).length;
+  return `Diagnostic : ${n}/${l.cibles.length} serveurs joignables, DNS ${l.dns?.ok ? 'opérationnel' : 'en échec'}`;
+}
 
 export default function CarteLiaison({ initiale }) {
   const l = useLiaison(initiale);
-  // Times are computed in the browser only (the server runs in UTC), and refresh between two polls
+  // Times are computed in the browser only (the server container runs in UTC), and refresh between two polls
   const [maintenant, setMaintenant] = useState(null);
   useEffect(() => {
     setMaintenant(Date.now());
@@ -41,48 +53,51 @@ export default function CarteLiaison({ initiale }) {
       <div className="liaison-tete">
         <span className={`voyant voyant-${voyant}`} aria-hidden="true" />
         <div className="liaison-etat">
-          <strong>LIAISON MONDE : {LIBELLES[l.etat] || l.etat.toUpperCase()}</strong>
-          {MODES[l.mode] && (
-            <span className="liaison-mode">MODE {MODES[l.mode]} : ODIN se comporte comme {l.enLigne ? 'en ligne' : 'hors ligne'}</span>
-          )}
-          {!MODES[l.mode] && l.silence && <span className="liaison-mode">Sondes coupées : aucune connexion sortante</span>}
+          <strong>{LIBELLES[l.etat] || l.etat.toUpperCase()}</strong>
+          {MODES[l.mode] && <span className="liaison-mode">{MODES[l.mode]}</span>}
         </div>
       </div>
 
       <p className="liaison-contact">
-        Dernier contact avec le monde :{' '}
-        {!maintenant ? <span>…</span> : l.dernierContact
-          ? <span title={date(l.dernierContact)}>{depuis(l.dernierContact, maintenant)} <small>({date(l.dernierContact)})</small></span>
-          : <span>jamais enregistré</span>}
+        {!maintenant ? '…' : l.dernierContact
+          ? `Dernière connexion vérifiée : ${date(l.dernierContact)} (${depuis(l.dernierContact, maintenant)})`
+          : 'Aucune connexion vérifiée'}
       </p>
 
-      {!l.silence && l.dernierTest && (
-        <details className="liaison-detail">
-          <summary>Détail du dernier test{maintenant ? ` (${depuis(l.dernierTest, maintenant)})` : ''}</summary>
-          <ul>
-            {l.cibles.map((c) => (
-              <li key={c.hote}>
-                <span className={c.ok ? 'ok-texte' : 'ko-texte'}>{c.ok ? '[OK]' : '[--]'}</span> TCP {c.hote}:443
-                {c.ok && ` ${c.ms} ms`}
-              </li>
-            ))}
-            {l.dns && (
-              <li>
-                <span className={l.dns.ok ? 'ok-texte' : 'ko-texte'}>{l.dns.ok ? '[OK]' : '[--]'}</span> DNS {l.dns.domaine}
-                {l.dns.ok && ` ${l.dns.ms} ms`}
-              </li>
-            )}
-          </ul>
-        </details>
-      )}
+      <details className="liaison-detail">
+        <summary>{diagnostic(l)}</summary>
+        {l.silence ? (
+          <p>Aucune connexion sortante tant que les sondes sont désactivées.</p>
+        ) : l.dernierTest ? (
+          <>
+            <p>Dernier test : {maintenant ? `${date(l.dernierTest)} (${depuis(l.dernierTest, maintenant)})` : '…'}</p>
+            <ul>
+              {l.cibles.map((c) => (
+                <li key={c.hote}>
+                  <span className={c.ok ? 'ok-texte' : 'ko-texte'}>{c.ok ? '[OK]' : '[--]'}</span> TCP {c.hote}:443
+                  {c.ok && ` ${c.ms} ms`}
+                </li>
+              ))}
+              {l.dns && (
+                <li>
+                  <span className={l.dns.ok ? 'ok-texte' : 'ko-texte'}>{l.dns.ok ? '[OK]' : '[--]'}</span> DNS {l.dns.domaine}
+                  {l.dns.ok && ` ${l.dns.ms} ms`}
+                </li>
+              )}
+            </ul>
+          </>
+        ) : (
+          <p>Le premier test se termine dans quelques secondes.</p>
+        )}
+      </details>
 
       {l.liens.length > 0 && (
         <div className="liaison-liens">
           {l.liens.map((lien) => (l.enLigne
             ? <a key={lien.url} href={lien.url} target="_blank" rel="noopener noreferrer" className="bouton">{lien.libelle} ↗</a>
             : (
-              <span key={lien.url} className="bouton desactive" aria-disabled="true" title="Liaison rompue">
-                {lien.libelle} <small>Liaison rompue</small>
+              <span key={lien.url} className="bouton desactive" aria-disabled="true" title={HORS_LIAISON}>
+                {lien.libelle} <small>{HORS_LIAISON}</small>
               </span>
             )))}
         </div>

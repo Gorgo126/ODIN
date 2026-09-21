@@ -60,9 +60,9 @@ export default async function Configuration() {
 
       <Panneau
         icone={iconeLiaison}
-        titre="Liaison monde"
-        sousTitre="Accès à internet du serveur, modes forcés, silence radio, liens"
-        resume={reglages.silence ? 'Silence radio' : { auto: 'Automatique', 'hors-ligne': 'Forcé hors ligne', 'en-ligne': 'Forcé en ligne' }[reglages.mode]}
+        titre="Connectivité externe"
+        sousTitre="Accès à internet du serveur, mode manuel, sondes, liens externes"
+        resume={reglages.silence ? 'Sondes désactivées' : { auto: 'Automatique', 'hors-ligne': 'Mode manuel : hors ligne', 'en-ligne': 'Mode manuel : en ligne' }[reglages.mode]}
       >
         <ReglagesLiaison initiaux={reglages} />
       </Panneau>

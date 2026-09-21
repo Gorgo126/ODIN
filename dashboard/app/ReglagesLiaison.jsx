@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { rafraichirLiaison } from './useLiaison';
 
 const MODES = [
-  ['auto', 'Automatique', 'selon la sonde'],
-  ['hors-ligne', 'Forcer hors ligne', 'les fonctions qui demandent internet sont désactivées'],
-  ['en-ligne', 'Forcer en ligne', 'les fonctions restent actives, même si la sonde échoue']
+  ['auto', 'Automatique', 'selon les sondes de connectivité'],
+  ['hors-ligne', 'Mode manuel : hors ligne', 'les fonctions qui demandent internet sont indisponibles'],
+  ['en-ligne', 'Mode manuel : en ligne', 'les fonctions restent actives, même si les sondes échouent']
 ];
 
 export default function ReglagesLiaison({ initiaux }) {
@@ -50,15 +50,15 @@ export default function ReglagesLiaison({ initiaux }) {
       </fieldset>
 
       <fieldset>
-        <legend>Silence radio</legend>
+        <legend>Sondes</legend>
         <label>
           <input type="checkbox" checked={silence} onChange={(e) => setSilence(e.target.checked)} />
-          <span>Couper les sondes<small>aucune connexion sortante ; en mode automatique, ODIN se comporte comme hors ligne</small></span>
+          <span>Désactiver les sondes de connectivité<small>aucune connexion sortante ; en mode automatique, ODIN se comporte comme hors ligne</small></span>
         </label>
       </fieldset>
 
       <fieldset>
-        <legend>Liens monde</legend>
+        <legend>Liens externes</legend>
         {liens.map((l, i) => (
           <div key={i} className="reglages-lien">
             <input aria-label="Libellé" placeholder="Libellé" value={l.libelle} onChange={(e) => modifier(i, 'libelle', e.target.value)} />

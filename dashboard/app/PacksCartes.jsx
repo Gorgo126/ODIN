@@ -65,7 +65,7 @@ export default function PacksCartes({ liaisonInitiale }) {
 
   return (
     <>
-      {!enLigne && <p className="hors-liaison">{HORS_LIAISON} pour ajouter des cartes. Les cartes installées restent utilisables.</p>}
+      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Les cartes installées restent consultables.</p>}
       {enLigne && !liste.joignable && <p>Catalogue des cartes injoignable pour le moment.</p>}
       {liste.packs.map((p) => {
         const t = p.tache;

@@ -59,7 +59,7 @@ export default async function Page() {
       <BarreRecherche />
 
       <section>
-        <h2>Liaison monde</h2>
+        <h2>Connectivité externe</h2>
         <CarteLiaison initiale={etatLiaison} />
       </section>
 
