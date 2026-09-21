@@ -59,7 +59,8 @@ services:
       - ${DATA_DIR}/documents:/documents:ro
       - ${DATA_DIR}/synchro:/state
     depends_on:
-      - ia
+      ia:
+        condition: service_healthy
     restart: unless-stopped
 
   ollama:
