@@ -1,9 +1,9 @@
 import { promises as fs } from 'fs';
 
-const SERVICES = [
-      { nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
-  { nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
-      { nom: 'Assistant IA', url: 'http://ia:8080/health', lien: '#', port: '8081' }
+export const SERVICES = [
+  { id: 'bibliotheque', nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
+  { id: 'documents', nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
+  { id: 'ia', nom: 'Assistant IA', url: 'http://ia:8080/health', lien: '/', port: '8081' }
 ];
 
 export async function etatServices() {
@@ -47,7 +47,7 @@ export async function contenu() {
 }
 
 export function octets(n) {
-  if (!n) return '—';
+  if (!n) return '';
   const u = ['o', 'Ko', 'Mo', 'Go', 'To'];
   let i = 0;
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }

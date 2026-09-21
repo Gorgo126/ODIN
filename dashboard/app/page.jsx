@@ -19,7 +19,7 @@ export default async function Page() {
       <section>
         <h2>Services</h2>
         {services.map((s) => (
-          <a key={s.nom} href={s.lien} data-port={s.port || ''} className="carte">
+          <a key={s.nom} href={'/ouvrir/' + s.id} className="carte">
             <span className={s.ok ? 'pastille ok' : 'pastille ko'} />
             <strong>{s.nom}</strong>
             <em>{s.ok ? 'en ligne' : 'arrêté'}</em>

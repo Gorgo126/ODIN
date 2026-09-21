@@ -14,6 +14,7 @@ services:
       - kiwix
       - dashboard
       - ia
+      - filebrowser
 
   dashboard:
     image: ghcr.io/gorgo126/odin-dashboard:latest
@@ -32,6 +33,17 @@ services:
     command: ["--urlRootLocation=/kiwix", "--monitorLibrary", "--skipInvalid", "--library", "/data/library.xml"]
     volumes:
       - ${DATA_DIR}/zim:/data
+    restart: unless-stopped
+
+  filebrowser:
+    image: gtstef/filebrowser:stable
+    container_name: filebrowser
+    environment:
+      - FILEBROWSER_CONFIG=/home/filebrowser/config.yaml
+    volumes:
+      - ./config/filebrowser.yaml:/home/filebrowser/config.yaml:ro
+      - ${DATA_DIR}/filebrowser:/home/filebrowser/data
+      - ${DATA_DIR}/documents:/srv
     restart: unless-stopped
 
   ollama:

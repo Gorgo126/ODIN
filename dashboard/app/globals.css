@@ -23,3 +23,11 @@ a.carte em { margin-left: .5rem; }
 .connexion input, .connexion button { font: inherit; padding: .6rem .8rem; border-radius: .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; }
 .connexion button { cursor: pointer; }
 .deconnexion { float: right; font-size: .8rem; font-weight: normal; opacity: .6; color: inherit; }
+.cadre { position: fixed; inset: 0; display: flex; flex-direction: column; background: Canvas; }
+.barre { display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-bottom: 1px solid var(--bord); font-size: .9rem; white-space: nowrap; overflow: hidden; }
+.barre a, .barre button { color: inherit; text-decoration: none; font: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.barre .accueil { font-weight: 600; }
+.barre .sep { opacity: .4; }
+.barre .titre { opacity: .7; overflow: hidden; text-overflow: ellipsis; }
+.barre .externe { margin-left: auto; opacity: .6; }
+.cadre iframe { flex: 1; width: 100%; border: 0; }
