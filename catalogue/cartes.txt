@@ -7,5 +7,14 @@ suisse|5.95,45.81,10.50,47.81|15|Suisse, jusqu'aux rues
 luxembourg|5.73,49.44,6.53,50.19|15|Luxembourg, jusqu'aux rues
 quebec|-79.77,44.99,-57.10,62.59|15|Québec, jusqu'aux rues
 europe|-25.0,34.5,45.0,71.5|13|Europe : villes et grands axes
+maroc|-17.1,21.3,-1.0,35.9|15|Maroc, jusqu'aux rues
+algerie|-8.7,18.9,12.0,37.1|15|Algérie, jusqu'aux rues
+tunisie|7.5,30.2,11.6,37.4|15|Tunisie, jusqu'aux rues
+maghreb|-17.1,18.9,11.6,37.4|14|Maghreb (Maroc, Algérie, Tunisie) : villes et rues principales
+afrique-ouest|-17.6,4.3,15.9,25.0|13|Afrique de l'Ouest francophone : villes et grands axes
+antilles|-63.2,14.3,-60.8,16.6|15|Antilles françaises (Guadeloupe, Martinique), jusqu'aux rues
+reunion|55.2,-21.4,55.9,-20.8|15|La Réunion, jusqu'aux rues
+canada|-141.0,41.7,-52.6,83.1|12|Canada : villes et grands axes
+usa|-125.0,24.4,-66.9,49.4|13|États-Unis (48 États contigus) : villes et grands axes
 monde-villes|-|10|Monde : villes et routes
 monde|-|15|Monde entier, tout le détail (très volumineux)
