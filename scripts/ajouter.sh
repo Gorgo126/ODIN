@@ -65,7 +65,7 @@ echo "Téléchargement : $libelle ($(taille "$octets"))"
 wget -c -q --show-progress -O "$ZIM_DIR/$fichier.part" "$url"
 mv "$ZIM_DIR/$fichier.part" "$ZIM_DIR/$fichier"
 
-for ancien in "$ZIM_DIR/${nom}_${var}_"*.zim; do
+for ancien in "$ZIM_DIR/${nom}_"*.zim; do
   [ -e "$ancien" ] && [ "$ancien" != "$ZIM_DIR/$fichier" ] || continue
   echo "Suppression de l'ancienne version : $(basename "$ancien")"
   rm -f "$ancien"

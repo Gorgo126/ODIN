@@ -17,7 +17,8 @@ services:
     image: ghcr.io/gorgo126/odin-dashboard:latest
     container_name: dashboard
     volumes:
-      - ${DATA_DIR}/zim:/data:ro
+      - ${DATA_DIR}/zim:/data
+      - ./catalogue:/catalogue:ro
     restart: unless-stopped
 
   kiwix:

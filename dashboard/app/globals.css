@@ -11,3 +11,10 @@ a.carte:hover { background: var(--fond); }
 .ok { background: #16a34a; } .ko { background: #dc2626; }
 .jauge { height: .6rem; background: var(--fond); border-radius: 1rem; overflow: hidden; }
 .jauge div { height: 100%; background: currentColor; opacity: .5; }
+.pack { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.pack > div:first-child { display: flex; flex-direction: column; }
+.pack button { font: inherit; padding: .4rem .9rem; border-radius: .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
+.pack button:disabled { opacity: .4; cursor: default; }
+.progression { min-width: 12rem; text-align: right; }
+.erreur { color: #dc2626; margin-right: .5rem; }
+a.carte em { margin-left: .5rem; }

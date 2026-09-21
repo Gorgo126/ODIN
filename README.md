@@ -26,6 +26,13 @@ Puis ouvrez http://odin.local depuis n'importe quel appareil du réseau.
 
 ## Ajouter du contenu
 
+Liste des packs disponibles et installation :
+
+    /opt/odin/scripts/ajouter.sh --liste
+    /opt/odin/scripts/ajouter.sh medecine
+
+Ou manuellement :
+
 Déposez vos fichiers .zim dans /opt/odin/data/zim, puis lancez :
 
     /opt/odin/scripts/maj-bibliotheque.sh
