@@ -1,9 +1,31 @@
+{
+	auto_https off
+}
+
+(protege) {
+	forward_auth dashboard:3000 {
+		uri /api/auth/verifier
+	}
+}
+
 :80 {
+	@public path /connexion /connexion/* /api/auth/* /_next/* /favicon.ico
+	handle @public {
+		reverse_proxy dashboard:3000
+	}
+
 	handle /kiwix* {
+		import protege
 		reverse_proxy kiwix:8080
 	}
 
 	handle {
+		import protege
 		reverse_proxy dashboard:3000
 	}
+}
+
+:8081 {
+	import protege
+	reverse_proxy ia:8080
 }
