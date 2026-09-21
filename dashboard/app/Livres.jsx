@@ -64,6 +64,7 @@ export default function Livres({ liaisonInitiale }) {
               <em className="livre-verifie" title={l.fiche?.verifie?.sha256}>
                 Installé  vérifié{l.fiche?.verifie?.source === 'miroir' ? ' (miroir)' : ''}
               </em>
+              <a href={`/livres/${l.id}`} className="bouton bouton-lire">Lire</a>
               <button onClick={() => confirm(`Désinstaller « ${l.titre} » ?`) && envoyer(l.id, 'DELETE')}>Désinstaller</button>
             </span>
           );

@@ -8,6 +8,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${DATA_DIR}/cartes:/srv/cartes:ro
+      - ${DATA_DIR}/livres:/srv/livres:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped

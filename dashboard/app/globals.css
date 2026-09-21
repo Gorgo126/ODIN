@@ -248,3 +248,27 @@ em.hors-liaison, p.hors-liaison { color: var(--or); font-family: var(--mono); fo
 .livre-badges { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .2rem; }
 .grille .livre { border-left: 3px solid var(--or); }
 .grille .livre .livre-verifie { color: #16a34a; opacity: 1; text-transform: uppercase; letter-spacing: .1em; }
+/* Books page and reader */
+a.bouton-lire { display: inline-flex; justify-content: center; align-items: center; padding: .45rem 1.1rem; border: 1px solid var(--or); color: var(--or); background: var(--fond); box-shadow: var(--relief); font-family: var(--mono); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+a.bouton-lire:hover { background: color-mix(in srgb, var(--or) 15%, var(--fond)); }
+a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px); }
+.fiche-livre { margin-top: 1.5rem; padding: 1.2rem; border: 1px solid var(--bord); border-left: 3px solid var(--or); background: var(--fond); box-shadow: var(--relief); clip-path: var(--biseau); }
+.fiche-tete { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.fiche-tete h2 { margin: .3rem 0 0; font-family: inherit; font-size: 1.25rem; letter-spacing: normal; opacity: 1; }
+.fiche-tete h2::before { content: none; }
+.fiche-sous-titre { margin: .2rem 0 0; opacity: .7; }
+.fiche-attribution { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 1rem 0; font-size: .88rem; }
+.fiche-attribution dt { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; padding-top: .15rem; }
+.fiche-attribution dd { margin: 0; }
+.fiche-attribution code { font-family: var(--mono); font-size: .7rem; opacity: .6; word-break: break-all; }
+.fiche-liens { flex-direction: row; flex-wrap: wrap; }
+.bandeau-sante { margin: .8rem 0 0; padding: .55rem .8rem; border: 1px solid var(--or); box-shadow: var(--creux); font-size: .85rem; }
+.bandeau-sante::before { content: '⚠ '; color: var(--or); }
+.bandeau-lecture { margin: 0; border-width: 0 0 1px; font-size: .8rem; }
+.grille .pack a.bouton-lire { width: 100%; box-sizing: border-box; }
+@media (max-width: 600px) {
+  .fiche-tete { flex-direction: column; }
+  .fiche-attribution { grid-template-columns: 1fr; gap: .1rem; }
+  .fiche-attribution dd { margin-bottom: .5rem; }
+  .barre .externe { display: none; }
+}

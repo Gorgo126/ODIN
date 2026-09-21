@@ -10,6 +10,7 @@ const DESCRIPTIONS = {
   bibliotheque: "Encyclopédies et ouvrages de référence au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
   ia: "Modèle de langage exécuté localement, capable d'exploiter vos documents indexés. Aucune donnée ne quitte le serveur.",
+  livres: "Livres de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
   carte: "Cartes OpenStreetMap consultables hors ligne, jusqu'au niveau des rues pour les régions installées."
 };
 
@@ -32,6 +33,13 @@ const ICONES = {
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       <path d="M8 9h8" />
       <path d="M8 13h5" />
+    </svg>
+  ),
+  livres: (
+    <svg viewBox="0 0 24 24" {...trait}>
+      <path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z" />
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M14 2v7l2-1.5L18 9V2" />
     </svg>
   ),
   carte: (

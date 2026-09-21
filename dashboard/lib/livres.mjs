@@ -69,9 +69,35 @@ async function empreinte(fichier) {
 // Installed books, from their fiche.json: still listed if their entry left the catalogue
 async function installes() {
   const noms = await fs.readdir(DOSSIER).catch(() => []);
-  const fiches = await Promise.all(noms.filter((n) => ID.test(n)).map(lireFiche));
+  const fiches = await Promise.all(noms.filter((n) => ID.test(n)).map(async (n) => {
+    const f = await lireFiche(n);
+    return f?.id === n ? f : null;
+  }));
   return new Map(fiches.filter(Boolean).map((f) => [f.id, f]));
 }
+
+// Installed book for reading, or null: unknown, dangerous or not installed identifiers alike
+export async function livreInstalle(id) {
+  if (typeof id !== 'string' || !ID.test(id)) return null;
+  const fiche = await lireFiche(id);
+  return fiche?.id === id ? fiche : null;
+}
+
+export async function livresInstalles() {
+  return [...(await installes()).values()].sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+}
+
+// Page asked in the URL, kept within the book: 1 when missing or unreadable, the last one beyond
+export function pageDemandee(brut, pages) {
+  const n = /^\d+$/.test(String(brut ?? '')) ? Number(brut) : NaN;
+  if (!Number.isSafeInteger(n) || n < 1) return 1;
+  return Number.isInteger(pages) && pages > 0 ? Math.min(n, pages) : n;
+}
+
+export const AVERTISSEMENT_SANTE = 'Guide de santé : en cas de doute, consultez un soignant. Vérifiez toujours les doses de médicaments dans le livre.';
+
+// Served by Caddy (Range requests), see the /livres-fichiers route of the Caddyfile
+export const urlFichier = (id) => `/livres-fichiers/${id}/document.pdf`;
 
 export async function listeLivres() {
   const [catalogue, fiches] = await Promise.all([lireCatalogue(), installes()]);

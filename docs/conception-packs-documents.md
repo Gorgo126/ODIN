@@ -1,7 +1,7 @@
 # Packs « livre » (PDF) : conception
 
-Statut : **conception validée (v2, 21/09/2026). Étape 1 codée sur dev** (catalogue, installation,
-désinstallation, panneau Livres), en test sur nomad. Étapes 2 à 6 à venir.
+Statut : **conception validée (v2, 21/09/2026). Étapes 1 et 2 codées sur dev**, en test sur nomad.
+L'étape 2 (lecture) comprend aussi la page `/livres` et la carte d'accueil, prévues à l'étape 4. Étapes 3, 5 et 6 à venir.
 Premier cas réel : *Là où il n'y a pas de docteur* (Hesperian, édition française 2019).
 
 ## Décisions prises
@@ -308,6 +308,32 @@ ajoutez-le depuis Configuration, section Livres. » Déjà installé : rien à f
   `forward_auth`, comme `/tuiles/*`. Le PDF étant linéarisé, la première page s'affiche avant la fin du chargement.
 - `viewer.html` n'accepte que des fichiers de la même origine (comportement par défaut de pdf.js). On n'ouvre donc
   pas de PDF extérieur par ce chemin.
+
+### Étape 2 : ce qui a été mesuré
+
+- **pdf.js 6.3.289, archive `legacy`** (SHA-256 `51683fac4aff7dd31ed91e9ab735a2098a78d50899d1ec529aed6dc8aa19400d`).
+  Les cartes de sources (9,4 Mo) et le PDF d'exemple sont retirés au build ; il reste 13 Mo dans l'image. Aucun
+  appel extérieur à l'exécution : la seule liste d'origines de pdf.js (`mozilla.github.io`) sert à refuser un PDF
+  d'une autre origine.
+- **Options réglées sans modifier pdf.js** : le visualiseur envoie `webviewerloaded` à la page parente (même
+  origine) avant de démarrer. La page de lecture y pose `disableStream` et `disableAutoFetch`. Sans ce réglage,
+  pdf.js télécharge tout le livre en fond.
+- **Réseau de téléphone lent simulé** (Chromium, Pixel 7, 1,6 Mbit/s, 150 ms), ouverture directe à la page 566 :
+  - avec le réglage ODIN : **0,61 Mo de PDF reçu** à l'affichage, 0,68 Mo 10 s plus tard ;
+  - avec les réglages par défaut : 1,32 Mo à l'affichage, 3,39 Mo 10 s plus tard, et le chargement continue.
+- **Le visualiseur lui-même** est compressé par Next : environ 1 Mo sur le réseau (le worker passe de 2,3 à 0,5 Mo).
+- **Caddy 2.11.4** avec le vrai `Caddyfile` :
+  - requêtes partielles OK (`206`, `Content-Range`, `Accept-Ranges: bytes`) ;
+  - sans session, redirection vers la connexion ;
+  - `fiche.json`, `.en-cours`, livre inconnu, majuscules, dossier : 404 ;
+  - les chemins en `..` sortent de la route et tombent sur le dashboard, qui ne sert aucun fichier du disque.
+- **Émulation Android** (Pixel 7, Galaxy S9+) : page 566 affichée en 0,5 à 0,6 s en local, interface en français,
+  aucune requête hors du serveur.
+- **iPhone (WebKit) non vérifié en local** : WebKit ne démarre pas dans WSL sans bibliothèques système à installer
+  avec `sudo`. À tester sur un vrai iPhone (liste de tests).
+- **Surlignage des mots cherchés (`#search=`) : reporté à l'étape 3.** Non concluant en test : aucun résultat
+  surligné. Et la recherche dans pdf.js télécharge tout le livre pour lire le texte de chaque page. L'étape 3
+  s'appuiera sur notre propre index pour ouvrir la bonne page.
 
 ## 6. Recherche
 

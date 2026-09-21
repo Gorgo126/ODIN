@@ -127,6 +127,11 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   et ne garde jamais un fichier non vérifié. L'installation se prépare dans data/livres/.en-cours puis est
   renommée en une fois vers data/livres/<id>/ (document.pdf, fiche.json). Une entrée invalide du catalogue
   est ignorée avec un message dans les logs.
+  Lecture : /livres (fiches d'attribution), /livres/<id>?page=N. Caddy sert seulement <id>/document.pdf sur
+  /livres-fichiers/* (requêtes Range, derrière l'authentification). Visionneuse pdf.js : archive legacy
+  figée et vérifiée dans le Dockerfile (public/pdfjs, fichiers statiques, sans lien avec Node), réglée
+  par l'événement webviewerloaded (disableStream, disableAutoFetch : seules les pages affichées sont
+  téléchargées), sans toucher à ses fichiers.
 
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.

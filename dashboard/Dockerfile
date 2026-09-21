@@ -12,12 +12,24 @@ RUN wget -qO /tmp/assets.tgz "https://codeload.github.com/protomaps/basemaps-ass
  && cp -r "fonts/Noto Sans Regular" "fonts/Noto Sans Medium" "fonts/Noto Sans Italic" fonts/OFL.txt /r/polices/ \
  && cp sprites/v4/dark* /r/sprites/
 
+# PDF viewer: pdf.js prebuilt legacy build (also runs on older phones), pinned release, checked
+# archive. Static files for the browser only: nothing here runs on the server's Node.
+FROM node:20.20.2-alpine3.23 AS pdfjs
+ARG PDFJS=6.3.289
+ARG PDFJS_SHA256=51683fac4aff7dd31ed91e9ab735a2098a78d50899d1ec529aed6dc8aa19400d
+RUN wget -qO /tmp/pdfjs.zip "https://github.com/mozilla/pdf.js/releases/download/v$PDFJS/pdfjs-$PDFJS-legacy-dist.zip" \
+ && echo "$PDFJS_SHA256  /tmp/pdfjs.zip" | sha256sum -c - \
+ && mkdir /pdfjs && unzip -q /tmp/pdfjs.zip -d /pdfjs \
+ && find /pdfjs -name '*.map' -delete \
+ && rm /pdfjs/web/compressed.tracemonkey-pldi-09.pdf
+
 FROM node:20.20.2-alpine3.23 AS build
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY . .
 COPY --from=ressources /r ./public/ressources-carte
+COPY --from=pdfjs /pdfjs ./public/pdfjs
 RUN npm run build
 
 FROM node:20.20.2-alpine3.23

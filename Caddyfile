@@ -34,6 +34,19 @@
 		file_server
 	}
 
+	# Book PDFs, read by the viewer with Range requests. Only <id>/document.pdf is served:
+	# never fiche.json, a download in progress (.en-cours) or anything else of data/livres.
+	handle /livres-fichiers/* {
+		import protege
+		@pdf path_regexp ^/livres-fichiers/[a-z0-9]+(-[a-z0-9]+)*/document\.pdf$
+		handle @pdf {
+			uri strip_prefix /livres-fichiers
+			root * /srv/livres
+			file_server
+		}
+		respond 404
+	}
+
 	handle {
 		import protege
 		reverse_proxy dashboard:3000
