@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 
 const SERVICES = [
       { nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
+  { nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
       { nom: 'Assistant IA', url: 'http://ia:8080/health', lien: '#', port: '8081' }
 ];
 
