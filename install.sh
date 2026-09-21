@@ -41,12 +41,12 @@ if [ -d "$CIBLE/.git" ]; then
   git -C "$CIBLE" pull --ff-only
 else
   mkdir -p "$CIBLE"
-  [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
   git clone --depth 1 "$DEPOT" "$CIBLE"
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config"
+mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser"
+[ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 
 msg "Nom réseau"
