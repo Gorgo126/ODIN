@@ -6,6 +6,7 @@ COPY . .
 RUN npm run build
 
 FROM node:20-alpine
+LABEL org.opencontainers.image.source=https://github.com/Gorgo126/ODIN
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build /app/.next/standalone ./
