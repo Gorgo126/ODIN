@@ -2,6 +2,8 @@ server:
   port: 80
   baseURL: "/documents"
   database: "/home/filebrowser/data/database.db"
+  # No version check against api.github.com (ODIN runs offline)
+  disableUpdateCheck: true
   sources:
     - path: "/srv"
       name: "Documents"
