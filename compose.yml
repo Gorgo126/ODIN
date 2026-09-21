@@ -14,7 +14,7 @@ services:
       - dashboard
 
   dashboard:
-    build: ./dashboard
+    image: ghcr.io/gorgo126/odin-dashboard:latest
     container_name: dashboard
     volumes:
       - ${DATA_DIR}/zim:/data:ro

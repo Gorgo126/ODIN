@@ -67,7 +67,8 @@ systemctl restart avahi-daemon >/dev/null 2>&1 || true
 
 msg "Démarrage des services"
 cd "$CIBLE"
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 
 msg "Terminé"
 echo
