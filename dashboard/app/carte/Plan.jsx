@@ -5,6 +5,9 @@ import { useEffect, useRef, useState } from 'react';
 const RESSOURCES = '/ressources-carte';
 const ATTRIBUTION = '<a href="https://openstreetmap.org/copyright">© OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>';
 
+// Opening view when the address holds none: Europe
+const VUE_INITIALE = [[-11, 35], [32, 61]];
+
 const aire = (h) => (h.maxLon - h.minLon) * (h.maxLat - h.minLat);
 
 export default function Plan({ packs }) {
@@ -68,7 +71,6 @@ export default function Plan({ packs }) {
           }
         });
 
-        const detail = archives.at(-1).h;
         carte = new ml.Map({
           container: conteneur.current,
           style: {
@@ -81,9 +83,7 @@ export default function Plan({ packs }) {
           hash: true,
           maxZoom: 19,
           attributionControl: { compact: true },
-          ...(location.hash || archives.length === 1
-            ? { center: [10, 35], zoom: 1.5 }
-            : { bounds: [[detail.minLon, detail.minLat], [detail.maxLon, detail.maxLat]] })
+          ...(location.hash ? {} : { bounds: VUE_INITIALE })
         });
         carte.addControl(new ml.NavigationControl());
         carte.addControl(new ml.ScaleControl({ unit: 'metric' }));

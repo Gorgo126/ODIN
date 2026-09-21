@@ -92,16 +92,18 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
     fond = await api("GET", "").then((l) => l.packs.find((p) => p.id === "fond")).catch(() => pause(2000));
   }
   if (!fond) throw new Error("tableau de bord injoignable");
-  if (fond.installe) return console.log("  Déjà installé.");
-  const t = await api("POST", "/fond");
-  if (t.erreur) throw new Error(t.erreur);
-  for (let i = 0; i < 450; i++) {
-    await pause(2000);
-    const p = (await api("GET", "")).packs.find((p) => p.id === "fond");
-    if (p.installe) return console.log("  Installé.");
-    if (p.tache?.etat === "erreur") throw new Error(p.tache.erreur);
+  if (!fond.installe) {
+    const t = await api("POST", "/fond");
+    if (t.erreur) throw new Error(t.erreur);
+    for (let i = 0; i < 450 && !fond.installe; i++) {
+      await pause(2000);
+      fond = (await api("GET", "")).packs.find((p) => p.id === "fond");
+      if (fond.tache?.etat === "erreur") throw new Error(fond.tache.erreur);
+    }
+    if (!fond.installe) throw new Error("délai dépassé");
   }
-  throw new Error("délai dépassé");
+  console.log("  Installé. Mesure de la taille des autres packs, pour l\u0027affichage hors ligne.");
+  for (const p of (await api("GET", "")).packs) await api("GET", "/" + p.id).catch(() => {});
 })().catch((e) => { console.error("  " + e.message); process.exit(1); });
 ' || echo "  Fond de carte non installé : ajoutez-le depuis Configuration, section Cartes."
 

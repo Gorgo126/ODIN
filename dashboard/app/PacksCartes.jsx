@@ -68,6 +68,8 @@ export default function PacksCartes() {
       {liste.packs.map((p) => {
         const t = p.tache;
         const taille = p.taille || tailles[p.id];
+        // Offline, the last size measured while online
+        const affichee = taille || p.derniereMesure;
         const pct = t?.total ? Math.floor((t.recu / t.total) * 100) : 0;
         let action;
 
@@ -105,9 +107,9 @@ export default function PacksCartes() {
               <strong>{p.libelle}</strong>
               <em>
                 Zoom {p.zoom}
-                {!p.installe && liste.joignable && (taille ? `  ${octets(taille)}` : '  calcul de la taille')}
+                {!p.installe && (affichee ? `  ${octets(affichee)}${taille ? '' : ' (dernière mesure)'}` : liste.joignable ? '  calcul de la taille' : '')}
               </em>
-              {taille >= ENORME && !p.installe && <em className="erreur">Très volumineux</em>}
+              {affichee >= ENORME && !p.installe && <em className="erreur">Très volumineux</em>}
             </div>
             {action}
           </div>

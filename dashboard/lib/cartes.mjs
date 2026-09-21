@@ -14,9 +14,28 @@ const SCHEMA = '4.';
 const ZOOM_SOURCE = 15;
 export const FOND = 'fond';
 
+// Last measured size of each pack, kept on disk so that it can be shown offline
+const MESURES = path.join(DOSSIER, 'tailles.json');
+
 const etat = globalThis.__odinCartes ??= {
-  build: null, t: 0, tailles: new Map(), taches: new Map(), controles: new Map()
+  build: null, t: 0, tailles: new Map(), taches: new Map(), controles: new Map(), mesures: null
 };
+
+async function mesures() {
+  etat.mesures ??= JSON.parse(await fs.readFile(MESURES, 'utf8').catch(() => '{}'));
+  return etat.mesures;
+}
+
+async function memoriser(id, taille) {
+  const m = await mesures();
+  if (m[id] === taille) return;
+  m[id] = taille;
+  try {
+    await fs.mkdir(DOSSIER, { recursive: true });
+    await fs.writeFile(MESURES + '.tmp', JSON.stringify(m));
+    await fs.rename(MESURES + '.tmp', MESURES);
+  } catch {}
+}
 
 const direct = (p) => !p.zone && p.zoom >= ZOOM_SOURCE;
 const fichier = (id) => path.join(DOSSIER, `${id}.pmtiles`);
@@ -92,7 +111,10 @@ export async function taille(id) {
   if (!pack) throw new Error('Pack inconnu');
   const build = await dernierBuild();
   if (!build) return null;
-  if (direct(pack)) return build.taille;
+  if (direct(pack)) {
+    await memoriser(id, build.taille);
+    return build.taille;
+  }
 
   const cle = `${build.cle}:${id}`;
   let entree = etat.tailles.get(cle);
@@ -102,7 +124,7 @@ export async function taille(id) {
         const m = journal.match(/archive size of ([\d.]+) ?([kKMGT]?B)/);
         if (!m) throw new Error('Taille illisible');
         entree.valeur = Math.round(parseFloat(m[1]) * UNITES[m[2]]);
-        return entree.valeur;
+        return memoriser(id, entree.valeur).then(() => entree.valeur);
       })
       .catch((e) => { etat.tailles.delete(cle); throw e; });
     entree = { promesse, valeur: null };
@@ -112,7 +134,7 @@ export async function taille(id) {
 }
 
 export async function listePacks() {
-  const [packs, build] = await Promise.all([lirePacks().catch(() => []), dernierBuild()]);
+  const [packs, build, dernieres] = await Promise.all([lirePacks().catch(() => []), dernierBuild(), mesures()]);
   const fichiers = new Set(await fs.readdir(DOSSIER).catch(() => []));
   return {
     joignable: !!build,
@@ -127,6 +149,7 @@ export async function listePacks() {
         installe,
         surDisque: installe ? (await fs.stat(fichier(p.id)).catch(() => null))?.size || 0 : 0,
         taille: build ? (direct(p) ? build.taille : etat.tailles.get(`${build.cle}:${p.id}`)?.valeur ?? null) : null,
+        derniereMesure: dernieres[p.id] || null,
         tache: etat.taches.get(p.id) || null
       };
     }))
