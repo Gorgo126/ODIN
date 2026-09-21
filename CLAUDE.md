@@ -141,6 +141,13 @@ Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pa
 - Au démarrage de la machine, Docker relance tous les conteneurs ensemble et ignore depends_on :
   synchro attend donc lui-même qu'Open WebUI réponde.
 - Pour trouver qui appelle internet : tcpdump -i any udp port 53 sur l'hôte, en redémarrant un service à la fois.
+- Mise à jour (install.sh relancé) : git remplace compose.yml, Caddyfile et config/, seul .env est gardé.
+  Un fichier monté seul (Caddyfile, filebrowser.yaml) reste sur l'ancienne version dans le conteneur, et
+  up -d ne recrée que les services dont compose.yml a changé : install.sh compare l'ancien et le nouveau
+  commit et redémarre caddy, filebrowser ou synchro si leurs fichiers ont changé. Tout nouveau fichier
+  monté doit être ajouté à cette liste.
+- install.sh tourne en root sur /opt/odin appartenant à l'utilisateur : git exige safe.directory
+  (fonction depot dans install.sh).
 - VM renommée par l'installeur : Windows garde l'ancienne adresse dans hosts.ics et Multipass reste
   bloqué. D'où NOM_HOTE=test pour les VM de test.
 - MapLibre 6 déduit l'adresse de son worker de import.meta.url : regroupé par webpack, il la perd. Il est

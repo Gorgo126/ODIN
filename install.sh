@@ -38,13 +38,18 @@ else
 fi
 
 msg "Récupération des sources"
+# The script runs as root on a folder owned by the user: git refuses it unless allowed explicitly
+depot() { git -c safe.directory="$CIBLE" -C "$CIBLE" "$@"; }
+AVANT=""
 if [ -d "$CIBLE/.git" ]; then
+  AVANT=$(depot rev-parse HEAD)
   # Explicit refspec: a --depth 1 clone only tracks its original branch
-  git -C "$CIBLE" fetch origin "+refs/heads/$BRANCHE:refs/remotes/origin/$BRANCHE" \
+  depot fetch origin "+refs/heads/$BRANCHE:refs/remotes/origin/$BRANCHE" \
     || err "Branche $BRANCHE introuvable sur $DEPOT."
-  git -C "$CIBLE" checkout "$BRANCHE" 2>/dev/null \
-    || git -C "$CIBLE" checkout -b "$BRANCHE" --track "origin/$BRANCHE"
-  git -C "$CIBLE" merge --ff-only "origin/$BRANCHE"
+  depot checkout "$BRANCHE" 2>/dev/null \
+    || depot checkout -b "$BRANCHE" --track "origin/$BRANCHE"
+  depot merge --ff-only "origin/$BRANCHE" \
+    || err "Mise à jour impossible : des fichiers d'ODIN ont été modifiés sur ce serveur (voir git -C $CIBLE status). Les réglages personnels vont dans .env."
 else
   mkdir -p "$CIBLE"
   git clone --depth 1 -b "$BRANCHE" "$DEPOT" "$CIBLE" \
@@ -77,6 +82,20 @@ cd "$CIBLE"
 docker compose pull
 docker compose up -d
 
+# A service reading a file of the repository keeps the old version after an update: git replaces
+# the file, a single-file mount stays on the old one, and synchro keeps its code in memory.
+# up -d only recreates services whose compose.yml definition changed, so restart the others.
+if [ -n "$AVANT" ]; then
+  a_relancer=()
+  for couple in "caddy:Caddyfile" "filebrowser:config/filebrowser.yaml" "synchro:synchro"; do
+    depot diff --quiet "$AVANT" HEAD -- "${couple#*:}" || a_relancer+=("${couple%%:*}")
+  done
+  if [ ${#a_relancer[@]} -gt 0 ]; then
+    echo "  Configuration modifiée, redémarrage : ${a_relancer[*]}"
+    docker compose restart "${a_relancer[@]}"
+  fi
+fi
+
 msg "Modèles d'IA (plusieurs Go, cela peut prendre un moment)"
 docker exec ollama ollama pull "${MODELE_CHAT:-qwen2.5:3b}"
 docker exec ollama ollama pull bge-m3
@@ -104,10 +123,21 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   }
   console.log("  Installé. Mesure de la taille des autres packs, pour l\u0027affichage hors ligne.");
   for (const p of (await api("GET", "")).packs) await api("GET", "/" + p.id).catch(() => {});
-  // Same for the library packs: reading the catalogue records their sizes
-  await fetch("http://localhost:3000/api/packs").catch(() => {});
 })().catch((e) => { console.error("  " + e.message); process.exit(1); });
 ' || echo "  Fond de carte non installé : ajoutez-le depuis Configuration, section Cartes."
+
+msg "Taille des contenus de la bibliothèque"
+# Reading the Kiwix catalogue records each pack size, shown offline later
+docker exec dashboard node -e '
+fetch("http://localhost:3000/api/packs", { signal: AbortSignal.timeout(120000) })
+  .then((r) => r.json())
+  .then((l) => {
+    const n = l.filter((p) => p.taille).length;
+    console.log(`  ${n} tailles sur ${l.length} relevées.`);
+    if (!n) process.exit(1);
+  })
+  .catch(() => process.exit(1));
+' || echo "  Tailles non relevées : elles le seront à la prochaine visite de Configuration avec internet."
 
 msg "Terminé"
 echo
