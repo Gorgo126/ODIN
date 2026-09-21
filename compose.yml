@@ -29,6 +29,7 @@ services:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config
       - ${DATA_DIR}/cartes:/cartes
+      - ${DATA_DIR}/livres:/livres
       - ./catalogue:/catalogue:ro
     restart: unless-stopped
 

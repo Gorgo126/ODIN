@@ -2,6 +2,8 @@ import { contenu, octets } from '../../lib/etat.mjs';
 import Stockage from '../Stockage';
 import Packs from '../Packs';
 import PacksCartes from '../PacksCartes';
+import Livres from '../Livres';
+import { listeLivres } from '../../lib/livres.mjs';
 import { installees } from '../../lib/cartes.mjs';
 import { liaison } from '../../lib/liaison.mjs';
 import { lireReglages } from '../../lib/reglages.mjs';
@@ -16,6 +18,15 @@ const iconeLivre = (
   <svg viewBox="0 0 24 24" {...trait}>
     <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+// Closed book with a bookmark: PDF books, distinct from the open book of the ZIM library
+const iconeLivreFerme = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z" />
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M14 2v7l2-1.5L18 9V2" />
   </svg>
 );
 
@@ -38,7 +49,7 @@ const iconeLiaison = (
 const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e}${n > 1 ? 's' : ''}`;
 
 export default async function Configuration() {
-  const [livres, cartes, etatLiaison, reglages] = await Promise.all([contenu(), installees(), liaison(), lireReglages()]);
+  const [livres, cartes, etatLiaison, reglages, pdf] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres()]);
   const resume = pluriel(livres.length, 'contenu');
 
   return (
@@ -88,6 +99,17 @@ export default async function Configuration() {
         <h3>Ajouter du contenu</h3>
         <div className="grille">
           <Packs liaisonInitiale={etatLiaison} />
+        </div>
+      </Panneau>
+
+      <Panneau
+        icone={iconeLivreFerme}
+        titre="Livres"
+        sousTitre="Livres de référence au format PDF, lisibles hors ligne"
+        resume={pluriel(pdf.filter((l) => l.installe).length, 'livre')}
+      >
+        <div className="grille">
+          <Livres liaisonInitiale={etatLiaison} />
         </div>
       </Panneau>
 

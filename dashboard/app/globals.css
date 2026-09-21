@@ -242,3 +242,9 @@ em.hors-liaison, p.hors-liaison { color: var(--or); font-family: var(--mono); fo
 .reglages button:hover { border-color: var(--or); color: var(--or); }
 .reglages-actions { display: flex; align-items: center; gap: 1rem; }
 @media (max-width: 600px) { .reglages-lien { grid-template-columns: 1fr auto; } .reglages-lien input:first-child { grid-column: 1 / -1; } }
+/* Book packs (PDF): gold badge and edge, distinct from ZIM packs */
+.badge { display: inline-block; font-family: var(--mono); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--or); border: 1px solid var(--or); padding: .05rem .35rem; box-shadow: var(--creux); }
+.badge-discret { color: inherit; border-color: var(--bord); opacity: .7; }
+.livre-badges { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .2rem; }
+.grille .livre { border-left: 3px solid var(--or); }
+.grille .livre .livre-verifie { color: #16a34a; opacity: 1; text-transform: uppercase; letter-spacing: .1em; }

@@ -1,7 +1,7 @@
 # Packs « livre » (PDF) : conception
 
-Statut : **conception relue, décisions intégrées (v2, 21/09/2026). Rien n'est codé.**
-L'implémentation démarre après ta validation de cette version.
+Statut : **conception validée (v2, 21/09/2026). Étape 1 codée sur dev** (catalogue, installation,
+désinstallation, panneau Livres), en test sur nomad. Étapes 2 à 6 à venir.
 Premier cas réel : *Là où il n'y a pas de docteur* (Hesperian, édition française 2019).
 
 ## Décisions prises
@@ -107,7 +107,9 @@ Remarques :
   `https://www.hesperian.org/about/opencopyright`, qui renvoie une erreur 404. Hesperian redirige
   lui-même `/about/open-copyright/` vers cette page (section 10).
 - **Miroir** : l'URL suit la forme standard des fichiers de release GitHub. La release `livres-v1` **n'existe pas
-  encore** : elle sera créée à l'étape 1, après l'accord d'Hesperian (section 10).
+  encore** : elle sera créée après l'accord écrit d'Hesperian (section 10, règle inscrite dans CLAUDE.md).
+  **D'ici là, le `catalogue/livres.json` du dépôt ne contient que la source officielle.** Le passage au miroir est
+  couvert par le banc de test de l'étape 1.
 - **Taille et SHA-256 sont fixés dans le catalogue**. La taille s'affiche donc hors ligne sans mesure préalable.
 - `langue` suit ISO 639-3 (`fra`), comme Kiwix. `categorie` prend ses valeurs dans une liste courte
   (sante, eau, energie, agriculture, technique…).
@@ -201,11 +203,14 @@ liseré. L'avertissement santé est un encadré en relief creux, jamais une coul
 1. `enLigne()` est faux : refus immédiat avec « Indisponible hors ligne ».
 2. Contrôle de l'espace disque : taille du PDF + 15 % pour le texte extrait.
 3. Pour chaque URL de `sources`, dans l'ordre :
-   - téléchargement dans `.en-cours/<id>.part`, avec reprise (`telechargerFlux` existant) ;
+   - téléchargement dans `.en-cours/<id>.part` (`telechargerFlux` existant), **toujours depuis le début** :
+     pas de reprise d'une source à l'autre, car un morceau venu d'un autre serveur pourrait différer. Les livres
+     sont petits, et une reprise ne ferait gagner que quelques secondes ;
    - **aucun délai d'inactivité** pendant le flux, mais **15 s au plus pour obtenir la réponse HTTP**. Hors ligne ou
      source morte, l'échec est donc rapide. L'annulation reste manuelle ;
-   - à la fin, **SHA-256 calculé sur le fichier complet** (13 Mo se relisent en une fraction de seconde, et la
-     reprise n'a pas besoin d'un cas particulier) ;
+   - un fichier qui dépasse **110 % de la taille annoncée** est coupé net : il a été remplacé à la source, ce qui
+     donne le même verdict qu'une empreinte fausse, et le disque ne peut pas se remplir ;
+   - à la fin, **SHA-256 calculé sur le fichier complet** (13 Mo se relisent en une fraction de seconde) ;
    - l'empreinte est comparée à celle du catalogue (voir ci-dessous).
 4. Extraction du texte (section 6), puis écriture de `pages.json` et `fiche.json`.
 5. Déplacement atomique de `.en-cours/<id>/` vers `data/livres/<id>/`.
@@ -229,8 +234,21 @@ Messages d'échec (affichés dans le panneau, sous le bouton « Réessayer ») :
   injoignable. Installation refusée par sécurité. »
 - Les deux injoignables : « Source et miroir injoignables. Vérifiez l'accès à internet, puis réessayez. »
 
-Un `.part` dont la reprise a produit une empreinte fausse est supprimé : le « Réessayer » suivant repart de zéro,
-ce qui évite de reprendre un fichier corrompu.
+Quel que soit l'échec (réseau, empreinte, annulation), le `.part` est supprimé : le « Réessayer » suivant repart
+de zéro, depuis la source officielle.
+
+Vérifié sur un banc local (serveur HTTP de test, 33 contrôles, tous verts). Les cas couverts :
+- source bonne ;
+- source modifiée, avec un miroir bon, modifié ou fermé ;
+- source seule modifiée ;
+- source en 404, fermée, muette (bascule au bout de 15,1 s) ou trop grosse ;
+- annulation en plein téléchargement ;
+- hors ligne ;
+- identifiants dangereux (`../x`) ;
+- entrées de catalogue invalides ;
+- livre retiré du catalogue, toujours listé.
+
+Après chaque cas, rien ne reste sur le disque.
 
 Quand l'éditeur publie une nouvelle version, on met à jour l'entrée du catalogue (nouvelle empreinte, nouvelle
 taille) et on dépose le nouveau fichier dans une nouvelle release (`livres-v2`). Un livre installé n'est jamais
@@ -494,3 +512,40 @@ Pistes possibles, non explorées :
 - les deux titres existent sous forme de **wiki MediaWiki** officiel. Un ZIM tiré du wiki (comme pour Wikipédia)
   serait un **pack ZIM**, pas un livre PDF, et relèverait aussi de l'autorisation « Digital Materials » (section 10) ;
 - demander directement à Hesperian les PDF français de ces deux titres dans le même courrier.
+
+## 12. « Tous responsables » (SGDSN, novembre 2025) : licence vérifiée le 21/09/2026
+
+Le 1ᵉʳ livre candidat publiable sans attendre Hesperian. **Verdict : non, la redistribution n'est pas autorisée en l'état.**
+
+- **Page officielle** : `https://www.sgdsn.gouv.fr/publications/guide-tous-responsables` (20/11/2025). Elle renvoie à
+  `https://www.info.gouv.fr/actualite/tous-responsables-un-guide-pour-mieux-faire-face-aux-risques`.
+- **PDF liés depuis la page** :
+
+| Version | URL (sgdsn.gouv.fr/files/files/Publications/) | Octets | Pages | SHA-256 |
+|---|---|---|---|---|
+| Impression | `Tous%20responsables%20%20-%20Print.pdf` (deux espaces) | 15 492 776 | 28 | `8d24bffdbc4204c3f1e20c59461fa86145e72b085a35dd12d70289e40ebb21ce` |
+| Web | `Tous%20responsables%20-%20Web.pdf` | 13 994 353 | 15 (doubles pages) | `ade910cef2cc7760841bcd62a0ab35ac1013cfeacc768aec4444631675bc7dbc` |
+| FALC (facile à lire) | `Tous%20responsables_FALC.pdf` | 905 549 | 30 | `69f17933d7363d1e278ca51e4993762a1811902bf11edb64ea60c15b9f0387aa` |
+
+- **Qualité** : vrai texte, pas d'OCR nécessaire. Mais certains titres sont espacés lettre par lettre
+  (« I d e n t i f i e z »), ce qui gêne la recherche sur ces mots.
+- **Numérotation** : dans la version Impression, la page du PDF correspond à la page imprimée. Dans la version Web,
+  chaque page du PDF est une double page. **La version Impression est celle à retenir.**
+- **Mentions légales du SGDSN** (`https://www.sgdsn.gouv.fr/mentions-legales`), section propriété intellectuelle :
+  « L'ensemble des contenus présents sur le site internet du SGDSN (textes, photographies, vidéos…) sont protégés
+  par le droit d'auteur. Ils ne peuvent être modifiés, exploités ou diffusés sans l'accord exprès du SGDSN […].
+  Les demandes d'autorisation d'exploitation ou de diffusion des contenus doivent être adressées à :
+  diffusion@sgdsn.gouv.fr […]. En outre, toute modification du contenu et toute utilisation de celui-ci à des fins
+  commerciales est interdite. » Une fois l'accord obtenu, afficher la mention « source : site internet du secrétariat
+  général de la défense et de la sécurité nationale », avec un lien vers le contenu.
+- **Ce n'est pas la Licence Ouverte Etalab.** info.gouv.fr semble l'appliquer à ses propres contenus, mais sa page de
+  mentions légales n'a pas pu être lue directement (blocage 403). De toute façon, le PDF est publié et hébergé par le
+  SGDSN, dont les mentions priment.
+- **Le PDF ne contient aucune mention de licence.** Les versions Web et Impression portent un crédit tiers :
+  « Illustration : ©Antoine Dagan – CITIZENPRESS » (le kit d'urgence). La version FALC utilise le logo « easy to read »
+  d'Inclusion Europe et des pictogrammes du service d'information du gouvernement.
+- **Conséquence** : il faut un accord écrit, à demander à diffusion@sgdsn.gouv.fr. Il faut y préciser la version
+  Impression (URL et SHA-256) et l'usage : copie non modifiée, service gratuit et non commercial, visionneuse,
+  extraction du texte, IA locale qui cite les pages. Il faut aussi faire préciser que l'accord couvre l'illustration
+  d'Antoine Dagan / CITIZENPRESS. D'ici là, ce guide n'entre pas au catalogue.
+

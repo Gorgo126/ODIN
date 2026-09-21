@@ -14,8 +14,9 @@ toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
   installer ou mettre à jour ODIN. Hors ligne, elles échouent vite (quelques secondes au plus) et
   le disent clairement ; jamais de blocage ni d'attente sans limite.
 - Tout appel réseau sortant du code ODIN a un délai (AbortSignal.timeout), y compris
-  pendant qu'un flux se télécharge. Exception voulue : les packs de cartes n'ont pas de délai
-  d'inactivité (pmtiles extract a une longue phase de préparation silencieuse) ; l'annulation est manuelle.
+  pendant qu'un flux se télécharge. Exceptions voulues : les packs de cartes n'ont pas de délai
+  d'inactivité (pmtiles extract a une longue phase de préparation silencieuse) ; les livres non plus, mais
+  gardent 15 s au plus pour obtenir la réponse HTTP. Dans les deux cas, l'annulation est manuelle.
 - Aucun CDN, police externe, analytique ou vérification de mise à jour. Pour une image tierce,
   désactiver ces fonctions par variable d'environnement (Open WebUI : OFFLINE_MODE=true).
 - Tout ce qu'un service télécharge au premier usage (modèles, index, caches) doit être
@@ -120,6 +121,12 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Source de vérité unique : enLigne() côté serveur, useLiaison() côté navigateur. Toute fonction qui
   demande internet passe par elles (grisée avec « Indisponible hors ligne », jamais cachée) ; aucun
   appel externe sans elles, et aucun en silence radio.
+- Livres (packs PDF, docs/conception-packs-documents.md) : catalogue/livres.json porte toutes les
+  métadonnées, dont la taille et le SHA-256. lib/livres.mjs télécharge chaque source dans l'ordre (source
+  officielle, puis miroir), sans reprise d'une source à l'autre, vérifie l'empreinte sur le fichier complet
+  et ne garde jamais un fichier non vérifié. L'installation se prépare dans data/livres/.en-cours puis est
+  renommée en une fois vers data/livres/<id>/ (document.pdf, fiche.json). Une entrée invalide du catalogue
+  est ignorée avec un message dans les logs.
 
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
@@ -133,6 +140,10 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - Fins de ligne Linux obligatoires (.gitattributes) : les scripts bash cassent avec des fins de ligne Windows.
 - Style : thème années 90 (angles vifs, biseaux --biseau, reliefs --relief/--creux, police --mono),
   accent or --or. Le bloc du thème est délimité dans dashboard/app/globals.css.
+- Livres Hesperian (docs/conception-packs-documents.md, section 10), jusqu'à nouvel ordre du propriétaire :
+  ne jamais publier la release GitHub livres-v1, et ne jamais fusionner dans main ce qui installe un livre
+  Hesperian, tant que le propriétaire n'a pas reçu l'accord écrit d'Hesperian (usage numérique).
+  Les tests sur nomad (branche dev) sont autorisés.
 
 ## Pièges déjà rencontrés
 
