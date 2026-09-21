@@ -3,6 +3,9 @@ import Stockage from '../Stockage';
 import Packs from '../Packs';
 import PacksCartes from '../PacksCartes';
 import { installees } from '../../lib/cartes.mjs';
+import { liaison } from '../../lib/liaison.mjs';
+import { lireReglages } from '../../lib/reglages.mjs';
+import ReglagesLiaison from '../ReglagesLiaison';
 import Panneau from '../Panneau';
 
 export const dynamic = 'force-dynamic';
@@ -24,10 +27,18 @@ const iconeCarte = (
   </svg>
 );
 
+const iconeLiaison = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M2 12h20" />
+    <path d="M12 2a15 15 0 0 1 0 20a15 15 0 0 1 0-20z" />
+  </svg>
+);
+
 const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e}${n > 1 ? 's' : ''}`;
 
 export default async function Configuration() {
-  const [livres, cartes] = await Promise.all([contenu(), installees()]);
+  const [livres, cartes, etatLiaison, reglages] = await Promise.all([contenu(), installees(), liaison(), lireReglages()]);
   const resume = pluriel(livres.length, 'contenu');
 
   return (
@@ -46,6 +57,15 @@ export default async function Configuration() {
         <h2>Stockage</h2>
         <Stockage />
       </section>
+
+      <Panneau
+        icone={iconeLiaison}
+        titre="Liaison monde"
+        sousTitre="Accès à internet du serveur, modes forcés, silence radio, liens"
+        resume={reglages.silence ? 'Silence radio' : { auto: 'Automatique', 'hors-ligne': 'Forcé hors ligne', 'en-ligne': 'Forcé en ligne' }[reglages.mode]}
+      >
+        <ReglagesLiaison initiaux={reglages} />
+      </Panneau>
 
       <Panneau
         icone={iconeLivre}
@@ -67,7 +87,7 @@ export default async function Configuration() {
 
         <h3>Ajouter du contenu</h3>
         <div className="grille">
-          <Packs />
+          <Packs liaisonInitiale={etatLiaison} />
         </div>
       </Panneau>
 
@@ -78,7 +98,7 @@ export default async function Configuration() {
         resume={pluriel(cartes.length, 'carte', 'e')}
       >
         <div className="grille">
-          <PacksCartes />
+          <PacksCartes liaisonInitiale={etatLiaison} />
         </div>
       </Panneau>
     </main>

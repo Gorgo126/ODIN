@@ -3,7 +3,6 @@ import { promises as fs } from 'fs';
 const OPDS = 'https://library.kiwix.org/catalog/v2/entries';
 const CATALOGUE = '/catalogue/packs.txt';
 const cache = globalThis.__odinOpds ??= new Map();
-const sonde = globalThis.__odinSonde ??= { t: 0, ok: false };
 // Last size read in the catalogue for each pack, kept on disk so that it can be shown offline
 const MESURES = '/data/tailles.json';
 const memoire = globalThis.__odinTaillesZim ??= { valeurs: null };
@@ -41,18 +40,6 @@ export async function lirePacks() {
       const [id, nom, variante, libelle] = l.split('|');
       return { id, nom, variante, libelle };
     });
-}
-
-// One quick probe before the per-pack queries: offline, the page answers in 2 s at most
-export async function catalogueJoignable() {
-  if (Date.now() - sonde.t < (sonde.ok ? 600000 : 60000)) return sonde.ok;
-  let ok = false;
-  try {
-    ok = (await fetch(`${OPDS}?count=1`, { signal: AbortSignal.timeout(2000) })).ok;
-  } catch {}
-  sonde.t = Date.now();
-  sonde.ok = ok;
-  return ok;
 }
 
 async function entrees(nom) {

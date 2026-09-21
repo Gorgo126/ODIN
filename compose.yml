@@ -22,6 +22,9 @@ services:
     container_name: dashboard
     environment:
       - HTTP_PORT=${HTTP_PORT}
+      # World link probe: TCP 443 targets and a domain to resolve (defaults kept for older .env files)
+      - LIAISON_CIBLES=${LIAISON_CIBLES:-1.1.1.1,9.9.9.9,8.8.8.8}
+      - LIAISON_DNS=${LIAISON_DNS:-wikipedia.org}
     volumes:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config

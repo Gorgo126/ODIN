@@ -1,10 +1,22 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useLiaison, HORS_LIAISON } from '../../../useLiaison';
 
 const TAILLES = [0.9, 1, 1.1, 1.25, 1.4];
 
-export default function Lecteur({ livre, livreLien, titre, html, kiwix }) {
+export default function Lecteur({ livre, livreLien, titre, html, kiwix, liaisonInitiale }) {
   const [taille, setTaille] = useState(2);
+  const [avis, setAvis] = useState(false);
+  const horsLiaison = !useLiaison(liaisonInitiale)?.enLigne;
+
+  // External links of the article need the world link: greyed and blocked without it
+  function cliquer(e) {
+    if (horsLiaison && e.target.closest('a[data-externe]')) {
+      e.preventDefault();
+      setAvis(true);
+      setTimeout(() => setAvis(false), 4000);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -35,8 +47,10 @@ export default function Lecteur({ livre, livreLien, titre, html, kiwix }) {
           <a href={`/ouvrir/bibliotheque?chemin=${encodeURIComponent(kiwix)}`} title="Ouvrir dans Kiwix"></a>
         </span>
       </nav>
+      {avis && <p className="avis-liaison">Lien externe : {HORS_LIAISON.toLowerCase()}.</p>}
       <article
-        className="article"
+        className={`article${horsLiaison ? ' hors-liaison' : ''}`}
+        onClick={cliquer}
         style={{ '--taille-lecture': TAILLES[taille] + 'rem' }}
         dangerouslySetInnerHTML={{ __html: html }}
       />

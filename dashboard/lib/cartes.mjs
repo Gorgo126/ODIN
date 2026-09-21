@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { telechargerFlux } from './telechargements.mjs';
 import { octets } from './format.mjs';
+import { enLigne, HORS_LIAISON } from './liaison.mjs';
 
 const DOSSIER = '/cartes';
 const CATALOGUE = '/catalogue/cartes.txt';
@@ -54,6 +55,8 @@ export async function lirePacks() {
 // Latest world build with a compatible schema. Its name is dated and changes daily,
 // so it is always read from the index, never written in the code.
 export async function dernierBuild() {
+  // Offline or radio silence: no request, even with an index still in cache
+  if (!(await enLigne())) return null;
   if (Date.now() - etat.t < (etat.build ? 3600000 : 60000)) return etat.build;
   let build = null;
   try {
@@ -162,8 +165,9 @@ export async function demarrer(id) {
 
   const pack = (await lirePacks()).find((p) => p.id === id);
   if (!pack) throw new Error('Pack inconnu');
+  if (!(await enLigne())) throw new Error(HORS_LIAISON);
   const build = await dernierBuild();
-  if (!build) throw new Error('Catalogue des cartes injoignable : une connexion internet est nécessaire.');
+  if (!build) throw new Error('Catalogue des cartes injoignable.');
   const total = await taille(id);
   if (!total) throw new Error('Taille du pack inconnue, réessayez.');
 

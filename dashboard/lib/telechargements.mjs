@@ -3,6 +3,7 @@ import { Readable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 import path from 'path';
 import { lirePacks, infos } from './catalogue.mjs';
+import { enLigne, HORS_LIAISON } from './liaison.mjs';
 
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
@@ -38,6 +39,7 @@ export async function demarrer(id) {
 
   const pack = (await lirePacks()).find((p) => p.id === id);
   if (!pack) throw new Error('Pack inconnu');
+  if (!(await enLigne())) throw new Error(HORS_LIAISON);
   const e = await infos(pack);
   if (!e) throw new Error('Catalogue Kiwix injoignable ou pack introuvable');
 

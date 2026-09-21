@@ -2,9 +2,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { octets } from '../lib/format.mjs';
+import { useLiaison, HORS_LIAISON } from './useLiaison';
 
-export default function Packs() {
+export default function Packs({ liaisonInitiale }) {
   const [packs, setPacks] = useState(null);
+  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
   const router = useRouter();
   const avant = useRef(false);
 
@@ -15,7 +17,8 @@ export default function Packs() {
     } catch {}
   }, []);
 
-  useEffect(() => { charger(); }, [charger]);
+  // Reloaded when the link comes back: the catalogue is only read online
+  useEffect(() => { charger(); }, [charger, enLigne]);
 
   const enCours = !!packs?.some((p) => p.tache?.etat === 'en cours');
 
@@ -44,8 +47,9 @@ export default function Packs() {
 
   return (
     <>
-      {packs.length > 0 && packs.every((p) => !p.disponible) && (
-        <p>Catalogue injoignable : une connexion internet est nécessaire pour ajouter du contenu.</p>
+      {!enLigne && <p className="hors-liaison">{HORS_LIAISON} pour ajouter ou mettre à jour du contenu. Le contenu installé reste disponible.</p>}
+      {enLigne && packs.length > 0 && packs.every((p) => !p.disponible) && (
+        <p>Catalogue Kiwix injoignable pour le moment.</p>
       )}
       {packs.map((p) => {
         const t = p.tache;
@@ -66,9 +70,10 @@ export default function Packs() {
           action = (
             <span>
               {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}
-              <button disabled={!p.disponible} onClick={() => installer(p.id)}>
+              <button disabled={!enLigne || !p.disponible} title={enLigne ? undefined : HORS_LIAISON} onClick={() => installer(p.id)}>
                 {t?.etat === 'erreur' ? 'Réessayer' : p.installation === 'maj' ? 'Mettre à jour' : p.installation === 'autre' ? 'Remplacer' : 'Installer'}
               </button>
+              {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
             </span>
           );
         }

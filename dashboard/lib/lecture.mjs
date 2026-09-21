@@ -67,7 +67,7 @@ export async function lireArticle(livre, chemin) {
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*')/gi, '')
     .replace(/(<a\b[^>]*?\shref=")([^"]*)(")/gi, (_, debut, h, fin) => {
       const c = convertir(decoder(h), base, 'lien');
-      return debut + attribut(c.url) + (c.externe ? '" target="_blank" rel="noopener' : '') + fin;
+      return debut + attribut(c.url) + (c.externe ? '" target="_blank" rel="noopener noreferrer" data-externe="1' : '') + fin;
     })
     .replace(/(<(?:img|source)\b[^>]*?\ssrc=")([^"]*)(")/gi, (_, debut, s, fin) =>
       debut + attribut(convertir(decoder(s), base, 'ressource').url) + fin)
