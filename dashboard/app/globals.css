@@ -192,7 +192,7 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .plan-message a { color: var(--or); }
 
 /* Connectivité externe (carte « liaison », code interne) */
-.liaison { display: flex; flex-direction: column; gap: .8rem; padding: 1.2rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); clip-path: var(--biseau); }
+.liaison { display: flex; align-items: center; gap: 1.2rem; padding: 1.2rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); clip-path: var(--biseau); }
 .liaison-tete { display: flex; align-items: center; gap: 1rem; }
 .voyant { --c: #6b7280; flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50% !important; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 35%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent), inset 0 -2px 3px rgba(0, 0, 0, .45); border: 2px solid #111; }
 .voyant-vert { --c: #22c55e; animation: pulsation 2.4s ease-in-out infinite; }
@@ -214,10 +214,14 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .liaison-detail ul { list-style: none; margin: .5rem 0 0; padding: 0; font-family: var(--mono); font-size: .78rem; line-height: 1.7; }
 .ok-texte { color: #22c55e; }
 .ko-texte { color: #ef4444; }
-.liaison-liens { display: flex; flex-wrap: wrap; gap: .6rem; }
+.liaison-infos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .8rem; }
+/* External links on the right, keeping the card low; stacked below on narrow screens */
+.liaison-liens { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: .5rem; }
+@media (max-width: 600px) { .liaison { flex-direction: column; align-items: stretch; } .liaison-liens { flex-direction: row; flex-wrap: wrap; } }
 .liaison-liens .bouton { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); color: inherit; text-decoration: none; font-family: var(--mono); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
 .liaison-liens a.bouton:hover { border-color: var(--or); color: var(--or); }
 .liaison-liens .bouton.desactive { opacity: .45; cursor: not-allowed; border-style: dashed; box-shadow: none; }
+.liaison-liens .bouton.desactive { flex-direction: column; align-items: flex-start; gap: .15rem; }
 .liaison-liens .bouton.desactive small { font-size: .65rem; opacity: .8; }
 
 /* Features that need internet, greyed out without it ("Indisponible hors ligne") */

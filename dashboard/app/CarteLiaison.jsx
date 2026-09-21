@@ -50,46 +50,48 @@ export default function CarteLiaison({ initiale }) {
 
   return (
     <div className={`liaison liaison-${voyant}`}>
-      <div className="liaison-tete">
-        <span className={`voyant voyant-${voyant}`} aria-hidden="true" />
-        <div className="liaison-etat">
-          <strong>{LIBELLES[l.etat] || l.etat.toUpperCase()}</strong>
-          {MODES[l.mode] && <span className="liaison-mode">{MODES[l.mode]}</span>}
+      <div className="liaison-infos">
+        <div className="liaison-tete">
+          <span className={`voyant voyant-${voyant}`} aria-hidden="true" />
+          <div className="liaison-etat">
+            <strong>{LIBELLES[l.etat] || l.etat.toUpperCase()}</strong>
+            {MODES[l.mode] && <span className="liaison-mode">{MODES[l.mode]}</span>}
+          </div>
         </div>
+
+        <p className="liaison-contact">
+          {!maintenant ? '…' : l.dernierContact
+            ? `Dernière connexion vérifiée : ${date(l.dernierContact)} (${depuis(l.dernierContact, maintenant)})`
+            : 'Aucune connexion vérifiée'}
+        </p>
+
+        <details className="liaison-detail">
+          <summary>{diagnostic(l)}</summary>
+          {l.silence ? (
+            <p>Aucune connexion sortante tant que les sondes sont désactivées.</p>
+          ) : l.dernierTest ? (
+            <>
+              <p>Dernier test : {maintenant ? `${date(l.dernierTest)} (${depuis(l.dernierTest, maintenant)})` : '…'}</p>
+              <ul>
+                {l.cibles.map((c) => (
+                  <li key={c.hote}>
+                    <span className={c.ok ? 'ok-texte' : 'ko-texte'}>{c.ok ? '[OK]' : '[--]'}</span> TCP {c.hote}:443
+                    {c.ok && ` ${c.ms} ms`}
+                  </li>
+                ))}
+                {l.dns && (
+                  <li>
+                    <span className={l.dns.ok ? 'ok-texte' : 'ko-texte'}>{l.dns.ok ? '[OK]' : '[--]'}</span> DNS {l.dns.domaine}
+                    {l.dns.ok && ` ${l.dns.ms} ms`}
+                  </li>
+                )}
+              </ul>
+            </>
+          ) : (
+            <p>Le premier test se termine dans quelques secondes.</p>
+          )}
+        </details>
       </div>
-
-      <p className="liaison-contact">
-        {!maintenant ? '…' : l.dernierContact
-          ? `Dernière connexion vérifiée : ${date(l.dernierContact)} (${depuis(l.dernierContact, maintenant)})`
-          : 'Aucune connexion vérifiée'}
-      </p>
-
-      <details className="liaison-detail">
-        <summary>{diagnostic(l)}</summary>
-        {l.silence ? (
-          <p>Aucune connexion sortante tant que les sondes sont désactivées.</p>
-        ) : l.dernierTest ? (
-          <>
-            <p>Dernier test : {maintenant ? `${date(l.dernierTest)} (${depuis(l.dernierTest, maintenant)})` : '…'}</p>
-            <ul>
-              {l.cibles.map((c) => (
-                <li key={c.hote}>
-                  <span className={c.ok ? 'ok-texte' : 'ko-texte'}>{c.ok ? '[OK]' : '[--]'}</span> TCP {c.hote}:443
-                  {c.ok && ` ${c.ms} ms`}
-                </li>
-              ))}
-              {l.dns && (
-                <li>
-                  <span className={l.dns.ok ? 'ok-texte' : 'ko-texte'}>{l.dns.ok ? '[OK]' : '[--]'}</span> DNS {l.dns.domaine}
-                  {l.dns.ok && ` ${l.dns.ms} ms`}
-                </li>
-              )}
-            </ul>
-          </>
-        ) : (
-          <p>Le premier test se termine dans quelques secondes.</p>
-        )}
-      </details>
 
       {l.liens.length > 0 && (
         <div className="liaison-liens">
