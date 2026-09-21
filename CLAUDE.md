@@ -14,7 +14,8 @@ toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
   installer ou mettre à jour ODIN. Hors ligne, elles échouent vite (quelques secondes au plus) et
   le disent clairement ; jamais de blocage ni d'attente sans limite.
 - Tout appel réseau sortant du code ODIN a un délai (AbortSignal.timeout), y compris
-  pendant qu'un flux se télécharge.
+  pendant qu'un flux se télécharge. Exception voulue : les packs de cartes n'ont pas de délai
+  d'inactivité (pmtiles extract a une longue phase de préparation silencieuse) ; l'annulation est manuelle.
 - Aucun CDN, police externe, analytique ou vérification de mise à jour. Pour une image tierce,
   désactiver ces fonctions par variable d'environnement (Open WebUI : OFFLINE_MODE=true).
 - Tout ce qu'un service télécharge au premier usage (modèles, index, caches) doit être
@@ -46,7 +47,9 @@ Toute modification de install.sh doit être validée sur une VM vierge :
 multipass launch 24.04 --name test --cpus 4 --memory 8G --disk 40G --network Ethernet
 puis curl de install.sh depuis raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh et
 sudo BRANCHE=dev bash (défaut : main ; la variable se place après sudo, sinon sudo l'efface) :
-multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh | sudo BRANCHE=dev bash"
+multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh | sudo BRANCHE=dev NOM_HOTE=test bash"
+NOM_HOTE=test est obligatoire : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
+joint plus (il la cherche sous test.mshome.net). Arrêter/démarrer la VM : multipass stop test / start test.
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
 La VM vierge installe l'image publiée du dashboard : pour tester un dashboard modifié sur dev,
 lancer ensuite docker compose -f compose.yml -f compose.dev.yml up -d --build sur la VM.
@@ -60,7 +63,7 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
 1. Préparer en ligne (VM vierge ci-dessus) : mot de passe, un petit pack (climat), un PDF dans
    Documents, une question à l'IA.
 2. Couper : sudo /opt/odin/scripts/hors-ligne.sh couper (persiste au redémarrage).
-3. Redémarrer à froid (sudo reboot), puis vérifier : 7 conteneurs, logs de synchro, connexion,
+3. Redémarrer à froid (multipass stop test, puis multipass start test), puis vérifier : 7 conteneurs, logs de synchro, connexion,
    accueil, recherche, lecteur, /kiwix, dépôt d'un document puis question sur lui à l'IA,
    page Configuration (« Catalogue injoignable » en moins de 3 s, boutons désactivés).
 4. Navigateur, outils de développement ouverts (onglet Réseau) : aucune requête vers un autre hôte
@@ -80,12 +83,25 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   Après toute modification du Caddyfile : docker compose restart caddy (up -d ne le relit pas).
 - Authentification unique : forward_auth vers /api/auth/verifier du dashboard. Mot de passe choisi à la
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
-- dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Aucune dépendance hors Next et React.
+- dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Dépendances : Next, React, et pour
+  la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
 - kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
 - ollama + ia (Open WebUI, WEBUI_AUTH=false) : qwen2.5:3b pour discuter, bge-m3 pour l'indexation.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
 - synchro : node:20-alpine + synchro/synchro.mjs, répercute data/documents vers la collection
   Open WebUI "Mes documents" et cache bge-m3 du sélecteur.
+- Cartes : packs PMTiles (fonds Protomaps, données OSM) dans data/cartes/<id>.pmtiles, servis par
+  Caddy sur /tuiles/* (file_server, requêtes Range, derrière l'authentification). Catalogue :
+  catalogue/cartes.txt (id|ouest,sud,est,nord ou -|zoom max|libellé). Un pack = pmtiles extract
+  du build mondial ; sans zone et en zoom 15, c'est le fichier mondial entier, téléchargé directement
+  (reprise possible). Le nom du build est daté : lu dans build-metadata.protomaps.dev/builds.json,
+  le plus récent au schéma 4.x (celui du style figé). "fond" (monde, zoom 6, ~45 Mo) est installé par
+  install.sh via l'API du dashboard et ne se supprime pas.
+  Le binaire pmtiles vient de l'image figée ghcr.io/protomaps/go-pmtiles (étape du Dockerfile du dashboard).
+  Page /carte (MapLibre GL) : une source par pack, empilées du moins au plus détaillé ; la terre et
+  l'eau opaques d'un pack détaillé masquent les packs en dessous, les étiquettes passent toutes au-dessus.
+  Glyphes et sprites Protomaps (basemaps-assets, commit figé, empreinte vérifiée) téléchargés au build
+  de l'image dans public/ressources-carte/.
 
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
 Une montée de version se fait volontairement, une image à la fois, après test sur nomad puis hors ligne.
@@ -117,3 +133,12 @@ Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pa
 - download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries.
 - Le build arm64 émulé bloque GitHub Actions.
 - raw.githubusercontent.com garde un cache jusqu'à 5 minutes : tester avec l'identifiant du commit.
+- VM renommée par l'installeur : Windows garde l'ancienne adresse dans hosts.ics et Multipass reste
+  bloqué. D'où NOM_HOTE=test pour les VM de test.
+- MapLibre 6 déduit l'adresse de son worker de import.meta.url : regroupé par webpack, il la perd. Il est
+  donc copié tel quel dans public/ (scripts/ressources-carte.mjs, prebuild) et importé avec webpackIgnore.
+- MapLibre 6 dessine lui-même l'arabe et l'hébreu ; le module RTL est obsolète et remplacerait ce rendu.
+- pmtiles extract réserve la taille finale du fichier dès le début : la progression se lit dans sa
+  sortie (« NN% | »), pas dans la taille du .part. Une extraction interrompue repart de zéro.
+- Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
+  attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

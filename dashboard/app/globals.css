@@ -187,3 +187,6 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
   .panneau.ouvert .panneau-interieur, .panneau.ouvert::after { animation: none; }
   .panneau.ouvert::after { display: none; }
 }
+.plan { flex: 1; min-height: 0; }
+.plan-message { padding: 2rem 1rem; }
+.plan-message a { color: var(--or); }

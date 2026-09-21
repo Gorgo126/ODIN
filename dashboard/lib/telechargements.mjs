@@ -74,32 +74,10 @@ async function telecharger(pack, e, t, controle) {
   const part = dest + '.part';
 
   if (!(await existe(dest))) {
-    let deja = (await fs.stat(part).catch(() => null))?.size || 0;
+    const deja = (await fs.stat(part).catch(() => null))?.size || 0;
     const { bavail, bsize } = await fs.statfs(DATA);
     if (bavail * bsize < e.taille - deja) throw new Error('Espace disque insuffisant');
-
-    // Aborts when no data arrives for INACTIVITE ms, headers included
-    const { signal } = controle;
-    let minuterie;
-    const veiller = () => {
-      clearTimeout(minuterie);
-      minuterie = setTimeout(() => controle.abort('inactif'), INACTIVITE);
-    };
-    try {
-      veiller();
-      const r = await fetch(e.url.replace(/\.meta4$/, ''), {
-        headers: deja ? { Range: `bytes=${deja}-` } : {},
-        signal
-      });
-      if (r.status === 200) deja = 0;
-      else if (r.status !== 206) throw new Error(`Téléchargement refusé (${r.status})`);
-      t.recu = deja;
-
-      const compteur = new Transform({ transform(c, _, cb) { veiller(); t.recu += c.length; cb(null, c); } });
-      await pipeline(Readable.fromWeb(r.body), compteur, createWriteStream(part, { flags: deja ? 'a' : 'w' }), { signal });
-    } finally {
-      clearTimeout(minuterie);
-    }
+    await telechargerFlux(e.url.replace(/\.meta4$/, ''), part, t, controle);
     await fs.rename(part, dest);
   }
 
@@ -129,4 +107,29 @@ async function inscrire(e, fichier, debut) {
   xml = xml.replace('</library>', `${livre}\n</library>`);
   await fs.writeFile(LIB + '.tmp', xml);
   await fs.rename(LIB + '.tmp', LIB);
+}
+
+// Streams url into part, resuming it if present. inactivite: ms without data before
+// aborting (headers included), or null to wait for as long as needed.
+export async function telechargerFlux(url, part, t, controle, { inactivite = INACTIVITE } = {}) {
+  let deja = (await fs.stat(part).catch(() => null))?.size || 0;
+  const { signal } = controle;
+  let minuterie;
+  const veiller = () => {
+    if (!inactivite) return;
+    clearTimeout(minuterie);
+    minuterie = setTimeout(() => controle.abort('inactif'), inactivite);
+  };
+  try {
+    veiller();
+    const r = await fetch(url, { headers: deja ? { Range: `bytes=${deja}-` } : {}, signal });
+    if (r.status === 200) deja = 0;
+    else if (r.status !== 206) throw new Error(`Téléchargement refusé (${r.status})`);
+    t.recu = deja;
+
+    const compteur = new Transform({ transform(c, _, cb) { veiller(); t.recu += c.length; cb(null, c); } });
+    await pipeline(Readable.fromWeb(r.body), compteur, createWriteStream(part, { flags: deja ? 'a' : 'w' }), { signal });
+  } finally {
+    clearTimeout(minuterie);
+  }
 }

@@ -1,6 +1,8 @@
 import { contenu, octets } from '../../lib/etat.mjs';
 import Stockage from '../Stockage';
 import Packs from '../Packs';
+import PacksCartes from '../PacksCartes';
+import { installees } from '../../lib/cartes.mjs';
 import Panneau from '../Panneau';
 
 export const dynamic = 'force-dynamic';
@@ -14,9 +16,19 @@ const iconeLivre = (
   </svg>
 );
 
+const iconeCarte = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z" />
+    <path d="M8 2v16" />
+    <path d="M16 6v16" />
+  </svg>
+);
+
+const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e}${n > 1 ? 's' : ''}`;
+
 export default async function Configuration() {
-  const livres = await contenu();
-  const resume = `${livres.length} contenu${livres.length > 1 ? 's' : ''} installé${livres.length > 1 ? 's' : ''}`;
+  const [livres, cartes] = await Promise.all([contenu(), installees()]);
+  const resume = pluriel(livres.length, 'contenu');
 
   return (
     <main>
@@ -56,6 +68,17 @@ export default async function Configuration() {
         <h3>Ajouter du contenu</h3>
         <div className="grille">
           <Packs />
+        </div>
+      </Panneau>
+
+      <Panneau
+        icone={iconeCarte}
+        titre="Cartes"
+        sousTitre="Cartes OpenStreetMap hors ligne, par région"
+        resume={pluriel(cartes.length, 'carte', 'e')}
+      >
+        <div className="grille">
+          <PacksCartes />
         </div>
       </Panneau>
     </main>

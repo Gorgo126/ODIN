@@ -26,6 +26,14 @@
 		reverse_proxy kiwix:8080
 	}
 
+	# Map packs (PMTiles), read by the browser with Range requests
+	handle /tuiles/* {
+		import protege
+		uri strip_prefix /tuiles
+		root * /srv/cartes
+		file_server
+	}
+
 	handle {
 		import protege
 		reverse_proxy dashboard:3000
