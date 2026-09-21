@@ -45,7 +45,7 @@ else
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser"
+mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/synchro"
 [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 
@@ -69,6 +69,10 @@ msg "Démarrage des services"
 cd "$CIBLE"
 docker compose pull
 docker compose up -d
+
+msg "Modèles d'IA (plusieurs Go, cela peut prendre un moment)"
+docker exec ollama ollama pull "${MODELE_CHAT:-qwen2.5:3b}"
+docker exec ollama ollama pull bge-m3
 
 msg "Terminé"
 echo

@@ -46,6 +46,22 @@ services:
       - ${DATA_DIR}/documents:/srv
     restart: unless-stopped
 
+  synchro:
+    image: node:20-alpine
+    container_name: synchro
+    command: ["node", "/app/synchro.mjs"]
+    environment:
+      - OPENWEBUI_URL=http://ia:8080
+      - COLLECTION=Mes documents
+      - INTERVALLE=60
+    volumes:
+      - ./synchro:/app:ro
+      - ${DATA_DIR}/documents:/documents:ro
+      - ${DATA_DIR}/synchro:/state
+    depends_on:
+      - ia
+    restart: unless-stopped
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -62,6 +78,10 @@ services:
       - ENABLE_OPENAI_API=false
       - HF_HUB_OFFLINE=1
       - WEBUI_URL=/ia
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=bge-m3
+      - RAG_OLLAMA_BASE_URL=http://ollama:11434
+      - DEFAULT_MODELS=qwen2.5:3b
     volumes:
       - ${DATA_DIR}/openwebui:/app/backend/data
     depends_on:

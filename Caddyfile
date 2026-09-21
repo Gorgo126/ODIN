@@ -5,6 +5,8 @@
 (protege) {
 	forward_auth dashboard:3000 {
 		uri /api/auth/verifier
+		header_up -Connection
+		header_up -Upgrade
 	}
 }
 
