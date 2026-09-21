@@ -41,3 +41,27 @@ a.carte.resultat em { display: block; margin: .15rem 0 .3rem; }
 .resultat b { font-weight: 600; }
 .pagination { display: flex; justify-content: space-between; margin-top: 1.5rem; }
 .pagination a { color: inherit; }
+.lecture .barre { position: sticky; top: 0; z-index: 2; background: Canvas; margin: -2rem -1rem 1.5rem; }
+.barre .outils { margin-left: auto; display: flex; gap: .9rem; align-items: center; }
+.article { font-size: var(--taille-lecture, 1.1rem); line-height: 1.7; overflow-wrap: break-word; }
+.article a { color: #3b82f6; text-decoration: none; }
+.article a:hover { text-decoration: underline; }
+.article img { max-width: 100%; height: auto; }
+.article h1 { font-size: 1.8em; line-height: 1.2; }
+.article h2 { font-size: 1.35em; text-transform: none; letter-spacing: 0; opacity: 1; margin-top: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--bord); }
+.article h3 { font-size: 1.15em; }
+.article table { border-collapse: collapse; max-width: 100%; font-size: .9em; margin: 1em 0; }
+.article table:not([class*="infobox"]) { display: block; overflow-x: auto; }
+.article th, .article td { border: 1px solid var(--bord); padding: .3em .5em; vertical-align: top; }
+.article table[class*="infobox"] { float: right; clear: right; width: 20rem; margin: 0 0 1rem 1.5rem; font-size: .85em; }
+@media (max-width: 700px) { .article table[class*="infobox"] { float: none; width: 100%; margin: 1rem 0; } }
+.article figure { margin: 1em 0; }
+.article figcaption { font-size: .85em; opacity: .75; }
+.article .mw-editsection, .article .noprint, .article .navbox, .article .navbox-container, .article .bandeau-container, .article .metadata { display: none; }
+.article .references, .article ol.references { font-size: .85em; }
+.article sup { line-height: 0; }
+.article details > summary { cursor: pointer; }
+@media (prefers-color-scheme: dark) {
+  .article img { background: #fff; border-radius: 2px; }
+  .article img[class*="mwe-math"] { background: none; filter: invert(1); }
+}

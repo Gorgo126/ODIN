@@ -32,7 +32,7 @@ export default async function Recherche({ searchParams }) {
           </p>
 
           {res.resultats.map((r) => (
-            <a key={r.lien} href={`/ouvrir/bibliotheque?chemin=${encodeURIComponent(r.lien)}`} className="carte resultat">
+            <a key={r.lien} href={r.lien.replace("/kiwix/content/", "/lire/")} className="carte resultat">
               <strong>{r.titre}</strong>
               <em>{r.livre}</em>
               <p dangerouslySetInnerHTML={{ __html: r.extrait }} />
