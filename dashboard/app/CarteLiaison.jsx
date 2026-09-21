@@ -56,14 +56,13 @@ export default function CarteLiaison({ initiale }) {
           <div className="liaison-etat">
             <strong>{LIBELLES[l.etat] || l.etat.toUpperCase()}</strong>
             {MODES[l.mode] && <span className="liaison-mode">{MODES[l.mode]}</span>}
+            <span className="liaison-contact">
+              {!maintenant ? '…' : l.dernierContact
+                ? `Dernière connexion vérifiée : ${date(l.dernierContact)} (${depuis(l.dernierContact, maintenant)})`
+                : 'Aucune connexion vérifiée'}
+            </span>
           </div>
         </div>
-
-        <p className="liaison-contact">
-          {!maintenant ? '…' : l.dernierContact
-            ? `Dernière connexion vérifiée : ${date(l.dernierContact)} (${depuis(l.dernierContact, maintenant)})`
-            : 'Aucune connexion vérifiée'}
-        </p>
 
         <details className="liaison-detail">
           <summary>{diagnostic(l)}</summary>
