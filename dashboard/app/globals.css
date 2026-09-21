@@ -65,3 +65,7 @@ a.carte.resultat em { display: block; margin: .15rem 0 .3rem; }
   .article img { background: #fff; border-radius: 2px; }
   .article img[class*="mwe-math"] { background: none; filter: invert(1); }
 }
+.entete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.entete h1 { margin: 0; }
+.entete .deconnexion { float: none; }
+.logo { display: block; width: 100%; max-width: 22rem; height: auto; }

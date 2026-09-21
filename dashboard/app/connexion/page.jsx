@@ -14,7 +14,7 @@ export default async function Connexion({ searchParams }) {
 
   return (
     <main className="connexion">
-      <h1>ODIN</h1>
+      <h1><img src="/logo.png" alt="ODIN" className="logo" /></h1>
       <p>
         {premier
           ? 'Première utilisation : choisissez le mot de passe qui protégera ce serveur.'

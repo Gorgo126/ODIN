@@ -15,7 +15,7 @@ export default async function Page() {
 
   return (
     <main>
-      <h1>ODIN <a href="/api/auth/deconnexion" className="deconnexion">Se déconnecter</a></h1>
+      <header className="entete"><h1><img src="/logo.png" alt="ODIN" className="logo" /></h1><a href="/api/auth/deconnexion" className="deconnexion">Se déconnecter</a></header>
       <BarreRecherche />
 
       <section>

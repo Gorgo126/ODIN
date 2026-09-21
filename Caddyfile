@@ -11,7 +11,7 @@
 }
 
 :80 {
-	@public path /connexion /connexion/* /api/auth/* /_next/* /favicon.ico
+	@public path /connexion /connexion/* /api/auth/* /_next/* /favicon.ico /logo.png
 	handle @public {
 		reverse_proxy dashboard:3000
 	}
