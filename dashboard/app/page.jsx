@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 const DESCRIPTIONS = {
   bibliotheque: "Encyclopédies et ouvrages de référence au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
-  ia: "Modèle de langage exécuté localement, capable d'exploiter vos documents indexés. Aucune donnée ne quitte le serveur."
+  ia: "Modèle de langage exécuté localement, capable d'exploiter vos documents indexés. Aucune donnée ne quitte le serveur.",
+  carte: "Cartes OpenStreetMap consultables hors ligne, jusqu'au niveau des rues pour les régions installées."
 };
 
 const trait = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -29,6 +30,13 @@ const ICONES = {
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       <path d="M8 9h8" />
       <path d="M8 13h5" />
+    </svg>
+  ),
+  carte: (
+    <svg viewBox="0 0 24 24" {...trait}>
+      <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z" />
+      <path d="M8 2v16" />
+      <path d="M16 6v16" />
     </svg>
   )
 };
@@ -52,7 +60,7 @@ export default async function Page() {
         <h2>Services</h2>
         <div className="services">
           {services.map((s) => (
-            <a key={s.id} href={'/ouvrir/' + s.id} className="service">
+            <a key={s.id} href={s.interne ? s.lien : '/ouvrir/' + s.id} className="service">
               <div className="service-tete">
                 <span className="service-icone">{ICONES[s.id]}</span>
                 <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : 'Offline'}</span>

@@ -1,12 +1,13 @@
-import { lirePacks, infos } from '../../../lib/catalogue.mjs';
+import { lirePacks, infos, catalogueJoignable } from '../../../lib/catalogue.mjs';
 import { tache, etatInstallation } from '../../../lib/telechargements.mjs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const packs = await lirePacks().catch(() => []);
+  const enLigne = await catalogueJoignable();
   const liste = await Promise.all(packs.map(async (p) => {
-    const e = await infos(p).catch(() => null);
+    const e = enLigne ? await infos(p).catch(() => null) : null;
     return {
       id: p.id,
       libelle: p.libelle,

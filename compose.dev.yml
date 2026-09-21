@@ -1,3 +1,5 @@
 services:
   dashboard:
+    # Local tag, so a dev build never shadows the pinned published image
+    image: odin-dashboard:dev
     build: ./dashboard

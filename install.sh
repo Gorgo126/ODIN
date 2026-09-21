@@ -52,7 +52,7 @@ else
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/synchro"
+mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/synchro" "$CIBLE/data/cartes"
 [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 
@@ -80,6 +80,32 @@ docker compose up -d
 msg "Modèles d'IA (plusieurs Go, cela peut prendre un moment)"
 docker exec ollama ollama pull "${MODELE_CHAT:-qwen2.5:3b}"
 docker exec ollama ollama pull bge-m3
+
+msg "Fond de carte mondial"
+# Installed through the dashboard, which holds the pinned pmtiles tool
+docker exec dashboard node -e '
+const api = (m, c) => fetch("http://localhost:3000/api/cartes" + c, { method: m }).then((r) => r.json());
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  let fond;
+  for (let i = 0; i < 30 && !fond; i++) {
+    fond = await api("GET", "").then((l) => l.packs.find((p) => p.id === "fond")).catch(() => pause(2000));
+  }
+  if (!fond) throw new Error("tableau de bord injoignable");
+  if (!fond.installe) {
+    const t = await api("POST", "/fond");
+    if (t.erreur) throw new Error(t.erreur);
+    for (let i = 0; i < 450 && !fond.installe; i++) {
+      await pause(2000);
+      fond = (await api("GET", "")).packs.find((p) => p.id === "fond");
+      if (fond.tache?.etat === "erreur") throw new Error(fond.tache.erreur);
+    }
+    if (!fond.installe) throw new Error("délai dépassé");
+  }
+  console.log("  Installé. Mesure de la taille des autres packs, pour l\u0027affichage hors ligne.");
+  for (const p of (await api("GET", "")).packs) await api("GET", "/" + p.id).catch(() => {});
+})().catch((e) => { console.error("  " + e.message); process.exit(1); });
+' || echo "  Fond de carte non installé : ajoutez-le depuis Configuration, section Cartes."
 
 msg "Terminé"
 echo

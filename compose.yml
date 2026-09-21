@@ -1,12 +1,13 @@
 services:
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.4-alpine
     container_name: caddy
     ports:
       - "${HTTP_PORT}:80"
       - "${IA_PORT}:8081"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${DATA_DIR}/cartes:/srv/cartes:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
@@ -17,18 +18,19 @@ services:
       - filebrowser
 
   dashboard:
-    image: ghcr.io/gorgo126/odin-dashboard:latest
+    image: ghcr.io/gorgo126/odin-dashboard:a10abc1bb9ac45d9ba69d45adb4c070373eebfd5
     container_name: dashboard
     environment:
       - HTTP_PORT=${HTTP_PORT}
     volumes:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config
+      - ${DATA_DIR}/cartes:/cartes
       - ./catalogue:/catalogue:ro
     restart: unless-stopped
 
   kiwix:
-    image: ghcr.io/kiwix/kiwix-serve:latest
+    image: ghcr.io/kiwix/kiwix-serve:3.8.2
     container_name: kiwix
     command: ["--urlRootLocation=/kiwix", "--monitorLibrary", "--skipInvalid", "--library", "/data/library.xml"]
     volumes:
@@ -36,7 +38,7 @@ services:
     restart: unless-stopped
 
   filebrowser:
-    image: gtstef/filebrowser:stable
+    image: gtstef/filebrowser:1.5.6-stable
     container_name: filebrowser
     environment:
       - FILEBROWSER_CONFIG=/home/filebrowser/config.yaml
@@ -47,7 +49,7 @@ services:
     restart: unless-stopped
 
   synchro:
-    image: node:20-alpine
+    image: node:20.20.2-alpine3.23
     container_name: synchro
     command: ["node", "/app/synchro.mjs"]
     environment:
@@ -64,20 +66,23 @@ services:
     restart: unless-stopped
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.34.2
     container_name: ollama
     volumes:
       - ${DATA_DIR}/ollama:/root/.ollama
     restart: unless-stopped
 
   ia:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:git-0a7c158
     container_name: ia
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - WEBUI_AUTH=false
       - ENABLE_OPENAI_API=false
       - HF_HUB_OFFLINE=1
+      - OFFLINE_MODE=true
+      - ENABLE_CODE_EXECUTION=false
+      - ENABLE_CODE_INTERPRETER=false
       - WEBUI_URL=/ia
       - RAG_EMBEDDING_ENGINE=ollama
       - RAG_EMBEDDING_MODEL=bge-m3

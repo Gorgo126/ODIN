@@ -7,7 +7,10 @@ import { lirePacks, infos } from './catalogue.mjs';
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
 const VIDE = '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n';
+const INACTIVITE = 30000;
 const taches = globalThis.__odinTaches ??= new Map();
+// Kept apart from taches: tasks are serialized to the browser
+const controles = globalThis.__odinControles ??= new Map();
 
 const existe = (p) => fs.access(p).then(() => true, () => false);
 const esc = (s) => String(s ?? '')
@@ -39,30 +42,42 @@ export async function demarrer(id) {
   if (!e) throw new Error('Catalogue Kiwix injoignable ou pack introuvable');
 
   const t = { etat: 'en cours', recu: 0, total: e.taille, erreur: null };
+  const c = new AbortController();
   taches.set(id, t);
-  telecharger(pack, e, t).catch((err) => { t.etat = 'erreur'; t.erreur = err.message; });
+  controles.set(id, c);
+  telecharger(pack, e, t, c)
+    .catch(async (err) => {
+      if (c.signal.reason === 'annule') {
+        t.etat = 'annule';
+        await fs.rm(path.join(DATA, nomFichier(e) + '.part'), { force: true });
+        return;
+      }
+      t.etat = 'erreur';
+      t.erreur = c.signal.reason === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
+        : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?'
+        : err.message;
+    })
+    .finally(() => controles.delete(id));
   return t;
 }
 
-async function telecharger(pack, e, t) {
+export function annuler(id) {
+  const c = controles.get(id);
+  if (!c) return false;
+  c.abort('annule');
+  return true;
+}
+
+async function telecharger(pack, e, t, controle) {
   const fichier = nomFichier(e);
   const dest = path.join(DATA, fichier);
   const part = dest + '.part';
 
   if (!(await existe(dest))) {
-    let deja = (await fs.stat(part).catch(() => null))?.size || 0;
+    const deja = (await fs.stat(part).catch(() => null))?.size || 0;
     const { bavail, bsize } = await fs.statfs(DATA);
     if (bavail * bsize < e.taille - deja) throw new Error('Espace disque insuffisant');
-
-    const r = await fetch(e.url.replace(/\.meta4$/, ''), {
-      headers: deja ? { Range: `bytes=${deja}-` } : {}
-    });
-    if (r.status === 200) deja = 0;
-    else if (r.status !== 206) throw new Error(`Téléchargement refusé (${r.status})`);
-    t.recu = deja;
-
-    const compteur = new Transform({ transform(c, _, cb) { t.recu += c.length; cb(null, c); } });
-    await pipeline(Readable.fromWeb(r.body), compteur, createWriteStream(part, { flags: deja ? 'a' : 'w' }));
+    await telechargerFlux(e.url.replace(/\.meta4$/, ''), part, t, controle);
     await fs.rename(part, dest);
   }
 
@@ -92,4 +107,29 @@ async function inscrire(e, fichier, debut) {
   xml = xml.replace('</library>', `${livre}\n</library>`);
   await fs.writeFile(LIB + '.tmp', xml);
   await fs.rename(LIB + '.tmp', LIB);
+}
+
+// Streams url into part, resuming it if present. inactivite: ms without data before
+// aborting (headers included), or null to wait for as long as needed.
+export async function telechargerFlux(url, part, t, controle, { inactivite = INACTIVITE } = {}) {
+  let deja = (await fs.stat(part).catch(() => null))?.size || 0;
+  const { signal } = controle;
+  let minuterie;
+  const veiller = () => {
+    if (!inactivite) return;
+    clearTimeout(minuterie);
+    minuterie = setTimeout(() => controle.abort('inactif'), inactivite);
+  };
+  try {
+    veiller();
+    const r = await fetch(url, { headers: deja ? { Range: `bytes=${deja}-` } : {}, signal });
+    if (r.status === 200) deja = 0;
+    else if (r.status !== 206) throw new Error(`Téléchargement refusé (${r.status})`);
+    t.recu = deja;
+
+    const compteur = new Transform({ transform(c, _, cb) { veiller(); t.recu += c.length; cb(null, c); } });
+    await pipeline(Readable.fromWeb(r.body), compteur, createWriteStream(part, { flags: deja ? 'a' : 'w' }), { signal });
+  } finally {
+    clearTimeout(minuterie);
+  }
 }
