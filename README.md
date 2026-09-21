@@ -32,10 +32,7 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 
 - 🧭 **Autonome** : une fois préparé, ODIN démarre, redémarre et répond sans internet.
 - 🔒 **Privé** : rien ne sort du serveur, ni télémétrie, ni requête vers un service tiers.
-- 🇫🇷 **Pensé en français** : interface, catalogue et modèles choisis pour un public francophone.
 - 🪶 **Simple** : un seul fichier Docker Compose écrit à la main, sans orchestrateur ni magie.
-
-> ODIN s'inspire de Project NOMAD. Il a été reconstruit de zéro, en plus simple.
 
 ## Ce qu'ODIN vous offre
 
