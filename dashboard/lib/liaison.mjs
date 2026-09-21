@@ -2,6 +2,7 @@ import net from 'net';
 import { Resolver } from 'dns/promises';
 import { promises as fs } from 'fs';
 import { lireReglages } from './reglages.mjs';
+import { ecrireJson, lireJson } from './fichiers.mjs';
 
 // Server-side internet probe: the server's connectivity is what matters, never the visitor's.
 // Runs in the background (instrumentation.js); requests only read the cached result.
@@ -56,8 +57,7 @@ async function dns() {
 async function ecrire() {
   try {
     await fs.mkdir('/config', { recursive: true });
-    await fs.writeFile(FICHIER + '.tmp', JSON.stringify({ dernierContact: etat.dernierContact }));
-    await fs.rename(FICHIER + '.tmp', FICHIER);
+    await ecrireJson(FICHIER, { dernierContact: etat.dernierContact });
     etat.valeurEcrite = etat.dernierContact;
     etat.ecrit = Date.now();
   } catch {}
@@ -94,16 +94,16 @@ export function demarrerSonde() {
   if (etat.demarre) return;
   etat.demarre = true;
   etat.premier = (async () => {
-    try { etat.dernierContact = JSON.parse(await fs.readFile(FICHIER, 'utf8')).dernierContact || null; } catch {}
+    etat.dernierContact = (await lireJson(FICHIER, {})).dernierContact || null;
     etat.valeurEcrite = etat.dernierContact;
     await tour();
   })();
 }
 
 // After a settings change (radio silence toggled), probe at once instead of waiting
-export function relancerSonde() {
+export async function relancerSonde() {
   demarrerSonde();
-  tour();
+  await tour();
 }
 
 // Last result, returned at once: a running or timing-out probe never delays a page
@@ -111,7 +111,8 @@ export async function liaison() {
   demarrerSonde();
   const reglages = await lireReglages();
   const r = etat.resultat;
-  const valeur = reglages.silence ? 'silence' : r?.etat ?? 'inconnu';
+  // A result from radio silence means nothing once it is lifted
+  const valeur = reglages.silence ? 'silence' : r && r.etat !== 'silence' ? r.etat : 'inconnu';
   const enLigne = reglages.mode === 'en-ligne' ? true
     : reglages.mode === 'hors-ligne' ? false
     : valeur === 'etablie' || valeur === 'degradee';

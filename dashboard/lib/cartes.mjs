@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { telechargerFlux } from './telechargements.mjs';
 import { octets } from './format.mjs';
+import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 
 const DOSSIER = '/cartes';
@@ -23,7 +24,7 @@ const etat = globalThis.__odinCartes ??= {
 };
 
 async function mesures() {
-  etat.mesures ??= JSON.parse(await fs.readFile(MESURES, 'utf8').catch(() => '{}'));
+  etat.mesures ??= await lireJson(MESURES, {});
   return etat.mesures;
 }
 
@@ -33,8 +34,7 @@ async function memoriser(id, taille) {
   m[id] = taille;
   try {
     await fs.mkdir(DOSSIER, { recursive: true });
-    await fs.writeFile(MESURES + '.tmp', JSON.stringify(m));
-    await fs.rename(MESURES + '.tmp', MESURES);
+    await ecrireJson(MESURES, m);
   } catch {}
 }
 

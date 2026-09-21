@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import { ecrireJson, lireJson } from './fichiers.mjs';
 
 // ODIN settings edited from the Configuration page, kept next to auth.json on the config volume
 const FICHIER = '/config/reglages.json';
@@ -29,8 +30,7 @@ function valider(r) {
 
 export async function lireReglages() {
   if (!memoire.valeur) {
-    let lu = {};
-    try { lu = JSON.parse(await fs.readFile(FICHIER, 'utf8')); } catch {}
+    const lu = await lireJson(FICHIER, {});
     try { memoire.valeur = valider({ ...DEFAUT, ...lu }); } catch { memoire.valeur = DEFAUT; }
   }
   return memoire.valeur;
@@ -41,8 +41,7 @@ export async function ecrireReglages(modifs) {
   const definis = Object.fromEntries(Object.entries(modifs).filter(([, v]) => v !== undefined));
   const valeur = valider({ ...(await lireReglages()), ...definis });
   await fs.mkdir('/config', { recursive: true });
-  await fs.writeFile(FICHIER + '.tmp', JSON.stringify(valeur, null, 1));
-  await fs.rename(FICHIER + '.tmp', FICHIER);
+  await ecrireJson(FICHIER, valeur, 1);
   memoire.valeur = valeur;
   return valeur;
 }

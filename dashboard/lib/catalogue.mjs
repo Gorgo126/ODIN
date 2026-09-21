@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import { ecrireJson, lireJson } from './fichiers.mjs';
 
 const OPDS = 'https://library.kiwix.org/catalog/v2/entries';
 const CATALOGUE = '/catalogue/packs.txt';
@@ -8,7 +9,7 @@ const MESURES = '/data/tailles.json';
 const memoire = globalThis.__odinTaillesZim ??= { valeurs: null };
 
 export async function dernieresTailles() {
-  memoire.valeurs ??= JSON.parse(await fs.readFile(MESURES, 'utf8').catch(() => '{}'));
+  memoire.valeurs ??= await lireJson(MESURES, {});
   return memoire.valeurs;
 }
 
@@ -16,10 +17,7 @@ async function memoriser(id, taille) {
   const m = await dernieresTailles();
   if (!taille || m[id] === taille) return;
   m[id] = taille;
-  try {
-    await fs.writeFile(MESURES + '.tmp', JSON.stringify(m));
-    await fs.rename(MESURES + '.tmp', MESURES);
-  } catch {}
+  await ecrireJson(MESURES, m).catch(() => {});
 }
 
 const decoder = (s) => s

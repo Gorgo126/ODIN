@@ -4,6 +4,7 @@ import { pipeline } from 'stream/promises';
 import path from 'path';
 import { lirePacks, infos } from './catalogue.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
+import { ecrireTexte } from './fichiers.mjs';
 
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
@@ -95,7 +96,15 @@ async function telecharger(pack, e, t, controle) {
   t.etat = 'termine';
 }
 
-async function inscrire(e, fichier, debut) {
+// Read-modify-write of library.xml: two packs finishing together would otherwise drop one book
+const verrou = globalThis.__odinBibliotheque ??= { suite: Promise.resolve() };
+function inscrire(...args) {
+  const tache = verrou.suite.then(() => inscrireMaintenant(...args));
+  verrou.suite = tache.catch(() => {});
+  return tache;
+}
+
+async function inscrireMaintenant(e, fichier, debut) {
   let xml = await fs.readFile(LIB, 'utf8').catch(() => VIDE);
   xml = xml.replace(/\s*<book\b[^>]*\/>/g, (b) =>
     (b.match(/path="([^"]*)"/)?.[1] || '').startsWith(debut) ? '' : b);
@@ -107,8 +116,7 @@ async function inscrire(e, fichier, debut) {
     + ` mediaCount="${e.medias}" size="${Math.round(e.taille / 1024)}" />`;
 
   xml = xml.replace('</library>', `${livre}\n</library>`);
-  await fs.writeFile(LIB + '.tmp', xml);
-  await fs.rename(LIB + '.tmp', LIB);
+  await ecrireTexte(LIB, xml);
 }
 
 // Streams url into part, resuming it if present. inactivite: ms without data before

@@ -11,7 +11,7 @@ export async function PUT(req) {
   try {
     const corps = await req.json();
     await ecrireReglages({ mode: corps.mode, silence: corps.silence, liens: corps.liens });
-    relancerSonde();
+    await relancerSonde();
     return Response.json(await liaison());
   } catch (e) {
     return Response.json({ erreur: e.message }, { status: 400 });
