@@ -1,12 +1,14 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { octets } from '../lib/format.mjs';
+import { useLiaison, HORS_LIAISON } from './useLiaison';
 
 const GROS = 1e9;
 const ENORME = 50e9;
 
-export default function PacksCartes() {
+export default function PacksCartes({ liaisonInitiale }) {
   const [liste, setListe] = useState(null);
+  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
   const [tailles, setTailles] = useState({});
   const demandees = useRef(new Set());
 
@@ -17,11 +19,12 @@ export default function PacksCartes() {
     } catch {}
   }, []);
 
-  useEffect(() => { charger(); }, [charger]);
+  // Reloaded when the link comes back: the map index is only read online
+  useEffect(() => { charger(); }, [charger, enLigne]);
 
   // Sizes come from a dry-run of several seconds each: loaded one pack at a time, after the page
   useEffect(() => {
-    if (!liste?.joignable) return;
+    if (!enLigne || !liste?.joignable) return;
     let actif = true;
     (async () => {
       for (const p of liste.packs) {
@@ -36,7 +39,7 @@ export default function PacksCartes() {
       }
     })();
     return () => { actif = false; };
-  }, [liste]);
+  }, [liste, enLigne]);
 
   const enCours = !!liste?.packs.some((p) => p.tache?.etat === 'en cours');
 
@@ -62,9 +65,8 @@ export default function PacksCartes() {
 
   return (
     <>
-      {!liste.joignable && (
-        <p>Catalogue injoignable : une connexion internet est nécessaire pour ajouter des cartes. Les cartes installées restent utilisables.</p>
-      )}
+      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Les cartes installées restent consultables.</p>}
+      {enLigne && !liste.joignable && <p>Catalogue des cartes injoignable pour le moment.</p>}
       {liste.packs.map((p) => {
         const t = p.tache;
         const taille = p.taille || tailles[p.id];
@@ -94,9 +96,10 @@ export default function PacksCartes() {
           action = (
             <span>
               {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}
-              <button disabled={!liste.joignable || !taille} onClick={() => installer(p, taille)}>
+              <button disabled={!enLigne || !liste.joignable || !taille} title={enLigne ? undefined : HORS_LIAISON} onClick={() => installer(p, taille)}>
                 {t?.etat === 'erreur' ? 'Réessayer' : 'Installer'}
               </button>
+              {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
             </span>
           );
         }
@@ -107,7 +110,7 @@ export default function PacksCartes() {
               <strong>{p.libelle}</strong>
               <em>
                 Zoom {p.zoom}
-                {!p.installe && (affichee ? `  ${octets(affichee)}${taille ? '' : ' (dernière mesure)'}` : liste.joignable ? '  calcul de la taille' : '')}
+                {!p.installe && (affichee ? `  ${octets(affichee)}${taille ? '' : ' (dernière mesure)'}` : enLigne && liste.joignable ? '  calcul de la taille' : '')}
               </em>
               {affichee >= ENORME && !p.installe && <em className="erreur">Très volumineux</em>}
             </div>

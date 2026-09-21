@@ -1,6 +1,8 @@
 import { etatServices } from '../lib/etat.mjs';
 import BarreRecherche from './BarreRecherche';
 import Stockage from './Stockage';
+import CarteLiaison from './CarteLiaison';
+import { liaison } from '../lib/liaison.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +44,7 @@ const ICONES = {
 };
 
 export default async function Page() {
-  const services = await etatServices();
+  const [services, etatLiaison] = await Promise.all([etatServices(), liaison()]);
 
   return (
     <main>
@@ -55,6 +57,11 @@ export default async function Page() {
       </header>
 
       <BarreRecherche />
+
+      <section>
+        <h2>Connectivité externe</h2>
+        <CarteLiaison initiale={etatLiaison} />
+      </section>
 
       <section>
         <h2>Services</h2>

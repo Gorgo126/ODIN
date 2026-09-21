@@ -1,13 +1,15 @@
-import { lirePacks, infos, catalogueJoignable, dernieresTailles } from '../../../lib/catalogue.mjs';
+import { lirePacks, infos, dernieresTailles } from '../../../lib/catalogue.mjs';
+import { enLigne } from '../../../lib/liaison.mjs';
 import { tache, etatInstallation } from '../../../lib/telechargements.mjs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const packs = await lirePacks().catch(() => []);
-  const [enLigne, dernieres] = await Promise.all([catalogueJoignable(), dernieresTailles()]);
+  // Offline or radio silence: no request to the catalogue at all
+  const [connecte, dernieres] = await Promise.all([enLigne(), dernieresTailles()]);
   const liste = await Promise.all(packs.map(async (p) => {
-    const e = enLigne ? await infos(p).catch(() => null) : null;
+    const e = connecte ? await infos(p).catch(() => null) : null;
     return {
       id: p.id,
       libelle: p.libelle,

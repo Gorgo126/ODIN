@@ -111,7 +111,17 @@ Une montée de version se fait volontairement, une image à la fois, après test
 Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
 mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de travail).
 
-Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
+- Connectivité externe (« liaison » dans le code : lib/liaison.mjs, /api/liaison, useLiaison) : sonde côté serveur (lib/liaison.mjs), lancée au démarrage par instrumentation.js,
+  toutes les 45 s : TCP 443 vers LIAISON_CIBLES (délai 2,5 s, en parallèle) et résolution DNS de
+  LIAISON_DNS. Établie = 2 cibles et DNS ; dégradée = 1 cible, ou DNS en échec ; rompue = aucune.
+  /api/liaison renvoie le dernier résultat sans jamais attendre un test. Dernier contact (dernier état
+  établi) dans data/config/liaison.json. Réglages (mode auto / forcé hors ligne / forcé en ligne,
+  silence radio, liens monde) dans data/config/reglages.json, via /api/reglages.
+  Source de vérité unique : enLigne() côté serveur, useLiaison() côté navigateur. Toute fonction qui
+  demande internet passe par elles (grisée avec « Indisponible hors ligne », jamais cachée) ; aucun
+  appel externe sans elles, et aucun en silence radio.
+
+Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Règles
@@ -140,6 +150,8 @@ Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pa
 - FileBrowser Quantum interroge api.github.com au démarrage (version) : server.disableUpdateCheck: true.
 - Au démarrage de la machine, Docker relance tous les conteneurs ensemble et ignore depends_on :
   synchro attend donc lui-même qu'Open WebUI réponde.
+- État partagé du dashboard (sonde, tâches, réglages) : toujours dans globalThis, car instrumentation.js
+  et les routes sont des bundles séparés qui chargeraient chacun leur copie des modules.
 - Pour trouver qui appelle internet : tcpdump -i any udp port 53 sur l'hôte, en redémarrant un service à la fois.
 - Mise à jour (install.sh relancé) : git remplace compose.yml, Caddyfile et config/, seul .env est gardé.
   Un fichier monté seul (Caddyfile, filebrowser.yaml) reste sur l'ancienne version dans le conteneur, et

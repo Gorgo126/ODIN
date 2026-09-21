@@ -1,12 +1,13 @@
 import { notFound, redirect } from 'next/navigation';
 import { lireArticle } from '../../../../lib/lecture.mjs';
 import Lecteur from './Lecteur';
+import { liaison } from '../../../../lib/liaison.mjs';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Lire({ params }) {
   const { livre, chemin = [] } = await params;
-  const a = await lireArticle(livre, chemin);
+  const [a, etatLiaison] = await Promise.all([lireArticle(livre, chemin), liaison()]);
   if (a.type === 'introuvable') notFound();
   if (a.type === 'fichier') redirect(a.url);
   return (
@@ -16,6 +17,7 @@ export default async function Lire({ params }) {
       titre={a.titre}
       html={a.html}
       kiwix={a.kiwix}
+      liaisonInitiale={etatLiaison}
     />
   );
 }

@@ -190,3 +190,55 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .plan { flex: 1; min-height: 0; }
 .plan-message { padding: 2rem 1rem; }
 .plan-message a { color: var(--or); }
+
+/* Connectivité externe (carte « liaison », code interne) */
+.liaison { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); clip-path: var(--biseau); }
+.liaison-tete { display: flex; align-items: center; gap: .9rem; }
+.voyant { --c: #6b7280; flex: none; width: 1.35rem; height: 1.35rem; border-radius: 50% !important; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 35%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent), inset 0 -2px 3px rgba(0, 0, 0, .45); border: 2px solid #111; }
+.voyant-vert { --c: #22c55e; animation: pulsation 2.4s ease-in-out infinite; }
+.voyant-orange { --c: #f59e0b; }
+.voyant-rouge { --c: #ef4444; }
+.voyant-gris { --c: #6b7280; box-shadow: inset 0 -2px 3px rgba(0, 0, 0, .45); }
+@keyframes pulsation { 50% { box-shadow: 0 0 22px var(--c), inset 0 -2px 3px rgba(0, 0, 0, .45); filter: brightness(1.18); } }
+@media (prefers-reduced-motion: reduce) { .voyant-vert { animation: none; } }
+.liaison-etat { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .9rem; }
+.liaison-etat strong { font-family: var(--mono); font-size: 1rem; letter-spacing: .14em; }
+.liaison-vert .liaison-etat strong { color: #22c55e; }
+.liaison-orange .liaison-etat strong { color: #f59e0b; }
+.liaison-rouge .liaison-etat strong { color: #ef4444; }
+.liaison-gris .liaison-etat strong { color: #9ca3af; }
+.liaison-mode { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; color: var(--or); }
+.liaison-contact { flex-basis: 100%; font-size: .8rem; opacity: .8; }
+.liaison-contact small { opacity: .55; }
+.liaison-detail summary { cursor: pointer; font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; opacity: .85; }
+.liaison-detail p { margin: .5rem 0 0; font-family: var(--mono); font-size: .78rem; opacity: .75; }
+.liaison-detail ul { list-style: none; margin: .5rem 0 0; padding: 0; font-family: var(--mono); font-size: .78rem; line-height: 1.7; }
+.ok-texte { color: #22c55e; }
+.ko-texte { color: #ef4444; }
+.liaison-infos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .35rem; }
+/* External links on the right, keeping the card low; stacked below on narrow screens */
+.liaison-liens { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: .5rem; }
+@media (max-width: 600px) { .liaison { flex-direction: column; align-items: stretch; } .liaison-liens { flex-direction: row; flex-wrap: wrap; } }
+.liaison-liens .bouton { display: inline-flex; align-items: center; gap: .5rem; padding: .4rem .8rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); color: inherit; text-decoration: none; font-family: var(--mono); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
+.liaison-liens a.bouton:hover { border-color: var(--or); color: var(--or); }
+.liaison-liens .bouton.desactive { opacity: .45; cursor: not-allowed; border-style: dashed; box-shadow: none; }
+.liaison-liens .bouton.desactive { flex-direction: column; align-items: flex-start; gap: .15rem; }
+.liaison-liens .bouton.desactive small { font-size: .65rem; opacity: .8; }
+
+/* Features that need internet, greyed out without it ("Indisponible hors ligne") */
+em.hors-liaison, p.hors-liaison { color: var(--or); font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; font-style: normal; }
+.article.hors-liaison a[data-externe] { color: inherit; opacity: .45; cursor: not-allowed; text-decoration: line-through; }
+.avis-liaison { margin: 0 0 1rem; padding: .5rem .8rem; border: 1px solid var(--or); color: var(--or); font-family: var(--mono); font-size: .8rem; }
+
+/* Settings form */
+.reglages fieldset { margin: 0 0 1rem; padding: .8rem 1rem; border: 1px solid var(--bord); }
+.reglages legend { padding: 0 .4rem; font-family: var(--mono); font-size: .72rem; letter-spacing: .15em; text-transform: uppercase; color: var(--or); }
+.reglages label { display: flex; align-items: flex-start; gap: .6rem; margin: .4rem 0; cursor: pointer; }
+.reglages label small { display: block; font-size: .78rem; opacity: .6; }
+.reglages input[type="radio"], .reglages input[type="checkbox"] { margin-top: .3rem; accent-color: var(--or); }
+.reglages-lien { display: grid; grid-template-columns: 1fr 2fr auto; gap: .4rem; margin-bottom: .4rem; }
+.reglages-lien input { min-width: 0; font: inherit; font-size: .88rem; padding: .45rem .6rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; box-shadow: var(--creux); }
+.reglages button { font-family: var(--mono); font-size: .78rem; padding: .45rem .9rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; }
+.reglages button:hover { border-color: var(--or); color: var(--or); }
+.reglages-actions { display: flex; align-items: center; gap: 1rem; }
+@media (max-width: 600px) { .reglages-lien { grid-template-columns: 1fr auto; } .reglages-lien input:first-child { grid-column: 1 / -1; } }
