@@ -77,7 +77,7 @@ export default function Packs() {
           <div key={p.id} className="carte pack">
             <div>
               <strong>{p.libelle}</strong>
-              <em>{octets(p.taille)}</em>
+              <em>{p.taille ? octets(p.taille) : p.derniereMesure ? `${octets(p.derniereMesure)} (dernière mesure)` : ''}</em>
             </div>
             {action}
           </div>

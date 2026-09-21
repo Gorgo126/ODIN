@@ -4,6 +4,24 @@ const OPDS = 'https://library.kiwix.org/catalog/v2/entries';
 const CATALOGUE = '/catalogue/packs.txt';
 const cache = globalThis.__odinOpds ??= new Map();
 const sonde = globalThis.__odinSonde ??= { t: 0, ok: false };
+// Last size read in the catalogue for each pack, kept on disk so that it can be shown offline
+const MESURES = '/data/tailles.json';
+const memoire = globalThis.__odinTaillesZim ??= { valeurs: null };
+
+export async function dernieresTailles() {
+  memoire.valeurs ??= JSON.parse(await fs.readFile(MESURES, 'utf8').catch(() => '{}'));
+  return memoire.valeurs;
+}
+
+async function memoriser(id, taille) {
+  const m = await dernieresTailles();
+  if (!taille || m[id] === taille) return;
+  m[id] = taille;
+  try {
+    await fs.writeFile(MESURES + '.tmp', JSON.stringify(m));
+    await fs.rename(MESURES + '.tmp', MESURES);
+  } catch {}
+}
 
 const decoder = (s) => s
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
@@ -73,5 +91,7 @@ async function entrees(nom) {
 export async function infos(pack) {
   const liste = await entrees(pack.nom);
   if (!liste) return null;
-  return liste.find((e) => pack.variante === '-' || e.variante === pack.variante) || null;
+  const e = liste.find((e) => pack.variante === '-' || e.variante === pack.variante) || null;
+  if (e) await memoriser(pack.id, e.taille);
+  return e;
 }

@@ -104,6 +104,8 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   }
   console.log("  Installé. Mesure de la taille des autres packs, pour l\u0027affichage hors ligne.");
   for (const p of (await api("GET", "")).packs) await api("GET", "/" + p.id).catch(() => {});
+  // Same for the library packs: reading the catalogue records their sizes
+  await fetch("http://localhost:3000/api/packs").catch(() => {});
 })().catch((e) => { console.error("  " + e.message); process.exit(1); });
 ' || echo "  Fond de carte non installé : ajoutez-le depuis Configuration, section Cartes."
 
