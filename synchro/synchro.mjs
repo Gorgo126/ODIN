@@ -170,5 +170,17 @@ async function boucle() {
   setTimeout(boucle, INTERVALLE);
 }
 
+// Au démarrage de la machine, Docker relance tous les conteneurs en même temps (depends_on ignoré) :
+// on attend qu'Open WebUI réponde, 3 minutes au plus, avant le premier cycle
+async function attendreOpenWebUI() {
+  for (let i = 0; i < 90; i++) {
+    try {
+      if ((await fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) })).ok) return;
+    } catch {}
+    if (i === 0) log('En attente d\'Open WebUI');
+    await pause(2000);
+  }
+}
+
 log(`Synchronisation de ${RACINE} vers "${COLLECTION}", toutes les ${INTERVALLE / 1000} s`);
-boucle();
+attendreOpenWebUI().then(boucle);
