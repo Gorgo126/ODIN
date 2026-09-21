@@ -135,6 +135,12 @@ Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pa
 - download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries.
 - Le build arm64 émulé bloque GitHub Actions.
 - raw.githubusercontent.com garde un cache jusqu'à 5 minutes : tester avec l'identifiant du commit.
+- Ollama interroge ollama.com au démarrage puis toutes les 4 h (recommandations, cache cloud) :
+  OLLAMA_NO_CLOUD=true le coupe, les ollama pull restent possibles.
+- FileBrowser Quantum interroge api.github.com au démarrage (version) : server.disableUpdateCheck: true.
+- Au démarrage de la machine, Docker relance tous les conteneurs ensemble et ignore depends_on :
+  synchro attend donc lui-même qu'Open WebUI réponde.
+- Pour trouver qui appelle internet : tcpdump -i any udp port 53 sur l'hôte, en redémarrant un service à la fois.
 - VM renommée par l'installeur : Windows garde l'ancienne adresse dans hosts.ics et Multipass reste
   bloqué. D'où NOM_HOTE=test pour les VM de test.
 - MapLibre 6 déduit l'adresse de son worker de import.meta.url : regroupé par webpack, il la perd. Il est
