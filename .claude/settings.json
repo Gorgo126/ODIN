@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(multipass list:*)",
+      "Bash(multipass info:*)"
+    ],
+    "deny": [
+      "Bash(multipass delete nomad:*)",
+      "Bash(multipass restore:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
