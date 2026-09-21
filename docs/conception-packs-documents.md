@@ -1,7 +1,7 @@
 # Packs « livre » (PDF) : conception
 
-Statut : **conception validée (v2, 21/09/2026). Étapes 1 et 2 codées sur dev**, en test sur nomad.
-L'étape 2 (lecture) comprend aussi la page `/livres` et la carte d'accueil, prévues à l'étape 4. Étapes 3, 5 et 6 à venir.
+Statut : **conception validée (v2, 21/09/2026). Étapes 1 et 2 validées ; étape 3 codée sur dev**, en test sur nomad.
+L'étape 2 (lecture) comprend aussi la page `/livres` et la carte d'accueil, prévues à l'étape 4. Étapes 5 et 6 à venir.
 Premier cas réel : *Là où il n'y a pas de docteur* (Hesperian, édition française 2019).
 
 ## Décisions prises
@@ -369,6 +369,29 @@ courant et propagé aux pages impaires. Si `pages.json` manque (extraction inter
   - à l'installation, quelques secondes de CPU ;
   - à l'usage, environ 20 Mo de mémoire par livre de cette taille.
   - Cela tient jusqu'à quelques dizaines de livres. Au-delà, SQLite FTS5 (fourni avec Node 22) serait l'étape suivante.
+
+### Étape 3 : ce qui a été mesuré et décidé
+
+- **`pdftotext` retenu** (poppler 25.12, paquet Alpine 3.23) :
+  - 639 pages en **2,0 s** ;
+  - environ **10 Mo** de plus dans l'image (poppler, nss, lcms2, openjpeg, tiff…) ;
+  - texte comparable à pdf.js : colonnes dans l'ordre, accents intacts ;
+  - les points de conduite de la table des matières sortent en caractères illisibles, que l'on retire.
+- **Chapitre** : sur une page paire, la 1ʳᵉ ligne est le numéro de la page et la 2ᵉ commence par « Chapitre » ;
+  les pages impaires gardent le chapitre précédent. Une page numérotée sans « Chapitre » (ouverture de chapitre,
+  vocabulaire) n'a pas de chapitre plutôt qu'un faux.
+- **Mots coupés en fin de ligne** : le texte garde la forme recollée (« rhumatismes ») ; la forme avec trait
+  d'union (« au-dessous ») est indexée aussi.
+- **Recherche** :
+  - tous les mots doivent être présents, en début de mot, sans accents ni casse ;
+  - les mots vides (de, la, les…) ne sont pas exigés ;
+  - bonus pour la phrase exacte, mots vides compris, et pour les mots du titre de chapitre ;
+  - extrait centré sur la phrase exacte, ou sinon sur le 1ᵉʳ mot trouvé, texte du livre échappé.
+- **Mesures (banc)** : 1ʳᵉ recherche 186 ms (chargement de l'index), puis environ 5 ms. « paracétamol » donne
+  15 pages, la p. 566 en tête.
+- **Échec de l'extraction** : le livre reste installé et lisible, sans recherche. Nouvel essai au démarrage suivant.
+- **Surlignage dans la visionneuse** : sur la page ouverte seulement, dans la couche de texte de pdf.js, avec son
+  propre style. La recherche de pdf.js (`#search=`) n'est pas utilisée : elle télécharge tout le livre.
 
 ## 7. IA
 

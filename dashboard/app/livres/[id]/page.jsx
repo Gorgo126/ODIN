@@ -12,14 +12,15 @@ export async function generateMetadata({ params }) {
 // Reader: ODIN bar, health warning, then the pdf.js viewer (static files in public/pdfjs)
 export default async function Lire({ params, searchParams }) {
   const { id } = await params;
-  const { page } = await searchParams;
+  const { page, q } = await searchParams;
   const livre = await livreInstalle(id);
   if (!livre) notFound();
 
   const n = pageDemandee(page, livre.pages);
+  const recherche = typeof q === 'string' ? q.trim().slice(0, 100) : '';
   // An unreadable or out-of-range page gives a clean URL showing the page actually opened
   if (page !== undefined && String(page) !== String(n)) {
-    redirect(`/livres/${id}?page=${n}`);
+    redirect(`/livres/${id}?page=${n}${recherche ? `&q=${encodeURIComponent(recherche)}` : ''}`);
   }
 
   const visionneuse = `/pdfjs/web/viewer.html?file=${encodeURIComponent(urlFichier(id))}#page=${n}`;
@@ -35,7 +36,7 @@ export default async function Lire({ params, searchParams }) {
         <a className="externe" href={`/livres#${id}`} title="Auteurs, licence et attribution">Fiche du livre</a>
       </nav>
       {livre.avertissement === 'sante' && <p className="bandeau-sante bandeau-lecture">{AVERTISSEMENT_SANTE}</p>}
-      <Visionneuse src={visionneuse} titre={livre.titre} />
+      <Visionneuse src={visionneuse} titre={livre.titre} page={n} recherche={recherche} />
     </div>
   );
 }

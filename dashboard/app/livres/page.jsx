@@ -50,6 +50,8 @@ export default async function Livres() {
             <dt>Attribution</dt><dd>{l.attribution}</dd>
             {l.credit && <><dt>Crédit</dt><dd>{l.credit}</dd></>}
             <dt>Licence</dt><dd>{l.licence.nom}{l.licence.conditions ? `  ${l.licence.conditions}` : ''}</dd>
+            <dt>Recherche</dt>
+            <dd>{l.texte ? 'Texte extrait : le livre répond à la recherche d\'ODIN, page par page' : 'Texte pas encore extrait : le livre ne répond pas encore à la recherche'}</dd>
             <dt>Fichier</dt>
             <dd>
               {l.pages ? `${l.pages} pages  ` : ''}{octets(l.taille)}  non modifié, empreinte vérifiée

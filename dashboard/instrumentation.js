@@ -3,5 +3,8 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { demarrerSonde } = await import('./lib/liaison.mjs');
     demarrerSonde();
+    // Books installed without their text (older version, failed extraction): made searchable
+    const { rattraperTextes } = await import('./lib/livres.mjs');
+    rattraperTextes().catch((e) => console.error(`Extraction des textes : ${e.message}`));
   }
 }

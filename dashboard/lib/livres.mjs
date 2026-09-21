@@ -5,6 +5,7 @@ import { telechargerFlux } from './telechargements.mjs';
 import { octets } from './format.mjs';
 import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
+import { extrairePages } from './extraction.mjs';
 
 // Book packs (PDF): unlike ZIM packs, every piece of metadata, size and SHA-256 included,
 // comes from our own catalogue, so a book can be described and checked offline.
@@ -17,7 +18,7 @@ const CONNEXION = 15000;
 const MARGE = 1.15;
 const ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-const etat = globalThis.__odinLivres ??= { taches: new Map(), controles: new Map(), demarrages: new Map() };
+const etat = globalThis.__odinLivres ??= { taches: new Map(), controles: new Map(), demarrages: new Map(), extractions: new Map() };
 
 const texte = (v) => typeof v === 'string' && v.trim() !== '';
 const https = (v) => texte(v) && /^https:\/\/[^\s]+$/.test(v);
@@ -57,7 +58,7 @@ export async function lireCatalogue() {
   });
 }
 
-const dossierLivre = (id) => path.join(DOSSIER, id);
+export const dossierLivre = (id) => path.join(DOSSIER, id);
 const lireFiche = (id) => lireJson(path.join(dossierLivre(id), 'fiche.json'), null);
 
 async function empreinte(fichier) {
@@ -71,7 +72,10 @@ async function installes() {
   const noms = await fs.readdir(DOSSIER).catch(() => []);
   const fiches = await Promise.all(noms.filter((n) => ID.test(n)).map(async (n) => {
     const f = await lireFiche(n);
-    return f?.id === n ? f : null;
+    if (f?.id !== n) return null;
+    // Text extracted for the search: false until the extraction has succeeded
+    const texte = !!(await fs.stat(path.join(dossierLivre(n), 'pages.json')).catch(() => null));
+    return { ...f, texte };
   }));
   return new Map(fiches.filter(Boolean).map((f) => [f.id, f]));
 }
@@ -180,6 +184,9 @@ async function installer(livre, t, c) {
     await fs.rm(tmp, { recursive: true, force: true });
     await fs.mkdir(tmp, { recursive: true });
     await fs.rename(part, path.join(tmp, 'document.pdf'));
+    t.extraction = true;
+    await extraire(path.join(tmp, 'document.pdf'), path.join(tmp, 'pages.json'), livre.id);
+    t.extraction = false;
     await ecrireJson(path.join(tmp, 'fiche.json'), {
       ...livre,
       verifie: { sha256: recue, source: nom, url, date: new Date().toISOString() }
@@ -188,6 +195,32 @@ async function installer(livre, t, c) {
     return;
   }
   throw new Error(messageEchec(echecs));
+}
+
+// Text of the book for the search. A failure leaves the book readable, not searchable: the
+// extraction is tried again at the next start (rattraperTextes).
+async function extraire(pdf, sortie, id) {
+  try {
+    const t0 = Date.now();
+    const pages = await extrairePages(pdf);
+    await ecrireJson(sortie, pages);
+    console.log(`Livre ${id} : texte extrait, ${pages.length} pages en ${Date.now() - t0} ms`);
+    return true;
+  } catch (e) {
+    console.error(`Livre ${id} : extraction du texte impossible : ${e.message}`);
+    return false;
+  }
+}
+
+// At startup: books installed before the search existed, or whose extraction failed
+export async function rattraperTextes() {
+  for (const l of await livresInstalles()) {
+    if (l.texte || etat.extractions.has(l.id)) continue;
+    const dossier = dossierLivre(l.id);
+    const travail = extraire(path.join(dossier, 'document.pdf'), path.join(dossier, 'pages.json'), l.id);
+    etat.extractions.set(l.id, travail);
+    await travail.finally(() => etat.extractions.delete(l.id));
+  }
 }
 
 // Concurrent requests for the same book (double click, two devices) share one start:
@@ -215,7 +248,7 @@ async function lancer(id) {
   const besoin = Math.ceil(livre.taille * MARGE);
   if (libre < besoin) throw new Error(`Espace disque insuffisant : il faut ${octets(besoin)}, il reste ${octets(libre)}.`);
 
-  const t = { etat: 'en cours', recu: 0, total: livre.taille, erreur: null, source: null, verification: false };
+  const t = { etat: 'en cours', recu: 0, total: livre.taille, erreur: null, source: null, verification: false, extraction: false };
   const c = new AbortController();
   etat.taches.set(id, t);
   etat.controles.set(id, c);
@@ -237,6 +270,7 @@ async function lancer(id) {
     })
     .finally(() => {
       t.verification = false;
+      t.extraction = false;
       etat.controles.delete(id);
     });
   return t;

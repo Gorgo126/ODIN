@@ -132,6 +132,12 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   figée et vérifiée dans le Dockerfile (public/pdfjs, fichiers statiques, sans lien avec Node), réglée
   par l'événement webviewerloaded (disableStream, disableAutoFetch : seules les pages affichées sont
   téléchargées), sans toucher à ses fichiers.
+  Recherche : à l'installation (et au démarrage pour un livre sans texte), pdftotext (poppler-utils, dans
+  l'image) écrit data/livres/<id>/pages.json, page par page avec le chapitre tiré de l'en-tête courant.
+  lib/recherche-livres.mjs garde le texte normalisé en mémoire (lib/normalisation.mjs : sans accents ni
+  casse, partagé avec le navigateur). /recherche montre « Dans les livres » au-dessus des résultats Kiwix ;
+  le lien ouvre /livres/<id>?page=N&q=…, où la visionneuse surligne les mots sur cette page seulement
+  (la recherche de pdf.js, #search=, téléchargerait tout le livre).
 
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.

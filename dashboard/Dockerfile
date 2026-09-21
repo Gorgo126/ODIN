@@ -39,6 +39,8 @@ ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 # Offline, each DNS lookup blocks a libuv thread for seconds; file reads share that pool
 ENV UV_THREADPOOL_SIZE=16
 COPY --from=pmtiles /go-pmtiles /usr/local/bin/pmtiles
+# Text of the book PDFs for the search (pdftotext), run as a child process
+RUN apk add --no-cache "poppler-utils~25.12"
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
