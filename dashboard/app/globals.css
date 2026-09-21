@@ -31,3 +31,13 @@ a.carte em { margin-left: .5rem; }
 .barre .titre { opacity: .7; overflow: hidden; text-overflow: ellipsis; }
 .barre .externe { margin-left: auto; opacity: .6; }
 .cadre iframe { flex: 1; width: 100%; border: 0; }
+.recherche { display: flex; gap: .5rem; margin: 1rem 0 2rem; }
+.recherche input { flex: 1; min-width: 0; font: inherit; padding: .7rem .9rem; border-radius: .5rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; }
+.recherche button { font: inherit; padding: .7rem 1rem; border-radius: .5rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
+.retour-accueil { color: inherit; text-decoration: none; }
+.compte { opacity: .6; font-size: .9rem; }
+a.carte.resultat em { display: block; margin: .15rem 0 .3rem; }
+.resultat p { font-size: .85rem; }
+.resultat b { font-weight: 600; }
+.pagination { display: flex; justify-content: space-between; margin-top: 1.5rem; }
+.pagination a { color: inherit; }

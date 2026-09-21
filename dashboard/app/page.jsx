@@ -1,4 +1,5 @@
 import { etatServices, espaceDisque, contenu, octets } from '../lib/etat.mjs';
+import BarreRecherche from './BarreRecherche';
 import Packs from './Packs';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export default async function Page() {
   return (
     <main>
       <h1>ODIN <a href="/api/auth/deconnexion" className="deconnexion">Se déconnecter</a></h1>
+      <BarreRecherche />
 
       <section>
         <h2>Services</h2>
