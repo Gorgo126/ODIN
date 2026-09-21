@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEPOT="${DEPOT:-https://github.com/Gorgo126/ODIN.git}"
+BRANCHE="${BRANCHE:-main}"
 CIBLE="/opt/odin"
 NOM_HOTE="${NOM_HOTE:-odin}"
 
@@ -38,10 +39,16 @@ fi
 
 msg "Récupération des sources"
 if [ -d "$CIBLE/.git" ]; then
-  git -C "$CIBLE" pull --ff-only
+  # Explicit refspec: a --depth 1 clone only tracks its original branch
+  git -C "$CIBLE" fetch origin "+refs/heads/$BRANCHE:refs/remotes/origin/$BRANCHE" \
+    || err "Branche $BRANCHE introuvable sur $DEPOT."
+  git -C "$CIBLE" checkout "$BRANCHE" 2>/dev/null \
+    || git -C "$CIBLE" checkout -b "$BRANCHE" --track "origin/$BRANCHE"
+  git -C "$CIBLE" merge --ff-only "origin/$BRANCHE"
 else
   mkdir -p "$CIBLE"
-  git clone --depth 1 "$DEPOT" "$CIBLE"
+  git clone --depth 1 -b "$BRANCHE" "$DEPOT" "$CIBLE" \
+    || err "Clonage de la branche $BRANCHE impossible depuis $DEPOT."
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"

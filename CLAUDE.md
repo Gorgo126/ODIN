@@ -27,7 +27,9 @@ Ne jamais restaurer ni supprimer une VM sans l'accord explicite du propriétaire
 
 Toute modification de install.sh doit être validée sur une VM vierge :
 multipass launch 24.04 --name test --cpus 4 --memory 8G --disk 40G --network Ethernet
-puis curl de install.sh depuis raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh et sudo bash.
+puis curl de install.sh depuis raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh et
+sudo BRANCHE=dev bash (défaut : main ; la variable se place après sudo, sinon sudo l'efface) :
+multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh | sudo BRANCHE=dev bash"
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
 
 ## Architecture
