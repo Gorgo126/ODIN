@@ -76,9 +76,10 @@ docker exec ollama ollama pull bge-m3
 
 msg "Terminé"
 echo
-echo "  Accès :  http://$NOM_HOTE.local"
-for ip in $(hostname -I); do echo "           http://$ip"; done
+echo "  Ouvrez ODIN depuis n'importe quel appareil du réseau :"
+ip -4 -o addr show scope global \
+  | awk '$2 !~ /^(docker|br-|veth)/ { split($4, a, "/"); print "    http://" a[1] }'
 echo
-echo "  Ajouter du contenu : déposez vos .zim dans $CIBLE/data/zim"
-echo "  puis lancez        : $CIBLE/scripts/maj-bibliotheque.sh"
+echo "  À la première visite, choisissez le mot de passe qui protégera ODIN."
+echo "  Le contenu (Wikipédia, livres, médecine...) s'installe depuis le tableau de bord."
 echo
