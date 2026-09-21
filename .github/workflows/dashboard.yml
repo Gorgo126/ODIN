@@ -1,14 +1,21 @@
 name: Dashboard
 
+# Builds the dashboard image of each branch, then pins that branch's compose.yml to it:
+# the installer (BRANCHE=main or dev) always gets the image built from the code it cloned.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths: ['dashboard/**', '.github/workflows/dashboard.yml']
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
+
+# One run at a time per branch, in push order, so the last pin wins
+concurrency:
+  group: dashboard-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -30,5 +37,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/gorgo126/odin-dashboard:latest
             ghcr.io/gorgo126/odin-dashboard:${{ github.sha }}
+            ghcr.io/gorgo126/odin-dashboard:${{ github.ref_name }}
+
+      # Pushes made with GITHUB_TOKEN do not trigger workflows: no loop
+      - name: Pin compose.yml to this image
+        run: |
+          git fetch origin "$GITHUB_REF_NAME"
+          git checkout -B "$GITHUB_REF_NAME" "origin/$GITHUB_REF_NAME"
+          sed -i -E "s#(image: ghcr.io/gorgo126/odin-dashboard:)[0-9a-f]{40}#\1$GITHUB_SHA#" compose.yml
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Dashboard : image ${GITHUB_SHA::7}"
+          git push origin "HEAD:$GITHUB_REF_NAME"

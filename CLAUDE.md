@@ -32,8 +32,11 @@ cloné dans /opt/odin. Ne jamais y modifier de fichier directement : il ne fait 
 - Pour tester : commit et push sur dev, puis
   multipass exec nomad -- bash -lc "cd /opt/odin && git pull && docker compose -f compose.yml -f compose.dev.yml up -d --build"
 - Le propriétaire vérifie dans son navigateur sur http://192.168.129.19
-- Une fois validé : fusionner dev dans main et pousser. GitHub Actions publie alors l'image du dashboard
-  sur GHCR, et c'est main que récupère l'installeur.
+- Une fois validé : fusionner dev dans main et pousser. C'est main que récupère l'installeur.
+- Image du dashboard : à chaque push sur main ou dev touchant dashboard/, GitHub Actions publie
+  ghcr.io/gorgo126/odin-dashboard:<sha> puis fige le compose.yml de cette branche sur cette image, par
+  un commit automatique (github-actions[bot]). Faire git pull avant de repousser. L'installeur prend
+  donc l'image de la branche clonée (BRANCHE). Suivre un build : gh run list / gh run watch.
 - Revenir sur nomad à l'image publiée : ... && docker compose pull dashboard && docker compose up -d
 - Logs : multipass exec nomad -- bash -lc "cd /opt/odin && docker compose logs --tail 50 <service>"
 - Tester une route interne sans authentification :
@@ -51,8 +54,8 @@ multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Go
 NOM_HOTE=test est obligatoire : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
 joint plus (il la cherche sous test.mshome.net). Arrêter/démarrer la VM : multipass stop test / start test.
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
-La VM vierge installe l'image publiée du dashboard : pour tester un dashboard modifié sur dev,
-lancer ensuite docker compose -f compose.yml -f compose.dev.yml up -d --build sur la VM.
+La VM vierge installe l'image publiée pour la branche : après un push touchant le dashboard,
+attendre le commit automatique de GitHub Actions et installer depuis ce commit.
 Mémoire : nomad et test (8 Go chacune) ne tiennent pas ensemble ; arrêter nomad pendant le test.
 
 ### Test hors ligne
@@ -105,9 +108,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
 
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
 Une montée de version se fait volontairement, une image à la fois, après test sur nomad puis hors ligne.
-Le dashboard est figé sur l'étiquette du commit publiée par GitHub Actions
-(ghcr.io/gorgo126/odin-dashboard:<sha complet>) : après fusion dans main d'une modification du
-dashboard, attendre la publication, puis mettre à jour cette étiquette dans compose.yml sur main.
+Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
+mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de travail).
 
 Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
