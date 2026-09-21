@@ -33,6 +33,13 @@ export default function Packs() {
     charger();
   }
 
+  async function annuler(id) {
+    if (!confirm('Annuler le téléchargement ? La partie déjà reçue sera supprimée.')) return;
+    const r = await fetch(`/api/packs/${id}`, { method: 'DELETE' });
+    if (!r.ok) alert((await r.json()).erreur);
+    charger();
+  }
+
   if (!packs) return <p>Chargement du catalogue</p>;
 
   return (
@@ -50,6 +57,7 @@ export default function Packs() {
             <div className="progression">
               <div className="jauge"><div style={{ width: pct + '%' }} /></div>
               <em>{pct} %  {octets(t.recu)} / {octets(t.total)}</em>
+              <button onClick={() => annuler(p.id)}>Annuler</button>
             </div>
           );
         } else if (p.installation === 'installe') {

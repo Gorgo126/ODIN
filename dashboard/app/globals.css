@@ -153,6 +153,7 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .grille .pack button { width: 100%; padding: .4rem; }
 .grille .pack .progression { min-width: 0; text-align: left; }
 .grille .pack .progression em { display: block; margin-top: .3rem; }
+.grille .pack .progression button { margin-top: .5rem; }
 .grille .pack > em { color: #16a34a; font-family: var(--mono, inherit); text-transform: uppercase; letter-spacing: .1em; }
 .panneau { margin-top: 2.5rem; padding: 1.2rem; border: 1px solid color-mix(in srgb, var(--or) 35%, transparent); background: color-mix(in srgb, var(--fond) 60%, transparent); box-shadow: var(--relief); clip-path: var(--biseau); }
 .panneau-tete { display: flex; align-items: center; gap: .8rem; padding-bottom: 1rem; margin-bottom: .5rem; border-bottom: 1px solid var(--bord); }

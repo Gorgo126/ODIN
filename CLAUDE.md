@@ -4,6 +4,23 @@ Serveur de connaissances hors ligne, installable en une commande sur Ubuntu/Debi
 Inspiré de Project NOMAD, reconstruit de zéro, en plus simple, pensé francophone.
 Le propriétaire préfère avancer vite et concrètement. Réponses en français.
 
+## Principe hors ligne
+
+ODIN sert là où il n'y a pas d'internet. Internet sert à le préparer (installation, contenus,
+modèles d'IA), jamais à le faire fonctionner. Un serveur ODIN doit démarrer, redémarrer et servir
+toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
+
+- Seules exceptions permises : ajouter du contenu (catalogue et téléchargement Kiwix) et
+  installer ou mettre à jour ODIN. Hors ligne, elles échouent vite (quelques secondes au plus) et
+  le disent clairement ; jamais de blocage ni d'attente sans limite.
+- Tout appel réseau sortant du code ODIN a un délai (AbortSignal.timeout), y compris
+  pendant qu'un flux se télécharge.
+- Aucun CDN, police externe, analytique ou vérification de mise à jour. Pour une image tierce,
+  désactiver ces fonctions par variable d'environnement (Open WebUI : OFFLINE_MODE=true).
+- Tout ce qu'un service télécharge au premier usage (modèles, index, caches) doit être
+  téléchargé pendant l'installation, pas à la première utilisation hors ligne.
+- Toute nouvelle fonction qui touche au réseau passe le test hors ligne (voir « Test hors ligne »).
+
 ## Flux de travail
 
 Ce dépôt, sur Windows, est le seul endroit où le code se modifie.
@@ -31,6 +48,28 @@ puis curl de install.sh depuis raw.githubusercontent.com/Gorgo126/ODIN/<commit>/
 sudo BRANCHE=dev bash (défaut : main ; la variable se place après sudo, sinon sudo l'efface) :
 multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh | sudo BRANCHE=dev bash"
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
+La VM vierge installe l'image publiée du dashboard : pour tester un dashboard modifié sur dev,
+lancer ensuite docker compose -f compose.yml -f compose.dev.yml up -d --build sur la VM.
+Mémoire : nomad et test (8 Go chacune) ne tiennent pas ensemble ; arrêter nomad pendant le test.
+
+### Test hors ligne
+
+Sur une VM test, jamais sur nomad (il modifie le pare-feu du système). Coupe internet mais garde
+le réseau local, comme une box sans accès internet ; chaque tentative bloquée est journalisée.
+
+1. Préparer en ligne (VM vierge ci-dessus) : mot de passe, un petit pack (climat), un PDF dans
+   Documents, une question à l'IA.
+2. Couper : sudo /opt/odin/scripts/hors-ligne.sh couper (persiste au redémarrage).
+3. Redémarrer à froid (sudo reboot), puis vérifier : 7 conteneurs, logs de synchro, connexion,
+   accueil, recherche, lecteur, /kiwix, dépôt d'un document puis question sur lui à l'IA,
+   page Configuration (« Catalogue injoignable » en moins de 3 s, boutons désactivés).
+4. Navigateur, outils de développement ouverts (onglet Réseau) : aucune requête vers un autre hôte
+   que l'IP d'ODIN, sur chaque page. Indispensable : le PC du propriétaire, lui, a internet.
+5. Tentatives bloquées : sudo /opt/odin/scripts/hors-ligne.sh journal. Seul le catalogue Kiwix
+   (page Configuration) est attendu ; toute autre ligne est une dépendance à corriger.
+6. Coupure pendant un téléchargement : rétablir, lancer un gros pack, couper au milieu.
+   Attendu : erreur en moins d'une minute, « Réessayer » reprend une fois internet revenu.
+7. Rétablir : sudo /opt/odin/scripts/hors-ligne.sh retablir
 
 ## Architecture
 
@@ -44,9 +83,15 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
 - dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Aucune dépendance hors Next et React.
 - kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
 - ollama + ia (Open WebUI, WEBUI_AUTH=false) : qwen2.5:3b pour discuter, bge-m3 pour l'indexation.
-- filebrowser : FileBrowser Quantum (gtstef/filebrowser:stable), noauth, config/filebrowser.yaml.
+- filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
 - synchro : node:20-alpine + synchro/synchro.mjs, répercute data/documents vers la collection
   Open WebUI "Mes documents" et cache bge-m3 du sélecteur.
+
+Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
+Une montée de version se fait volontairement, une image à la fois, après test sur nomad puis hors ligne.
+Le dashboard est figé sur l'étiquette du commit publiée par GitHub Actions
+(ghcr.io/gorgo126/odin-dashboard:<sha complet>) : après fusion dans main d'une modification du
+dashboard, attendre la publication, puis mettre à jour cette étiquette dans compose.yml sur main.
 
 Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
@@ -54,7 +99,7 @@ Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pa
 ## Règles
 
 - Rien en dur : ni IP, ni ports, ni noms de fichiers. Configuration dans .env, modèle dans .env.exemple.
-- Tout doit fonctionner hors ligne à l'exécution : aucun CDN, aucune police externe, aucun appel réseau.
+- Tout doit fonctionner hors ligne à l'exécution : voir « Principe hors ligne ».
 - Ne jamais modifier ni supprimer data/ sur nomad : ZIM, documents et mot de passe y vivent.
 - Ne jamais committer data/ ni .env.
 - Fins de ligne Linux obligatoires (.gitattributes) : les scripts bash cassent avec des fins de ligne Windows.
@@ -65,7 +110,9 @@ Pages : / (services, recherche, stockage), /configuration, /recherche, /lire/<pa
 
 - kiwix-serve ajoute déjà --port=8080 ; tourne en UID 1001 ; boucle si library.xml est absent.
 - Open WebUI ne supporte pas un sous-chemin ; ses réglages sont figés au premier démarrage
-  et ignorent ensuite les variables d'environnement.
+  et ignorent ensuite les variables d'environnement (OFFLINE_MODE fait exception, lue à chaque démarrage).
+  Les permissions USER_PERMISSIONS_* ne s'appliquent pas aux administrateurs ; avec WEBUI_AUTH=false,
+  tout le monde est administrateur.
 - Next standalone ne copie pas public/ : le Dockerfile doit le faire.
 - download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries.
 - Le build arm64 émulé bloque GitHub Actions.

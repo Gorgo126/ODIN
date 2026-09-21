@@ -3,7 +3,8 @@ set -euo pipefail
 
 ZIM_DIR="/opt/odin/data/zim"
 LIB="$ZIM_DIR/library.xml"
-IMAGE="ghcr.io/kiwix/kiwix-serve:latest"
+# Same kiwix-serve version as compose.yml
+IMAGE="$(grep -oE 'ghcr.io/kiwix/kiwix-serve:[^ ]+' "$(dirname "$0")/../compose.yml")"
 
 sudo rm -f "$LIB"
 
