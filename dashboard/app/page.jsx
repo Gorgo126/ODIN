@@ -1,6 +1,6 @@
-import { etatServices, espaceDisque, contenu, octets } from '../lib/etat.mjs';
+import { etatServices } from '../lib/etat.mjs';
 import BarreRecherche from './BarreRecherche';
-import Packs from './Packs';
+import Stockage from './Stockage';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,17 +34,16 @@ const ICONES = {
 };
 
 export default async function Page() {
-  const [services, disque, livres] = await Promise.all([
-    etatServices(), espaceDisque(), contenu()
-  ]);
-
-  const pct = disque ? Math.round((disque.utilise / disque.total) * 100) : 0;
+  const services = await etatServices();
 
   return (
     <main>
       <header className="entete">
         <h1><img src="/logo.png" alt="ODIN" className="logo" /></h1>
-        <a href="/api/auth/deconnexion" className="deconnexion">Se déconnecter</a>
+        <nav className="entete-liens">
+          <a href="/configuration" className="bouton">Configuration</a>
+          <a href="/api/auth/deconnexion" className="bouton">Se déconnecter</a>
+        </nav>
       </header>
 
       <BarreRecherche />
@@ -67,29 +66,7 @@ export default async function Page() {
 
       <section>
         <h2>Stockage</h2>
-        {disque ? (
-          <>
-            <div className="jauge"><div style={{ width: pct + '%' }} /></div>
-            <p>{octets(disque.utilise)} utilisés sur {octets(disque.total)}  {octets(disque.libre)} libres</p>
-          </>
-        ) : <p>Indisponible</p>}
-      </section>
-
-      <section>
-        <h2>Contenu installé ({livres.length})</h2>
-        {livres.length === 0 && <p>Aucun contenu.</p>}
-        {livres.map((l, i) => (
-          <div key={i} className="carte">
-            <strong>{l.titre}</strong>
-            <p>{l.description}</p>
-            <em>{l.articles.toLocaleString('fr-BE')} articles  {octets(l.taille)}  {l.langue}</em>
-          </div>
-        ))}
-      </section>
-
-      <section>
-        <h2>Ajouter du contenu</h2>
-        <Packs />
+        <Stockage />
       </section>
     </main>
   );
