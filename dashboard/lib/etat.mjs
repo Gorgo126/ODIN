@@ -6,6 +6,7 @@ export const SERVICES = [
   { id: 'bibliotheque', nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
   { id: 'documents', nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
   // Pages of the dashboard itself: available as soon as one pack of their kind is installed
+  { id: 'assistant', nom: 'Assistant', lien: '/assistant', interne: true, toujours: true },
   { id: 'livres', nom: 'Livres', lien: '/livres', interne: true },
   { id: 'carte', nom: 'Carte', lien: '/carte', interne: true }
 ];
@@ -14,7 +15,7 @@ const PRESENTS = { livres: livresInstalles, carte: installees };
 
 export async function etatServices() {
   return Promise.all(SERVICES.map(async (s) => {
-    if (s.interne) return { ...s, ok: (await PRESENTS[s.id]().catch(() => [])).length > 0 };
+    if (s.interne) return { ...s, ok: s.toujours || (await PRESENTS[s.id]().catch(() => [])).length > 0 };
     try {
       const r = await fetch(s.url, { signal: AbortSignal.timeout(2000), cache: 'no-store' });
       return { ...s, ok: r.ok || r.status === 302 };

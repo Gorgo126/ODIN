@@ -295,3 +295,44 @@ a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px);
 .chat-documents { margin-top: .6rem; }
 .chat-debug { margin-top: .6rem; font-size: .75rem; }
 .chat-debug pre { max-height: 20rem; overflow: auto; font-family: var(--mono); white-space: pre-wrap; }
+/* Assistant: chat, welcome screen and settings */
+.page-assistant { padding-bottom: 6rem; }
+.titre-assistant { display: flex; align-items: center; gap: .7rem; font-family: var(--mono); font-size: 1.15rem; letter-spacing: .12em; text-transform: uppercase; margin: 1.5rem 0 .5rem; }
+.chat-avatar { display: inline-grid; place-items: center; flex: none; width: 2rem; height: 2rem; font-size: 1.1rem; line-height: 1; background: color-mix(in srgb, var(--or) 18%, transparent); box-shadow: var(--creux); overflow: hidden; }
+.chat-avatar.grand { width: 2.6rem; height: 2.6rem; font-size: 1.5rem; }
+.chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.service-emoji { font-size: 1.4rem; line-height: 1; }
+.service-avatar { width: 100%; height: 100%; object-fit: cover; }
+.chat-reponse { display: flex; gap: .6rem; padding: 0; border: 0; }
+.chat-bulle { flex: 1; min-width: 0; padding: .1rem 0 .2rem .9rem; border-left: 3px solid var(--or); }
+.chat-accueil { margin: 1rem 0 2rem; opacity: .85; }
+.chat-saisie { position: sticky; bottom: 0; background: Canvas; padding: .6rem 0; margin-bottom: 0; }
+.chat-documents .carte em { font-family: var(--mono); font-size: .7rem; }
+.bienvenue { max-width: 32rem; }
+.bienvenue-intro { font-size: .95rem; opacity: .85; }
+.bienvenue-apercu { display: flex; align-items: center; gap: .8rem; margin: 1.2rem 0; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.choix-emojis { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .6rem; }
+.choix-emojis button { font-size: 1.2rem; padding: .25rem .45rem; line-height: 1; background: var(--fond); border: 1px solid var(--bord); color: inherit; cursor: pointer; }
+.choix-emojis button.choisi, .choix-couleurs button.choisi { border-color: var(--or); box-shadow: 0 0 0 1px var(--or); }
+.emoji-libre { width: 6rem; font: inherit; padding: .3rem .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; }
+.choix-couleurs { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.choix-couleurs button { width: 1.8rem; height: 1.8rem; border: 1px solid var(--bord); cursor: pointer; }
+.reglages label.ligne { display: grid; grid-template-columns: 11rem 1fr; gap: .6rem; align-items: center; }
+.reglages label.ligne > span { font-size: .85rem; opacity: .8; }
+.reglages label.ligne input:not([type="color"]):not([type="file"]), .reglages label.ligne textarea { width: 100%; font: inherit; font-size: .88rem; padding: .45rem .6rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; box-shadow: var(--creux); }
+.reglages textarea { resize: vertical; }
+.reglages-ligne-texte { display: flex; gap: .4rem; margin-bottom: .3rem; }
+.reglages-ligne-texte input { flex: 1; min-width: 0; font: inherit; font-size: .88rem; padding: .4rem .6rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; box-shadow: var(--creux); }
+.reglages-seuils { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: .3rem 0; font-size: .85rem; }
+.reglages-seuils > span { min-width: 8rem; opacity: .8; }
+.reglages-seuils input { width: 5rem; font: inherit; font-size: .85rem; padding: .3rem .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; }
+.assistant-index { font-family: var(--mono); font-size: .82rem; line-height: 1.7; }
+.assistant-aide { font-size: .78rem; opacity: .65; margin: .4rem 0 0; }
+.assistant-message { font-size: .82rem; color: var(--or); }
+.assistant-prompt pre, .chat-debug pre, .assistant-problemes { max-height: 22rem; overflow: auto; font-family: var(--mono); font-size: .72rem; white-space: pre-wrap; }
+.assistant-problemes ul { margin: .4rem 0 0; padding-left: 1.2rem; font-size: .8rem; }
+.assistant-avance > summary, .assistant-prompt > summary { cursor: pointer; font-family: var(--mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--or); margin: .6rem 0; }
+@media (max-width: 600px) {
+  .reglages label.ligne { grid-template-columns: 1fr; gap: .2rem; }
+  .titre-assistant { font-size: 1rem; }
+}

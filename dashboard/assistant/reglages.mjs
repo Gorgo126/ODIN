@@ -2,7 +2,13 @@
 // data/config/assistant.json, edited from lot 4) and by the evaluation script. No dependency.
 
 export const DEFAUTS = {
+  // Identity, chosen at the first visit (configure = true once it is done)
   nom: 'Assistant',
+  avatar: '🦉',
+  avatarType: '',
+  couleur: '#d4a04a',
+  accueil: 'Pose-moi une question sur tes documents, la bibliothèque ou tes livres.',
+  configure: false,
   personnalite: {
     tutoiement: true,
     ton: 'chaleureux et simple, comme un proche qui a lu tes papiers',
@@ -27,6 +33,7 @@ export const DEFAUTS = {
     inconnu: 'Essaie d\'appeler le {secours}. Si tu n\'obtiens personne, appuie-toi sur les guides médicaux ci-dessus.'
   },
   modeleChat: 'qwen3:1.7b',
+  modeleEmbedding: 'embeddinggemma:300m',
   extraits: 4,
   // Best raw cosine per source, decided before any call to the language model. Documents
   // (calibrated on tests/documents, lot 3, EmbeddingGemma 768 d): answerable 0.40–0.72, close
@@ -59,6 +66,13 @@ export function valider(r = {}) {
   }));
   return {
     nom: texte(r.nom, 40, DEFAUTS.nom),
+    // An emoji (a few characters), or « image » for the file uploaded next to the settings
+    avatar: r.avatar === 'image' ? 'image' : texte(r.avatar, 8, DEFAUTS.avatar),
+    // Media type of the uploaded picture (empty for an emoji)
+    avatarType: /^image\/(png|jpeg|webp|gif)$/.test(String(r.avatarType || '')) ? String(r.avatarType) : '',
+    couleur: /^#[0-9a-f]{6}$/i.test(String(r.couleur || '')) ? String(r.couleur).toLowerCase() : DEFAUTS.couleur,
+    accueil: texte(r.accueil, 300, DEFAUTS.accueil),
+    configure: r.configure === true,
     personnalite: {
       tutoiement: typeof p.tutoiement === 'boolean' ? p.tutoiement : d.tutoiement,
       ton: texte(p.ton, 200, d.ton),
@@ -70,6 +84,7 @@ export function valider(r = {}) {
     numeroUrgence: (texte(r.numeroUrgence, 20, DEFAUTS.numeroUrgence).match(/[\d +]{2,20}/) || [DEFAUTS.numeroUrgence])[0].trim(),
     urgences: Object.fromEntries(Object.entries(DEFAUTS.urgences).map(([k, d]) => [k, texte(r.urgences?.[k], 500, d)])),
     modeleChat: texte(r.modeleChat, 100, DEFAUTS.modeleChat),
+    modeleEmbedding: texte(r.modeleEmbedding, 100, DEFAUTS.modeleEmbedding),
     extraits: Math.round(nombre(r.extraits, 1, 8, DEFAUTS.extraits)),
     seuils,
     temperature: nombre(r.temperature, 0, 1.5, DEFAUTS.temperature),

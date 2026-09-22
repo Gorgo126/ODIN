@@ -9,6 +9,10 @@ import { liaison } from '../../lib/liaison.mjs';
 import { lireReglages } from '../../lib/reglages.mjs';
 import ReglagesLiaison from '../ReglagesLiaison';
 import Panneau from '../Panneau';
+import Assistant from './Assistant';
+import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
+import { DEFAUTS } from '../../assistant/reglages.mjs';
+import { promptSysteme } from '../../assistant/prompt.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +42,15 @@ const iconeCarte = (
   </svg>
 );
 
+// Speech bubble: the assistant
+const iconeAssistant = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    <path d="M8 9h8" />
+    <path d="M8 13h5" />
+  </svg>
+);
+
 const iconeLiaison = (
   <svg viewBox="0 0 24 24" {...trait}>
     <circle cx="12" cy="12" r="10" />
@@ -50,6 +63,9 @@ const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e
 
 export default async function Configuration() {
   const [livres, cartes, etatLiaison, reglages, pdf] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres()]);
+  const assistant = reglagesAssistant();
+  // The index answers at once; a worker still starting must not hold the page
+  const etatIndex = await demander('etat', {}, 3000).catch(() => null);
   const resume = pluriel(livres.length, 'contenu');
 
   return (
@@ -76,6 +92,15 @@ export default async function Configuration() {
         resume={reglages.silence ? 'Sondes désactivées' : { auto: 'Automatique', 'hors-ligne': 'Mode manuel : hors ligne', 'en-ligne': 'Mode manuel : en ligne' }[reglages.mode]}
       >
         <ReglagesLiaison initiaux={reglages} />
+      </Panneau>
+
+      <Panneau
+        icone={iconeAssistant}
+        titre={assistant.configure ? assistant.nom : 'Assistant'}
+        sousTitre="Identité, personnalité, index des documents, réglages avancés"
+        resume={`${etatIndex?.documents ?? '–'} documents indexés`}
+      >
+        <Assistant initiaux={assistant} defauts={DEFAUTS} prompt={promptSysteme(assistant)} etat={etatIndex} />
       </Panneau>
 
       <Panneau

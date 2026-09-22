@@ -3,10 +3,12 @@ import BarreRecherche from './BarreRecherche';
 import Stockage from './Stockage';
 import CarteLiaison from './CarteLiaison';
 import { liaison } from '../lib/liaison.mjs';
+import { reglagesAssistant } from '../lib/assistant.mjs';
 
 export const dynamic = 'force-dynamic';
 
 const DESCRIPTIONS = {
+  assistant: "Il cherche dans vos documents, la bibliothèque et vos livres, et répond avec ce qu'il y trouve, en citant ses sources.",
   bibliotheque: "Encyclopédies et ouvrages de référence au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
   livres: "Livres de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
@@ -16,6 +18,13 @@ const DESCRIPTIONS = {
 const trait = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
 const ICONES = {
+  assistant: (
+    <svg viewBox="0 0 24 24" {...trait}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M8 9h8" />
+      <path d="M8 13h5" />
+    </svg>
+  ),
   bibliotheque: (
     <svg viewBox="0 0 24 24" {...trait}>
       <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
@@ -45,6 +54,7 @@ const ICONES = {
 
 export default async function Page() {
   const [services, etatLiaison] = await Promise.all([etatServices(), liaison()]);
+  const assistant = reglagesAssistant();
 
   return (
     <main>
@@ -67,12 +77,16 @@ export default async function Page() {
         <h2>Services</h2>
         <div className="services">
           {services.map((s) => (
-            <a key={s.id} href={s.interne ? s.lien : '/ouvrir/' + s.id} className="service">
+            <a key={s.id} href={s.interne ? s.lien : '/ouvrir/' + s.id} className="service" style={s.id === 'assistant' ? { '--or': assistant.couleur } : undefined}>
               <div className="service-tete">
-                <span className="service-icone">{ICONES[s.id]}</span>
+                <span className="service-icone">
+                  {s.id === 'assistant' && assistant.configure
+                    ? (assistant.avatar === 'image' ? <img src="/api/assistant/avatar" alt="" className="service-avatar" /> : <span className="service-emoji">{assistant.avatar}</span>)
+                    : ICONES[s.id]}
+                </span>
                 <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : 'Offline'}</span>
               </div>
-              <strong>{s.nom}</strong>
+              <strong>{s.id === 'assistant' && assistant.configure ? assistant.nom : s.nom}</strong>
               <p>{DESCRIPTIONS[s.id]}</p>
             </a>
           ))}

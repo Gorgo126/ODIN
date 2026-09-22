@@ -2,8 +2,10 @@ import { Worker } from 'worker_threads';
 import path from 'path';
 import os from 'os';
 import { readFileSync } from 'fs';
+import { promises as fsp } from 'fs';
 import { DEFAUTS, valider } from '../assistant/reglages.mjs';
 import { liaison } from './liaison.mjs';
+import { ecrireJson } from './fichiers.mjs';
 
 const FICHIER_REGLAGES = '/config/assistant.json';
 
@@ -12,7 +14,20 @@ const FICHIER_REGLAGES = '/config/assistant.json';
 export function reglagesAssistant() {
   let lu = {};
   try { lu = JSON.parse(readFileSync(FICHIER_REGLAGES, 'utf8')); } catch {}
-  return valider({ ...DEFAUTS, modeleChat: process.env.MODELE_CHAT || DEFAUTS.modeleChat, ...lu });
+  return valider({ ...DEFAUTS, modeleChat: process.env.MODELE_CHAT || DEFAUTS.modeleChat, modeleEmbedding: process.env.MODELE_EMBEDDING || 'embeddinggemma:300m', ...lu });
+}
+
+// Saves the settings. A model change restarts the worker at once (its configuration is read when
+// it starts), and a new embedding model makes it index everything again.
+export async function ecrireReglagesAssistant(modifs) {
+  const avant = reglagesAssistant();
+  const definis = Object.fromEntries(Object.entries(modifs).filter(([, v]) => v !== undefined));
+  const valeur = valider({ ...avant, ...definis });
+  await fsp.mkdir('/config', { recursive: true });
+  await ecrireJson(FICHIER_REGLAGES, valeur, 1);
+  const modeles = valeur.modeleEmbedding !== avant.modeleEmbedding || valeur.modeleChat !== avant.modeleChat;
+  if (modeles) redemarrerAssistant();
+  return { reglages: valeur, redemarre: modeles, reindexation: valeur.modeleEmbedding !== avant.modeleEmbedding };
 }
 
 const threads = () => Number(process.env.ASSISTANT_THREADS) || os.availableParallelism();
@@ -54,7 +69,7 @@ function config() {
     ...configGeneration(reglages),
     base: '/assistant/index.db',
     racine: '/documents',
-    modeleEmbedding: e.MODELE_EMBEDDING || 'embeddinggemma:300m',
+    modeleEmbedding: reglages.modeleEmbedding,
     // 0 = all the dimensions of the model; EmbeddingGemma can be cut (Matryoshka)
     dimensions: Number(e.ASSISTANT_DIMENSIONS) || 0,
     lot: Number(e.ASSISTANT_LOT) || 8,
@@ -88,15 +103,24 @@ function lancer() {
     etat.worker = null;
     for (const a of etat.attente.values()) { clearTimeout(a.minuterie); a.reject(new Error('Assistant arrêté')); }
     etat.attente.clear();
-    // Restarted after a crash, never in a tight loop
-    console.error(`Assistant arrêté (code ${code}), redémarrage dans 10 s`);
-    setTimeout(demarrerAssistant, 10000);
+    // Restarted at once when asked for (settings), otherwise after a crash, never in a tight loop
+    const voulu = etat.redemarrage;
+    etat.redemarrage = false;
+    if (!voulu) console.error(`Assistant arrêté (code ${code}), redémarrage dans 10 s`);
+    setTimeout(demarrerAssistant, voulu ? 100 : 10000);
   });
   etat.worker = w;
 }
 
 export function demarrerAssistant() {
   if (!etat.worker) lancer();
+}
+
+// Applies a new model: the worker reads its configuration when it starts
+export function redemarrerAssistant() {
+  if (!etat.worker) { lancer(); return; }
+  etat.redemarrage = true;
+  etat.worker.terminate();
 }
 
 // The search may wait for the embedding model to load on CPU: generous delay

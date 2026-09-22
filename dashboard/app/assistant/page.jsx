@@ -1,23 +1,43 @@
 import { reglagesAssistant } from '../../lib/assistant.mjs';
+import { DEFAUTS } from '../../assistant/reglages.mjs';
 import Chat from './Chat';
+import Bienvenue from './Bienvenue';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Assistant  ODIN' };
+export async function generateMetadata() {
+  const { nom, configure } = reglagesAssistant();
+  return { title: `${configure ? nom : 'Assistant'} — ODIN` };
+}
 
-// Test page of the assistant (lot 3); naming, avatar and full interface come with lot 4
 export default function Assistant() {
-  const { nom, memoire } = reglagesAssistant();
+  const reglages = reglagesAssistant();
+  const { nom, avatar, couleur, accueil, memoire, configure } = reglages;
+
   return (
-    <main>
+    <main className="page-assistant" style={{ '--or': couleur }}>
       <header className="entete">
-        <a href="/"><img src="/logo.png" alt="ODIN" className="logo logo-petit" /></a>
+        <a href="/" className="retour-accueil"><img src="/logo.png" alt="ODIN" className="logo logo-petit" /></a>
         <nav className="entete-liens">
+          <a href="/configuration#assistant" className="bouton">Réglages</a>
           <a href="/" className="bouton">Accueil</a>
         </nav>
       </header>
-      <h1 className="titre-page">{nom}</h1>
-      <Chat nom={nom} memoire={memoire} />
+
+      {configure ? (
+        <>
+          <h1 className="titre-assistant">
+            <span className="chat-avatar grand">{avatar === 'image' ? <img src="/api/assistant/avatar" alt="" /> : avatar}</span>
+            {nom}
+          </h1>
+          <Chat nom={nom} avatar={avatar} accueil={accueil} memoire={memoire} />
+        </>
+      ) : (
+        <>
+          <h1 className="titre-page">Un nom pour commencer</h1>
+          <Bienvenue defauts={DEFAUTS} />
+        </>
+      )}
     </main>
   );
 }

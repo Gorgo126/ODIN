@@ -1,14 +1,17 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const ETATS = { comprehension: 'compréhension…', recherche: 'recherche…', redaction: 'rédaction…' };
 
-// Citations [n] of the answer as small links to their source
+const Avatar = ({ avatar }) => (
+  <span className="chat-avatar">{avatar === 'image' ? <img src="/api/assistant/avatar" alt="" /> : avatar}</span>
+);
+
+// References [n] of the answer, as small links to their source
 function Texte({ texte, renvois }) {
-  const morceaux = texte.split(/(\[\d+\])/g);
   return (
     <p className="chat-texte">
-      {morceaux.map((m, i) => {
+      {texte.split(/(\[\d+\])/g).map((m, i) => {
         const n = m.match(/^\[(\d+)\]$/)?.[1];
         const r = n && renvois?.[n];
         return r ? <a key={i} href={r.lien} className="chat-renvoi" title={r.libelle}>{n}</a> : m;
@@ -17,42 +20,51 @@ function Texte({ texte, renvois }) {
   );
 }
 
-function Reponse({ r }) {
+function Reponse({ r, avatar, nom }) {
   return (
     <div className="chat-reponse">
-      {r.etat && !r.texte && <p className="chat-etat">{ETATS[r.etat]}</p>}
-      {r.texte && <Texte texte={r.texte} renvois={r.fin?.renvois} />}
-      {r.erreur && <p className="erreur">{r.erreur}</p>}
-      {r.fin?.sources?.length > 0 && (
-        <p className="chat-sources">
-          Sources :{' '}
-          {r.fin.sources.map((s, i) => (
-            <span key={s.n}>{i > 0 && ' · '}<a href={s.lien} className="chat-renvoi">{s.n}</a> {s.libelle}</span>
-          ))}
-        </p>
-      )}
-      {r.fin?.documents?.length > 0 && (
-        <div className="grille chat-documents">
-          {r.fin.documents.map((d) => (
-            <a key={d.lien} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.libelle}</em></a>
-          ))}
-        </div>
-      )}
-      {r.fin?.debug && (
-        <details className="chat-debug">
-          <summary>Debug : issue {r.fin.issue}, cosinus max {r.fin.meilleurCosinus?.toFixed(3)}, {r.fin.durees.total} ms</summary>
-          <pre>{JSON.stringify(r.fin.debug, null, 1)}</pre>
-        </details>
-      )}
+      <Avatar avatar={avatar} />
+      <div className="chat-bulle">
+        {!r.texte && !r.erreur && <p className="chat-etat">{ETATS[r.etat] || `${nom} réfléchit…`}</p>}
+        {r.texte && <Texte texte={r.texte} renvois={r.fin?.renvois} />}
+        {r.erreur && <p className="erreur">{r.erreur}</p>}
+        {r.fin?.sources?.length > 0 && (
+          <p className="chat-sources">
+            Sources :{' '}
+            {r.fin.sources.map((s, i) => (
+              <span key={s.n}>{i > 0 && ' · '}<a href={s.lien} className="chat-renvoi">{s.n}</a> <a href={s.lien}>{s.libelle}</a></span>
+            ))}
+          </p>
+        )}
+        {r.fin?.documents?.length > 0 && (
+          <div className="grille chat-documents">
+            {r.fin.documents.map((d) => (
+              <a key={d.lien} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.libelle}</em></a>
+            ))}
+          </div>
+        )}
+        {r.fin?.debug && (
+          <details className="chat-debug">
+            <summary>
+              Debug : issue {r.fin.issue}, cosinus {Object.entries(r.fin.meilleurs || {}).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(', ') || '–'}
+              {', '}{r.fin.durees?.premierMot} ms / {r.fin.durees?.total} ms
+            </summary>
+            <pre>{JSON.stringify({ comprehension: r.fin.comprehension, durees: r.fin.durees, ...r.fin.debug }, null, 1)}</pre>
+          </details>
+        )}
+      </div>
     </div>
   );
 }
 
-export default function Chat({ nom, memoire }) {
+export default function Chat({ nom, avatar, accueil, memoire }) {
   const [echanges, setEchanges] = useState([]);
   const [question, setQuestion] = useState('');
   const [occupe, setOccupe] = useState(false);
   const champ = useRef(null);
+  const bas = useRef(null);
+
+  useEffect(() => { bas.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [echanges]);
 
   async function envoyer(e) {
     e.preventDefault();
@@ -100,15 +112,22 @@ export default function Chat({ nom, memoire }) {
 
   return (
     <section className="chat">
+      {!echanges.length && (
+        <div className="chat-reponse chat-accueil">
+          <Avatar avatar={avatar} />
+          <div className="chat-bulle"><p className="chat-texte">{accueil}</p></div>
+        </div>
+      )}
       {echanges.map((x, i) => (
         <div key={i} className="chat-echange">
           <p className="chat-question">{x.q}</p>
-          <Reponse r={x.r} />
+          <Reponse r={x.r} avatar={avatar} nom={nom} />
         </div>
       ))}
-      <form className="recherche" onSubmit={envoyer}>
+      <div ref={bas} />
+      <form className="recherche chat-saisie" onSubmit={envoyer}>
         <input ref={champ} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={`Pose ta question à ${nom}…`} aria-label="Question" autoFocus />
-        <button type="submit" disabled={occupe}>Envoyer</button>
+        <button type="submit" disabled={occupe}>{occupe ? '…' : 'Envoyer'}</button>
       </form>
     </section>
   );
