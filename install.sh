@@ -129,10 +129,22 @@ if [ -n "$AVANT" ]; then
   fi
 fi
 
-msg "Modèle d'indexation des documents"
+msg "Modèles de l'assistant documentaire"
 # Downloaded now: offline, the assistant must never need to fetch anything
 MODELE_EMBEDDING=$(sed -n 's/^MODELE_EMBEDDING=//p' .env | tail -1)
 MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
+# Language model chosen once from the memory, then kept in .env (editable there, and from lot 4
+# in the assistant settings). A nominal 8 GB machine shows about 7.7 GB: the limit is 8.5 GB.
+if ! grep -q '^MODELE_CHAT=' .env; then
+  memoire=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+  if [ "$memoire" -le 8912896 ]; then MODELE_CHAT=qwen3:1.7b; else MODELE_CHAT=qwen3:4b-instruct-2507-q4_K_M; fi
+  printf '# Modèle de langage de l\x27assistant, choisi selon la mémoire à l\x27installation\nMODELE_CHAT=%s\n' "$MODELE_CHAT" >> .env
+  docker compose up -d dashboard
+fi
+MODELE_CHAT=$(sed -n 's/^MODELE_CHAT=//p' .env | tail -1)
+echo "  Modèle de langage : $MODELE_CHAT"
+docker exec ollama ollama pull "$MODELE_CHAT" \
+  || echo "  Modèle $MODELE_CHAT non téléchargé : relancez l'installeur avec internet."
 if docker exec ollama ollama pull "$MODELE_EMBEDDING"; then
   # The dashboard may have started before the model was there: index now instead of at the next scan
   docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index", { method: "POST", signal: AbortSignal.timeout(30000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' \

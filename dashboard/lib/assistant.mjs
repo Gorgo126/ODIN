@@ -1,22 +1,51 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
+import os from 'os';
+import { readFileSync } from 'fs';
+import { DEFAUTS, valider } from '../assistant/reglages.mjs';
+
+const FICHIER_REGLAGES = '/config/assistant.json';
+
+// Settings of the assistant (edited from lot 4). The installer picks the language model from the
+// memory of the machine (MODELE_CHAT); a model chosen in the settings takes precedence.
+export function reglagesAssistant() {
+  let lu = {};
+  try { lu = JSON.parse(readFileSync(FICHIER_REGLAGES, 'utf8')); } catch {}
+  return valider({ ...DEFAUTS, modeleChat: process.env.MODELE_CHAT || DEFAUTS.modeleChat, ...lu });
+}
+
+const threads = () => Number(process.env.ASSISTANT_THREADS) || os.availableParallelism();
+
+// Options of the language model calls: identical on every call, or Ollama reloads the model
+export function configGeneration(reglages) {
+  return {
+    ollama: process.env.OLLAMA_URL || 'http://ollama:11434',
+    modeleChat: reglages.modeleChat,
+    keepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
+    // Inactivity delay of Ollama calls: long enough to load a model on CPU
+    inactivite: 120000,
+    // All the cores (Ollama's own default used only half of them on nomad)
+    threads: threads(),
+    numCtx: 4096
+  };
+}
 
 // Document assistant: indexing and search live in a worker thread (assistant/worker.mjs, copied as
 // plain files into the image, outside the Next bundle). This module starts it and relays requests.
 
 function config() {
   const e = process.env;
+  const reglages = reglagesAssistant();
   return {
+    ...configGeneration(reglages),
     base: '/assistant/index.db',
     racine: '/documents',
-    ollama: e.OLLAMA_URL || 'http://ollama:11434',
     modeleEmbedding: e.MODELE_EMBEDDING || 'embeddinggemma:300m',
     // 0 = all the dimensions of the model; EmbeddingGemma can be cut (Matryoshka)
     dimensions: Number(e.ASSISTANT_DIMENSIONS) || 0,
-    keepAlive: e.OLLAMA_KEEP_ALIVE || '30m',
-    // Inactivity delay of Ollama calls: long enough to load a model on CPU
-    inactivite: 120000,
-    extraits: 4,
+    lot: Number(e.ASSISTANT_LOT) || 8,
+    extraits: reglages.extraits,
+    poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 1,
     candidats: 20,
     cible: 400,
     chevauchement: 55

@@ -6,14 +6,21 @@ import { extraire, FormatNonPrisEnCharge } from './extraction.mjs';
 import { decouper } from './decoupage.mjs';
 import { profil, reduire, vectoriser } from './embeddings.mjs';
 import { ErreurOllama } from './ollama.mjs';
+import { completer } from './generation.mjs';
+import { messagesResume } from './prompt.mjs';
 import { normaliser, motsRequete } from '../lib/normalisation.mjs';
 
 // Index of the personal documents: files, chunks, full-text index (FTS5) and vectors (Float32 BLOB,
 // loaded in memory, cosine in JS). Runs in the assistant's worker thread, never on Next's event loop.
 
-const LOT = 8;          // chunks per embedding call
+const LOT = 8;          // chunks per embedding call (cfg.lot)
 const RECHARGE = 30000; // at most every 30 s during a long indexing, the in-memory vectors are refreshed
 const K_RRF = 60;
+const PAUSE_MAX = 5 * 60 * 1000; // a pause never forgotten: resumed at the latest after 5 min
+const PDF_VIDE = 30;             // fewer letters per page on average: a scanned PDF
+
+// Reason given to the indexing call cut short by a question
+class Pause extends Error {}
 
 const log = (...a) => console.log('[assistant]', ...a);
 
@@ -35,6 +42,10 @@ function ouvrir(fichier) {
     CREATE VIRTUAL TABLE IF NOT EXISTS morceaux_fts USING fts5 (
       texte, section, titre, content = '', contentless_delete = 1, tokenize = 'unicode61');
   `);
+  // Added in lot 3: 1 once the language model has written the summary (0 = first sentence only)
+  if (!db.prepare('PRAGMA table_info(fichiers)').all().some((c) => c.name === 'resume_modele')) {
+    db.exec('ALTER TABLE fichiers ADD COLUMN resume_modele INTEGER NOT NULL DEFAULT 0');
+  }
   return db;
 }
 
@@ -76,6 +87,10 @@ export class Index {
     this.db = ouvrir(cfg.base);
     this.enCours = null;
     this.erreurOllama = null;
+    this.pauses = new Map();   // questions in progress: the indexing waits for them
+    this.reveils = [];
+    this.appelIndexation = null;
+    this.jetons = 0;
     this.verifierModele();
     this.charger();
   }
@@ -83,6 +98,36 @@ export class Index {
   meta(cle, valeur) {
     if (valeur === undefined) return this.db.prepare('SELECT valeur FROM meta WHERE cle = ?').get(cle)?.valeur ?? null;
     this.db.prepare('INSERT INTO meta (cle, valeur) VALUES (?, ?) ON CONFLICT (cle) DO UPDATE SET valeur = excluded.valeur').run(cle, String(valeur));
+  }
+
+  // A question takes priority: the indexing call in flight is cut (redone after), and no new one
+  // starts until every question has been answered
+  suspendre(duree = PAUSE_MAX) {
+    const jeton = ++this.jetons;
+    this.pauses.set(jeton, setTimeout(() => this.reprendre(jeton), duree));
+    this.appelIndexation?.abort(new Pause());
+    return jeton;
+  }
+
+  reprendre(jeton) {
+    clearTimeout(this.pauses.get(jeton));
+    this.pauses.delete(jeton);
+    if (!this.pauses.size) this.reveils.splice(0).forEach((r) => r());
+  }
+
+  // A background call to Ollama that gives way to questions: cut if one arrives, redone after it
+  async avecPriorite(appel) {
+    for (;;) {
+      while (this.pauses.size) await new Promise((r) => this.reveils.push(r));
+      this.appelIndexation = new AbortController();
+      try {
+        return await appel(this.appelIndexation.signal);
+      } catch (e) {
+        if (!(e instanceof Pause)) throw e;
+      } finally {
+        this.appelIndexation = null;
+      }
+    }
   }
 
   // Vectors of another embedding model are not comparable: everything is indexed again
@@ -129,7 +174,7 @@ export class Index {
       VALUES (:chemin, :taille, :mtime, :empreinte, :statut, :erreur, :type, :titre, :resume, :morceaux, :indexe_le)
       ON CONFLICT (chemin) DO UPDATE SET taille = excluded.taille, mtime = excluded.mtime, empreinte = excluded.empreinte,
         statut = excluded.statut, erreur = excluded.erreur, type = excluded.type, titre = excluded.titre,
-        resume = excluded.resume, morceaux = excluded.morceaux, indexe_le = excluded.indexe_le
+        resume = excluded.resume, morceaux = excluded.morceaux, indexe_le = excluded.indexe_le, resume_modele = 0
     `).run({
       chemin: f.chemin, taille: f.taille, mtime: f.mtime, empreinte: champs.empreinte ?? null,
       statut: champs.statut, erreur: champs.erreur ?? null, type: champs.type ?? null, titre: champs.titre ?? null,
@@ -147,6 +192,7 @@ export class Index {
         this.relancer = false;
         if (this.completDemande) { this.completDemande = false; this.vider(); log('Réindexation complète'); }
         await this.passe();
+        if (!this.relancer && !this.completDemande) await this.resumer();
       } while (this.relancer || this.completDemande);
     } finally {
       this.enCours = null;
@@ -184,7 +230,7 @@ export class Index {
       } catch (e) {
         if (!(e instanceof ErreurOllama)) {
           // Any other failure is this file's alone: recorded, the others go on
-          this.enregistrer(f, { statut: 'erreur', erreur: e.message, empreinte: null });
+          this.enregistrer(f, { statut: 'probleme', erreur: e.message, empreinte: null });
           log(`Erreur (${e.message}) : ${f.chemin}`);
           continue;
         }
@@ -215,25 +261,30 @@ export class Index {
       this.db.exec('BEGIN');
       try {
         this.retirer(f.chemin);
-        this.enregistrer(f, { statut: ignore ? 'ignore' : 'erreur', erreur: e.message, empreinte: hash });
+        this.enregistrer(f, { statut: ignore ? 'ignore' : 'probleme', erreur: e.message, empreinte: hash });
         this.db.exec('COMMIT');
       } catch (e2) { this.db.exec('ROLLBACK'); throw e2; }
       log(`${ignore ? 'Ignoré' : 'Erreur'} (${e.message}) : ${f.chemin}`);
       return;
     }
     const morceaux = decouper(doc.blocs, { cible: this.cfg.cible, chevauchement: this.cfg.chevauchement });
-    if (!morceaux.length) {
+    const lettres = doc.blocs.reduce((n, b) => n + (b.texte.match(/\p{L}/gu)?.length || 0), 0);
+    const vide = !morceaux.length || (doc.type === 'pdf' && lettres / (doc.pages || 1) < PDF_VIDE);
+    if (vide) {
       this.retirer(f.chemin);
-      this.enregistrer(f, { statut: 'erreur', erreur: 'aucun texte lisible (document scanné ?)', empreinte: hash, type: doc.type, titre: doc.titre });
-      log(`Sans texte : ${f.chemin}`);
+      const motif = doc.type === 'pdf' ? 'PDF sans texte (probablement scanné)' : 'aucun texte lisible';
+      this.enregistrer(f, { statut: 'probleme', erreur: motif, empreinte: hash, type: doc.type, titre: doc.titre });
+      log(`${motif} : ${f.chemin}`);
       return;
     }
     const p = profil(this.cfg.modeleEmbedding);
     const vecteurs = [];
-    for (let i = 0; i < morceaux.length; i += LOT) {
-      const lot = morceaux.slice(i, i + LOT);
-      vecteurs.push(...await vectoriser(this.cfg, lot.map((m) => p.document(m.section ? `${m.section}\n${m.texte}` : m.texte, doc.titre))));
-      if (this.enCours) this.enCours.morceaux = `${Math.min(i + LOT, morceaux.length)}/${morceaux.length}`;
+    const taille = this.cfg.lot || LOT;
+    for (let i = 0; i < morceaux.length; i += taille) {
+      const lot = morceaux.slice(i, i + taille);
+      const textes = lot.map((m) => p.document(m.section ? `${m.section}\n${m.texte}` : m.texte, doc.titre));
+      vecteurs.push(...await this.avecPriorite((signal) => vectoriser(this.cfg, textes, signal)));
+      if (this.enCours) this.enCours.morceaux = `${Math.min(i + taille, morceaux.length)}/${morceaux.length}`;
     }
     const insererMorceau = this.db.prepare('INSERT INTO morceaux (chemin, rang, page, section, texte, vecteur) VALUES (?, ?, ?, ?, ?, ?)');
     const insererFts = this.db.prepare('INSERT INTO morceaux_fts (rowid, texte, section, titre) VALUES (?, ?, ?, ?)');
@@ -252,6 +303,28 @@ export class Index {
     }
     if (this.enCours) delete this.enCours.morceaux;
     log(`Indexé (${morceaux.length} morceaux) : ${f.chemin}`);
+  }
+
+  // One-line summaries written by the language model, once the documents are searchable. Without
+  // the model (not installed, Ollama down), the first sentence stays and the next scan tries again.
+  async resumer() {
+    if (!this.cfg.modeleChat) return;
+    const aFaire = this.db.prepare("SELECT chemin, titre FROM fichiers WHERE statut = 'indexe' AND resume_modele = 0").all();
+    const debutTexte = this.db.prepare('SELECT texte FROM morceaux WHERE chemin = ? ORDER BY rang LIMIT 3');
+    for (const f of aFaire) {
+      if (this.relancer || this.completDemande) return; // new files first
+      if (this.enCours) this.enCours.fichier = `résumé : ${f.chemin}`;
+      const debut = debutTexte.all(f.chemin).map((m) => m.texte).join('\n\n').slice(0, 1500);
+      let resume;
+      try {
+        resume = await this.avecPriorite((signal) => completer(this.cfg, messagesResume(f.titre, debut), { temperature: 0.2, signal }));
+      } catch (e) {
+        log(`Résumés remis à plus tard (${e.message})`);
+        return;
+      }
+      resume = resume.split('\n')[0].replace(/^["«\s]+|["»\s]+$/g, '').slice(0, 300);
+      if (resume) this.db.prepare('UPDATE fichiers SET resume = ?, resume_modele = 1 WHERE chemin = ?').run(resume, f.chemin);
+    }
   }
 
   // Nearest chunks by cosine (vectors are normalized: a dot product), best first
@@ -290,29 +363,34 @@ export class Index {
 
   // Hybrid search: vectors and keywords fused by RRF. The best raw cosine over all chunks is kept
   // apart: the answer thresholds (lot 3) use it, not the fused score.
-  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'] } = {}) {
+  // garder: the indexing stays paused after the search (until reprendre(jeton), when the answer is
+  // written); otherwise it resumes right away.
+  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false } = {}) {
     const debut = Date.now();
     if (!sources.includes('documents')) return { extraits: [], documents: [], meilleurCosinus: null, duree: 0 };
+    const jeton = this.suspendre();
     let q = null;
     try {
       const [v] = await vectoriser(this.cfg, [profil(this.cfg.modeleEmbedding).requete(question)]);
       q = reduire(v, this.memoire.d || v.length);
     } catch (e) {
-      if (!(e instanceof ErreurOllama)) throw e;
+      if (!(e instanceof ErreurOllama)) { this.reprendre(jeton); throw e; }
       this.erreurOllama = e.message;
     }
+    if (!garder) this.reprendre(jeton);
     const candidats = this.cfg.candidats;
     const proches = q && this.memoire.d ? this.plusProches(q, candidats) : [];
     const mots = this.motsCles(question, candidats);
     const fusion = new Map();
-    const noter = (id, rang, champ) => {
+    // Weighted RRF: the keywords count for poidsMots (1 = as much as the vectors)
+    const noter = (id, rang, champ, poids) => {
       const f = fusion.get(id) || { id, rrf: 0, rangVecteur: null, rangMots: null };
-      f.rrf += 1 / (K_RRF + rang + 1);
+      f.rrf += poids / (K_RRF + rang + 1);
       f[champ] = rang + 1;
       fusion.set(id, f);
     };
-    proches.forEach((p, i) => noter(p.id, i, 'rangVecteur'));
-    mots.forEach((m, i) => noter(m.id, i, 'rangMots'));
+    proches.forEach((p, i) => noter(p.id, i, 'rangVecteur', 1));
+    mots.forEach((m, i) => noter(m.id, i, 'rangMots', this.cfg.poidsMots ?? 1));
     const classes = [...fusion.values()].sort((a, b) => b.rrf - a.rrf);
 
     const ligne = this.db.prepare(`
@@ -329,7 +407,7 @@ export class Index {
       if (!d) continue; // removed since the vectors were loaded
       if (extraits.length < n) extraits.push(d);
       if (!documents.has(d.chemin) && documents.size < 3) {
-        documents.set(d.chemin, { chemin: d.chemin, titre: d.titre, type: d.type, resume: d.resume, page: d.page });
+        documents.set(d.chemin, { chemin: d.chemin, titre: d.titre, type: d.type, resume: d.resume, page: d.page, cosinus: d.cosinus });
       }
       if (extraits.length >= n && documents.size >= 3) break;
     }
@@ -338,7 +416,8 @@ export class Index {
       documents: [...documents.values()],
       meilleurCosinus: proches[0]?.cos ?? null,
       vecteurs: !!q,
-      duree: Date.now() - debut
+      duree: Date.now() - debut,
+      ...(garder ? { jeton } : {})
     };
   }
 
@@ -349,7 +428,8 @@ export class Index {
       documents: compte.indexe || 0,
       morceaux: this.db.prepare('SELECT COUNT(*) AS n FROM morceaux').get().n,
       enAttente: compte.attente || 0,
-      problemes: this.db.prepare("SELECT chemin, statut, erreur FROM fichiers WHERE statut IN ('erreur', 'ignore', 'attente') ORDER BY chemin LIMIT 200").all(),
+      problemes: this.db.prepare("SELECT chemin, statut, erreur FROM fichiers WHERE statut IN ('probleme', 'ignore', 'attente') ORDER BY chemin LIMIT 200").all(),
+      enPause: this.pauses.size > 0,
       derniereIndexation: derniere ? Number(derniere) : null,
       enCours: this.enCours,
       modele: this.cfg.modeleEmbedding,

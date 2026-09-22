@@ -47,6 +47,17 @@
 		respond 404
 	}
 
+	# Personal documents opened from the assistant's sources (PDFs in the viewer, Range requests).
+	# Read-only, and sandboxed: an HTML document can neither run scripts nor act as ODIN.
+	handle /fichiers-documents/* {
+		import protege
+		uri strip_prefix /fichiers-documents
+		root * /srv/documents
+		header Content-Security-Policy "sandbox"
+		header X-Content-Type-Options "nosniff"
+		file_server
+	}
+
 	handle {
 		import protege
 		reverse_proxy dashboard:3000

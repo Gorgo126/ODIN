@@ -34,6 +34,7 @@ parentPort.on('message', async ({ id, type, args = {} }) => {
     let resultat;
     if (type === 'etat') resultat = index.etat();
     else if (type === 'rechercher') resultat = await index.rechercher(String(args.question), args);
+    else if (type === 'reprendre') resultat = index.reprendre(args.jeton);
     else if (type === 'reindexer') {
       index.scanner({ complet: args.complet === true }).catch((e) => log(`Indexation interrompue : ${e.message}`));
       resultat = index.etat();

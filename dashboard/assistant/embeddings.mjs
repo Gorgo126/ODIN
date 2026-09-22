@@ -27,13 +27,15 @@ export function reduire(v, dimensions) {
 }
 
 // Full vectors, as returned by the model (they are stored whole, the cut happens in memory)
-export async function vectoriser(cfg, textes) {
+export async function vectoriser(cfg, textes, signal) {
   const res = await appeler(cfg.ollama, '/api/embed', {
     model: cfg.modeleEmbedding,
     input: textes,
     truncate: true,
-    keep_alive: cfg.keepAlive
-  }, cfg.inactivite);
+    keep_alive: cfg.keepAlive,
+    // Same value on every call: a change would reload the model
+    ...(cfg.threads ? { options: { num_thread: cfg.threads } } : {})
+  }, cfg.inactivite, signal);
   if (!Array.isArray(res?.embeddings) || res.embeddings.length !== textes.length) {
     throw new Error('Réponse d\'Ollama inattendue pour les vecteurs');
   }

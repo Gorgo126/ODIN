@@ -6,8 +6,8 @@
     "/documents/Test/test.txt"
   ],
   "modeles": [
-    { "modele": "embeddinggemma:300m", "dimensions": [768, 256] },
-    { "modele": "bge-m3:567m", "dimensions": [0] }
+    { "modele": "embeddinggemma:300m", "lot": 8, "threads": 4, "dimensions": [768], "poids": [1, 0.5, 0.25, 0] },
+    { "modele": "embeddinggemma:300m", "lot": 16, "threads": 4, "dimensions": [768] }
   ],
   "questions": [
     { "question": "Que faire quand on s'est brûlé légèrement la main ?", "fichier": "document.pdf", "pages": [163, 164] },

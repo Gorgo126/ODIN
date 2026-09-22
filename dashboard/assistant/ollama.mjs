@@ -4,8 +4,12 @@
 
 export class ErreurOllama extends Error {}
 
-async function* lignes(url, corps, inactivite) {
+// `signal`: optional external cancellation (the indexing gives way to a question); its reason is thrown as is
+async function* lignes(url, corps, inactivite, signal) {
   const ctrl = new AbortController();
+  const suivre = () => ctrl.abort(signal.reason);
+  if (signal?.aborted) throw signal.reason;
+  signal?.addEventListener('abort', suivre, { once: true });
   let minuterie;
   const rearmer = () => {
     clearTimeout(minuterie);
@@ -22,7 +26,8 @@ async function* lignes(url, corps, inactivite) {
         signal: ctrl.signal
       });
     } catch (e) {
-      throw e instanceof ErreurOllama ? e : new ErreurOllama(`Ollama injoignable (${e.cause?.code || e.message})`);
+      if (ctrl.signal.aborted) throw ctrl.signal.reason;
+      throw new ErreurOllama(`Ollama injoignable (${e.cause?.code || e.message})`);
     }
     rearmer();
     if (!r.ok) {
@@ -53,18 +58,19 @@ async function* lignes(url, corps, inactivite) {
     if (reste.trim()) yield JSON.parse(reste);
   } finally {
     clearTimeout(minuterie);
+    signal?.removeEventListener('abort', suivre);
   }
 }
 
 // Streamed call (/api/chat, /api/generate with stream: true): yields each NDJSON object
-export function flux(base, chemin, corps, inactivite) {
-  return lignes(base + chemin, corps, inactivite);
+export function flux(base, chemin, corps, inactivite, signal) {
+  return lignes(base + chemin, corps, inactivite, signal);
 }
 
 // Plain call: the single JSON answer
-export async function appeler(base, chemin, corps, inactivite) {
+export async function appeler(base, chemin, corps, inactivite, signal) {
   let dernier = null;
-  for await (const o of lignes(base + chemin, corps, inactivite)) dernier = o;
+  for await (const o of lignes(base + chemin, corps, inactivite, signal)) dernier = o;
   if (dernier?.error) throw new ErreurOllama(`Ollama : ${dernier.error}`);
   return dernier;
 }

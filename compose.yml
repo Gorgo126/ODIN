@@ -8,6 +8,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${DATA_DIR}/cartes:/srv/cartes:ro
       - ${DATA_DIR}/livres:/srv/livres:ro
+      - ${DATA_DIR}/documents:/srv/documents:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
@@ -27,6 +28,7 @@ services:
       # Document assistant: Ollama on the internal network only, embedding model pulled by install.sh
       - OLLAMA_URL=http://ollama:11434
       - MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
+      - MODELE_CHAT=${MODELE_CHAT:-qwen3:1.7b}
       - ASSISTANT_DIMENSIONS=${ASSISTANT_DIMENSIONS:-0}
       - OLLAMA_KEEP_ALIVE=30m
     volumes:

@@ -62,6 +62,7 @@ async function pdf(fichier) {
   const pages = await extrairePages(fichier);
   return {
     titre: await pdfinfo(fichier),
+    pages: pages.length,
     blocs: pages.flatMap((p) => paragraphes(p.texte, p.page))
   };
 }
@@ -141,7 +142,7 @@ export async function extraire(fichier) {
   }
   // A PDF title such as « Microsoft Word - devis.docx » is worse than the file name
   const titre = r.titre && !/^(microsoft|untitled|sans titre)|\.(docx?|pdf|odt)$/i.test(r.titre) ? r.titre : '';
-  return { type: TYPES[ext] || ext.slice(1), titre: titre || nomLisible(fichier), blocs: r.blocs };
+  return { type: TYPES[ext] || ext.slice(1), titre: titre || nomLisible(fichier), blocs: r.blocs, pages: r.pages };
 }
 
 // « factures/2024_03-edf.pdf » → « 2024 03 edf »

@@ -282,3 +282,15 @@ a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px);
 .verifier-livre::before { content: '⚠ '; }
 .tout-voir { margin: .6rem 0 0; font-family: var(--mono); font-size: .8rem; }
 .tout-voir a { color: var(--or); }
+/* Assistant (test page of lot 3, full interface in lot 4) */
+.chat-echange { margin: 1.2rem 0; }
+.chat-question { margin: 0 0 .5rem auto; max-width: 85%; width: fit-content; padding: .5rem .8rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); }
+.chat-reponse { padding: .2rem 0 .2rem .9rem; border-left: 3px solid var(--or); }
+.chat-texte { margin: .3rem 0; white-space: pre-wrap; }
+.chat-etat { margin: .3rem 0; font-family: var(--mono); font-size: .8rem; letter-spacing: .08em; color: var(--or); }
+.chat-renvoi { display: inline-block; min-width: 1.1rem; margin: 0 .1rem; padding: 0 .2rem; font-family: var(--mono); font-size: .68rem; line-height: 1.2; text-align: center; vertical-align: super; color: var(--or); border: 1px solid currentColor; text-decoration: none; }
+.chat-sources { margin: .5rem 0 0; font-size: .8rem; opacity: .8; }
+.chat-sources a { color: var(--or); }
+.chat-documents { margin-top: .6rem; }
+.chat-debug { margin-top: .6rem; font-size: .75rem; }
+.chat-debug pre { max-height: 20rem; overflow: auto; font-family: var(--mono); white-space: pre-wrap; }
