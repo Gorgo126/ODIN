@@ -193,7 +193,7 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
 
 | Variable | Défaut | Effet |
 |---|---|---|
-| `NOM_HOTE` | `odin` | Nom de la machine sur le réseau (`http://<nom>.local`). |
+| `NOM_HOTE` | `odin` | Nom de la machine sur le réseau (`http://<nom>.local`). Une mise à jour garde le nom actuel. |
 | `BRANCHE` | `main` | Branche d'ODIN à installer. |
 | `DEPOT` | ce dépôt | Dépôt Git à cloner, pour une copie personnelle d'ODIN. |
 

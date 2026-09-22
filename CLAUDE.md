@@ -31,14 +31,15 @@ cloné dans /opt/odin. Ne jamais y modifier de fichier directement : il ne fait 
 
 - On travaille sur la branche dev. nomad suit dev.
 - Pour tester : commit et push sur dev, puis
-  multipass exec nomad -- bash -lc "cd /opt/odin && git pull && docker compose -f compose.yml -f compose.dev.yml up -d --build"
+  multipass exec nomad -- bash -lc "cd /opt/odin && git pull && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
+  (--remove-orphans retire les conteneurs d'un service supprimé de compose.yml ; install.sh fait de même)
 - Le propriétaire vérifie dans son navigateur sur http://192.168.129.19
 - Une fois validé : fusionner dev dans main et pousser. C'est main que récupère l'installeur.
 - Image du dashboard : à chaque push sur main ou dev touchant dashboard/, GitHub Actions publie
   ghcr.io/gorgo126/odin-dashboard:<sha> puis fige le compose.yml de cette branche sur cette image, par
   un commit automatique (github-actions[bot]). Faire git pull avant de repousser. L'installeur prend
   donc l'image de la branche clonée (BRANCHE). Suivre un build : gh run list / gh run watch.
-- Revenir sur nomad à l'image publiée : ... && docker compose pull dashboard && docker compose up -d
+- Revenir sur nomad à l'image publiée : ... && docker compose pull dashboard && docker compose up -d --remove-orphans
 - Logs : multipass exec nomad -- bash -lc "cd /opt/odin && docker compose logs --tail 50 <service>"
 - Tester une route interne sans authentification :
   multipass exec nomad -- docker exec caddy wget -qO- http://dashboard:3000/...
@@ -52,9 +53,11 @@ multipass launch 24.04 --name test --cpus 4 --memory 8G --disk 40G --network Eth
 puis curl de install.sh depuis raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh et
 sudo BRANCHE=dev bash (défaut : main ; la variable se place après sudo, sinon sudo l'efface) :
 multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh | sudo BRANCHE=dev NOM_HOTE=test bash"
-NOM_HOTE=test est obligatoire : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
+NOM_HOTE=test est obligatoire sur une VM vierge : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
 joint plus (il la cherche sous test.mshome.net). Arrêter/démarrer la VM : multipass stop test / start test.
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
+Assistant documentaire : le test sur VM vierge (et le test hors ligne) est reporté à la fin du lot 5
+(installeur final) ; les lots 1 à 4 se testent sur nomad.
 La VM vierge installe l'image publiée pour la branche : après un push touchant le dashboard,
 attendre le commit automatique de GitHub Actions et installer depuis ce commit.
 Mémoire : nomad et test (8 Go chacune) ne tiennent pas ensemble ; arrêter nomad pendant le test.

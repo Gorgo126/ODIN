@@ -4,7 +4,10 @@ set -euo pipefail
 DEPOT="${DEPOT:-https://github.com/Gorgo126/ODIN.git}"
 BRANCHE="${BRANCHE:-main}"
 CIBLE="/opt/odin"
-NOM_HOTE="${NOM_HOTE:-odin}"
+# Default name "odin" on a new install; an update keeps the current name unless NOM_HOTE is given
+if [ -z "${NOM_HOTE:-}" ]; then
+  if [ -d "$CIBLE/.git" ]; then NOM_HOTE=$(hostname); else NOM_HOTE=odin; fi
+fi
 
 msg() { printf '\n\033[1;36m==>\033[0m %s\n' "$1"; }
 err() { printf '\n\033[1;31mErreur:\033[0m %s\n' "$1" >&2; exit 1; }
@@ -80,10 +83,11 @@ systemctl restart avahi-daemon >/dev/null 2>&1 || true
 msg "Démarrage des services"
 cd "$CIBLE"
 docker compose pull
-docker compose up -d
+docker compose up -d --remove-orphans
 
 # --- Migration: former assistant (Open WebUI + synchro). To be removed after v1. ---
 # Removes its containers, image, models and test data. The documents in data/documents stay untouched.
+# Never blocking: any failure only prints a warning, and the next run of the installer tries again.
 migrer_ancien_assistant() {
   local retire=0 ctn img m d
   ctn=$(docker ps -aq --filter 'name=^ia$' --filter 'name=^synchro$')
@@ -91,18 +95,24 @@ migrer_ancien_assistant() {
   img=$(docker image ls -q ghcr.io/open-webui/open-webui | sort -u)
   if [ -n "$img" ]; then docker image rm -f $img >/dev/null || true; retire=1; fi
   # Ollama may still be starting right after up -d
-  for _ in $(seq 30); do docker exec ollama ollama list >/dev/null 2>&1 && break; sleep 1; done
-  for m in qwen2.5:3b bge-m3:latest; do
-    if docker exec ollama ollama list 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qxF "$m"; then
-      docker exec ollama ollama rm "$m" >/dev/null; retire=1
-    fi
-  done
+  local modeles=""
+  for _ in $(seq 30); do modeles=$(docker exec ollama ollama list 2>/dev/null) && break; sleep 1; done
+  if [ -z "$modeles" ]; then
+    echo "  Avertissement : Ollama ne répond pas, anciens modèles non retirés (relancez l'installeur plus tard)."
+  else
+    for m in qwen2.5:3b bge-m3:latest; do
+      if awk -v m="$m" 'NR > 1 && $1 == m { t = 1 } END { exit !t }' <<<"$modeles"; then
+        docker exec ollama ollama rm "$m" >/dev/null || echo "  Avertissement : modèle $m non retiré."
+        retire=1
+      fi
+    done
+  fi
   for d in openwebui synchro; do
     if [ -d "$CIBLE/data/$d" ]; then rm -rf "${CIBLE:?}/data/$d"; retire=1; fi
   done
   if [ "$retire" -eq 1 ]; then echo "  Ancien assistant (Open WebUI) retiré : conteneurs, image, modèles et données de test."; fi
 }
-migrer_ancien_assistant
+migrer_ancien_assistant || echo "  Avertissement : nettoyage de l'ancien assistant incomplet, l'installation continue."
 # --- End of migration ---
 
 # A service reading a file of the repository keeps the old version after an update: git replaces
