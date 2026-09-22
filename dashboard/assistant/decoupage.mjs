@@ -50,9 +50,10 @@ export function decouper(blocs, { cible = 400, chevauchement = 55 } = {}) {
 
   for (const b of blocs) {
     if (b.titre) {
-      // A heading starts a new chunk, unless the current one is still very short
-      // (then the heading stays in its text)
-      if (taille() >= cible / 4) clore(false);
+      // A heading starts a new chunk, unless the current one is nearly empty (then the heading
+      // stays in its text). Even a short section stays alone: mixed with the next one, a small model
+      // mixes their advice (burn and cut in the same first-aid sheet).
+      if (taille() >= 25) clore(false);
       else if (nouveau.length) nouveau.push({ texte: b.texte });
       else reprise = '';
       section = b.texte;

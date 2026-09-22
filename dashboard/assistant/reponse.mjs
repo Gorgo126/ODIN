@@ -66,9 +66,9 @@ function sources(texte, extraits) {
     const e = extraits[n - 1];
     return [n, { titre: e.titre, etiquette: etiquette(e), page: e.page, lien: lien(e) }];
   }));
-  // Items in the order they are cited; all the passages sent if the model cited none
+  // Cited items first, then the other passages the answer was written from
   const liste = new Map();
-  for (const e of cites.length ? cites.map((n) => extraits[n - 1]) : extraits) {
+  for (const e of [...cites.map((n) => extraits[n - 1]), ...extraits]) {
     const cle = e.origine === 'documents' ? e.chemin : e.origine === 'wiki' ? e.lien : e.source;
     const s = liste.get(cle) || { origine: e.origine, etiquette: etiquette(e), titre: e.titre, chemin: e.chemin, type: e.type, pages: [], lien: lien(e) };
     if (e.page && !s.pages.includes(e.page)) s.pages.push(e.page);

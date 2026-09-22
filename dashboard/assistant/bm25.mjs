@@ -8,6 +8,15 @@ const B = 0.75;
 
 export const termes = (requetes) => motsRequete(requetes.filter(Boolean).join(' '));
 
+// Long paragraphs (encyclopedias, books) are cut at a sentence end: every character costs time for
+// the embedding and for the reading of the prompt on CPU
+export function couper(texte, max = 700) {
+  if (texte.length <= max) return texte;
+  const debut = texte.slice(0, max);
+  const fin = Math.max(debut.lastIndexOf('. '), debut.lastIndexOf('! '), debut.lastIndexOf('? '));
+  return fin > max / 2 ? debut.slice(0, fin + 1) : `${debut.replace(/\s+\S*$/, '')} …`;
+}
+
 export function classer(passages, requetes, n) {
   const mots = termes(requetes);
   if (!mots.length || !passages.length) return [];
@@ -27,5 +36,5 @@ export function classer(passages, requetes, n) {
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, n)
-    .map((x) => ({ ...x.p, bm25: x.score }));
+    .map((x) => ({ ...x.p, texte: couper(x.p.texte), bm25: x.score }));
 }

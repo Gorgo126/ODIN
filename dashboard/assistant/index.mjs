@@ -20,7 +20,7 @@ const LOT = 8;          // chunks per embedding call (cfg.lot)
 const RECHARGE = 30000; // at most every 30 s during a long indexing, the in-memory vectors are refreshed
 const K_RRF = 60;
 // Raised whenever the extraction or the chunking changes: the index is rebuilt at the next start
-const VERSION_EXTRACTION = 2;
+const VERSION_EXTRACTION = 3;
 const PAUSE_MAX = 5 * 60 * 1000; // a pause never forgotten: resumed at the latest after 5 min
 const PDF_VIDE = 30;             // fewer letters per page on average: a scanned PDF
 
