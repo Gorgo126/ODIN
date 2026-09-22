@@ -142,8 +142,7 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   yield { type: 'etat', etat: 'comprehension' };
   const c = await comprendre(cfg, reglages, question, reglages.memoire ? historique : [], signal);
   durees.comprehension = Date.now() - debut;
-  // A sign of gravity found in the question itself, or by the model: the 112 comes first, whatever
-  // is found afterwards
+  // A sign of gravity found in the question itself, or by the model: the warning closes the answer
   // Signs of gravity: the warning closes the answer (the gestures are read first). The state of the
   // network is asked for now, in the background: it is read only at the end.
   const urgence = signeDeGravite(question, c.gravite);

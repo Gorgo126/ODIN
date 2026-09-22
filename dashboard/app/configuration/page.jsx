@@ -12,7 +12,6 @@ import Panneau from '../Panneau';
 import Assistant from './Assistant';
 import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
 import { DEFAUTS } from '../../assistant/reglages.mjs';
-import { promptSysteme } from '../../assistant/prompt.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,7 +99,7 @@ export default async function Configuration() {
         sousTitre="Identité, personnalité, index des documents, réglages avancés"
         resume={`${etatIndex?.documents ?? '–'} documents indexés`}
       >
-        <Assistant initiaux={assistant} defauts={DEFAUTS} prompt={promptSysteme(assistant)} etat={etatIndex} />
+        <Assistant initiaux={assistant} defauts={DEFAUTS} etat={etatIndex} />
       </Panneau>
 
       <Panneau

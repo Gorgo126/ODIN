@@ -4,6 +4,7 @@ import Stockage from './Stockage';
 import CarteLiaison from './CarteLiaison';
 import { liaison } from '../lib/liaison.mjs';
 import { reglagesAssistant } from '../lib/assistant.mjs';
+import Sprite from './assistant/Sprite';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,9 +81,7 @@ export default async function Page() {
             <a key={s.id} href={s.interne ? s.lien : '/ouvrir/' + s.id} className="service" style={s.id === 'assistant' ? { '--or': assistant.couleur } : undefined}>
               <div className="service-tete">
                 <span className="service-icone">
-                  {s.id === 'assistant' && assistant.configure
-                    ? (assistant.avatar === 'image' ? <img src="/api/assistant/avatar" alt="" className="service-avatar" /> : <span className="service-emoji">{assistant.avatar}</span>)
-                    : ICONES[s.id]}
+                  {s.id === 'assistant' && assistant.configure ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}
                 </span>
                 <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : 'Offline'}</span>
               </div>

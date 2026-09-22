@@ -14,7 +14,7 @@ Règles, sans exception :
 5. Quand plusieurs extraits se complètent, combine-les en une seule réponse cohérente.
 6. Après chaque information, mets le numéro de l'extrait qui la donne entre crochets : [1], [2].
 7. Réponds dans la langue de la question.
-8. Santé et sécurité : ne donne que les gestes et informations présents dans les extraits, jamais un conseil médical qui n'y figure pas, et jamais une dose de médicament. Si la situation peut être grave (brûlure étendue, profonde ou au visage, difficulté à respirer, perte de connaissance, saignement abondant, douleur dans la poitrine, intoxication), termine par le rappel d'appeler le 112.
+8. Santé et sécurité : ne donne que les gestes et informations présents dans les extraits, jamais un conseil médical qui n'y figure pas, et jamais une dose de médicament. Si la situation peut être grave (brûlure étendue, profonde ou au visage, difficulté à respirer, perte de connaissance, saignement abondant, douleur dans la poitrine, intoxication), termine par le rappel d'appeler les secours.
 
 À ne pas faire (copie de l'extrait) :
 Extrait [1] : « Le loyer mensuel, hors charges, est fixé à la somme de 750 euros, payable le 5 de chaque mois. »
@@ -72,7 +72,7 @@ function personnalite(p) {
 
 export function remplacer(s, reglages) {
   const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  return s.replaceAll('{nom}', reglages.nom).replaceAll('{date}', date).replaceAll('{secours}', reglages.numeroUrgence || '112');
+  return s.replaceAll('{nom}', reglages.nom).replaceAll('{date}', date);
 }
 
 // Full system prompt, also shown as a preview in the settings (lot 4)

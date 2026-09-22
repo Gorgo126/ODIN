@@ -13,7 +13,8 @@ export async function POST(req) {
     .map((h) => ({ question: String(h?.question ?? '').slice(0, 1000), reponse: String(h?.reponse ?? '').slice(0, 2000) }))
     .filter((h) => h.question);
 
-  const reglages = reglagesAssistant();
+  // Debug comes from ?debug=1 on the page, never from the saved settings
+  const reglages = { ...reglagesAssistant(), debug: corps?.debug === true };
   // Stopped when the visitor leaves (closed tab) or the stream is cancelled
   const arret = new AbortController();
   const evenements = repondre({

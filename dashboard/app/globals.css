@@ -336,3 +336,10 @@ a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px);
   .reglages label.ligne { grid-template-columns: 1fr; gap: .2rem; }
   .titre-assistant { font-size: 1rem; }
 }
+/* Pixel art faces of the assistant */
+.sprite { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.chat-avatar { padding: 0; background: none; box-shadow: none; }
+.choix-visages { display: flex; flex-wrap: wrap; gap: .45rem; margin: .5rem 0 .8rem; }
+.choix-visages .visage { width: 2.6rem; height: 2.6rem; padding: 0; border: 1px solid var(--bord); background: none; color: var(--or); cursor: pointer; box-shadow: var(--relief); }
+.choix-visages .visage.choisi { border-color: var(--or); box-shadow: var(--relief), 0 0 0 1px var(--or); }
+.service .chat-avatar, .service-icone .sprite { width: 100%; height: 100%; }

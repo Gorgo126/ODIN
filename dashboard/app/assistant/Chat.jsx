@@ -1,11 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Sprite from './Sprite';
 
 const ETATS = { comprehension: 'compréhension…', recherche: 'recherche…', redaction: 'rédaction…' };
 
-const Avatar = ({ avatar }) => (
-  <span className="chat-avatar">{avatar === 'image' ? <img src="/api/assistant/avatar" alt="" /> : avatar}</span>
-);
+const Avatar = ({ avatar }) => <span className="chat-avatar"><Sprite nom={avatar} /></span>;
 
 // References [n] of the answer, as small links to their source
 function Texte({ texte, renvois }) {
@@ -57,7 +56,7 @@ function Reponse({ r, avatar, nom }) {
   );
 }
 
-export default function Chat({ nom, avatar, accueil, memoire }) {
+export default function Chat({ nom, avatar, accueil, memoire, debug }) {
   const [echanges, setEchanges] = useState([]);
   const [question, setQuestion] = useState('');
   const [occupe, setOccupe] = useState(false);
@@ -81,7 +80,7 @@ export default function Chat({ nom, avatar, accueil, memoire }) {
       const rep = await fetch('/api/assistant/question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, historique })
+        body: JSON.stringify({ question: q, historique, debug })
       });
       if (!rep.ok) throw new Error((await rep.json().catch(() => ({}))).erreur || `Erreur ${rep.status}`);
       const lecteur = rep.body.getReader();

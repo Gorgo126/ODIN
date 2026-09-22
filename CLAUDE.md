@@ -171,7 +171,13 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Réponse (lot 3) : assistant/reponse.mjs (générateur d'événements etat/texte/fin/erreur, sans dépendance à
   Next, partagé par la route et l'évaluation), prompt.mjs (noyau verrouillé + personnalité, exemples en tours
   de dialogue, rappel du tutoiement dans le dernier message : les petits modèles suivent le dernier message),
-  reglages.mjs (défauts et validation ; fichier data/config/assistant.json, modèle par MODELE_CHAT du .env).
+  reglages.mjs. Réglables dans Configuration, et seuls enregistrés dans data/config/assistant.json :
+  nom, avatar, couleur, ton, tutoiement, longueur. Tout le reste (formulations « je ne sais pas »,
+  messages de secours, modèles, extraits, seuils, température, mémoire, message d'accueil) est figé dans
+  assistant/constantes.mjs ; valider() reconstruit l'objet, donc un ancien fichier plus riche voit ses
+  clés inconnues ignorées. Mode debug : par l'adresse /assistant?debug=1 seulement, jamais enregistré.
+  Avatars : 10 sprites en pixel art dessinés dans app/assistant/Sprite.jsx (grille 16 × 16, un rect SVG
+  par pixel, couleur de l'utilisateur sur fond sombre) ; aucune image à téléverser, aucun fichier.
   Issue décidée par le meilleur cosinus avant tout appel : ≥ seuilReponse (0,40) réponse, ≥ seuilProches
   (0,18) documents proches, sinon phrase « je ne sais pas » sans appel. Seuls les extraits à moins de 0,1 du
   meilleur cosinus (ou 2 premiers par mots-clés) vont au modèle : un extrait hors sujet l'égare et coûte ~4 s.
@@ -203,8 +209,9 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   intoxication, noyade, électrisation, et appel au suicide) déclenchent l'avertissement, par règles sur la
   question ; le drapeau du modèle n'est suivi que hors blessures courantes (coupure au doigt, petite
   brûlure, mal de tête). L'avertissement conclut alors la réponse (les gestes se lisent d'abord),
-  dans les trois issues. Son texte dépend du réseau : trois formulations réglables (urgences.disponible,
-  .indisponible, .inconnu ; variables {nom} et {secours} ; numéro dans numeroUrgence). Aucune ne dit de
+  dans les trois issues. Son texte dépend du réseau : trois formulations dans constantes.mjs
+  (urgences.disponible, .indisponible, .inconnu). Aucun numéro d'urgence : il dépend du pays, et le
+  texte dit seulement « les secours ». Aucune ne dit de
   ne pas appeler : ODIN sans internet ne veut pas dire que le téléphone est coupé. L'état vient de la
   sonde de « Connectivité externe » (lib/liaison.mjs, rafraîchie toutes les 45 s, lue sans attendre) :
   jamais de seconde sonde, et sans réponse en 500 ms c'est le texte « état inconnu ». Jamais

@@ -14,7 +14,7 @@ const FICHIER_REGLAGES = '/config/assistant.json';
 export function reglagesAssistant() {
   let lu = {};
   try { lu = JSON.parse(readFileSync(FICHIER_REGLAGES, 'utf8')); } catch {}
-  return valider({ ...DEFAUTS, modeleChat: process.env.MODELE_CHAT || DEFAUTS.modeleChat, modeleEmbedding: process.env.MODELE_EMBEDDING || 'embeddinggemma:300m', ...lu });
+  return valider({ ...DEFAUTS, ...lu });
 }
 
 // Saves the settings. A model change restarts the worker at once (its configuration is read when
@@ -25,9 +25,9 @@ export async function ecrireReglagesAssistant(modifs) {
   const valeur = valider({ ...avant, ...definis });
   await fsp.mkdir('/config', { recursive: true });
   await ecrireJson(FICHIER_REGLAGES, valeur, 1);
-  const modeles = valeur.modeleEmbedding !== avant.modeleEmbedding || valeur.modeleChat !== avant.modeleChat;
-  if (modeles) redemarrerAssistant();
-  return { reglages: valeur, redemarre: modeles, reindexation: valeur.modeleEmbedding !== avant.modeleEmbedding };
+  // Left over from the days when a picture could be uploaded
+  await fsp.rm('/config/avatar', { force: true }).catch(() => {});
+  return { reglages: valeur };
 }
 
 const threads = () => Number(process.env.ASSISTANT_THREADS) || os.availableParallelism();
@@ -49,7 +49,7 @@ export async function reseauAssistant() {
 export function configGeneration(reglages) {
   return {
     ollama: process.env.OLLAMA_URL || 'http://ollama:11434',
-    modeleChat: reglages.modeleChat,
+    modeleChat: process.env.MODELE_CHAT || reglages.modeleChat,
     keepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
     // Inactivity delay of Ollama calls: long enough to load a model on CPU
     inactivite: 120000,
@@ -69,7 +69,7 @@ function config() {
     ...configGeneration(reglages),
     base: '/assistant/index.db',
     racine: '/documents',
-    modeleEmbedding: reglages.modeleEmbedding,
+    modeleEmbedding: process.env.MODELE_EMBEDDING || reglages.modeleEmbedding,
     // 0 = all the dimensions of the model; EmbeddingGemma can be cut (Matryoshka)
     dimensions: Number(e.ASSISTANT_DIMENSIONS) || 0,
     lot: Number(e.ASSISTANT_LOT) || 8,
@@ -103,11 +103,9 @@ function lancer() {
     etat.worker = null;
     for (const a of etat.attente.values()) { clearTimeout(a.minuterie); a.reject(new Error('Assistant arrêté')); }
     etat.attente.clear();
-    // Restarted at once when asked for (settings), otherwise after a crash, never in a tight loop
-    const voulu = etat.redemarrage;
-    etat.redemarrage = false;
-    if (!voulu) console.error(`Assistant arrêté (code ${code}), redémarrage dans 10 s`);
-    setTimeout(demarrerAssistant, voulu ? 100 : 10000);
+    // Restarted after a crash, never in a tight loop
+    console.error(`Assistant arrêté (code ${code}), redémarrage dans 10 s`);
+    setTimeout(demarrerAssistant, 10000);
   });
   etat.worker = w;
 }
@@ -116,12 +114,6 @@ export function demarrerAssistant() {
   if (!etat.worker) lancer();
 }
 
-// Applies a new model: the worker reads its configuration when it starts
-export function redemarrerAssistant() {
-  if (!etat.worker) { lancer(); return; }
-  etat.redemarrage = true;
-  etat.worker.terminate();
-}
 
 // The search may wait for the embedding model to load on CPU: generous delay
 export function demander(type, args = {}, delai = 180000) {
