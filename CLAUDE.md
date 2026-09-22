@@ -164,12 +164,41 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Recherche : BM25 (mots de 4 lettres et plus en préfixe) + cosinus, 20 candidats chacun, fusion RRF (k=60),
   4 extraits ; le meilleur cosinus brut est rendu à part (seuils du lot 3). Sans Ollama, mots-clés seuls.
   Appels Ollama : délai d'inactivité (120 s, en-têtes ou données), jamais de délai total.
+  Priorité aux questions : une recherche coupe l'appel d'indexation en cours (refait ensuite) et suspend
+  l'indexation jusqu'à la fin de la réponse (jeton rendu par rechercher({ garder: true }), reprendre(jeton),
+  reprise forcée après 5 min). Les résumés d'une ligne (modèle de langage, après l'indexation) cèdent aussi.
+  PDF dont le texte fait moins de 30 lettres par page : statut probleme, « PDF sans texte (probablement scanné) ».
+  Réponse (lot 3) : assistant/reponse.mjs (générateur d'événements etat/texte/fin/erreur, sans dépendance à
+  Next, partagé par la route et l'évaluation), prompt.mjs (noyau verrouillé + personnalité, exemples en tours
+  de dialogue, rappel du tutoiement dans le dernier message : les petits modèles suivent le dernier message),
+  reglages.mjs (défauts et validation ; fichier data/config/assistant.json, modèle par MODELE_CHAT du .env).
+  Issue décidée par le meilleur cosinus avant tout appel : ≥ seuilReponse (0,40) réponse, ≥ seuilProches
+  (0,18) documents proches, sinon phrase « je ne sais pas » sans appel. Seuls les extraits à moins de 0,1 du
+  meilleur cosinus (ou 2 premiers par mots-clés) vont au modèle : un extrait hors sujet l'égare et coûte ~4 s.
+  [NON_TROUVE] détecté sur le début du flux → issue 2. Issue 2 retenue en entier et vérifiée : un nombre
+  absent de la question, des titres et des résumés remplace le texte par une phrase fixe.
+  Route POST /api/assistant/question : NDJSON en flux (Cache-Control no-transform : sinon la compression de
+  Next retient les morceaux) ; Caddy le laisse passer sans tampon (vérifié). /api/assistant/* sans connexion :
+  401 JSON (verifier/route.js) ; les pages restent en redirection. Sources : PDF dans la visionneuse
+  (/assistant/document?chemin=&page=), autres fichiers par Caddy sur /fichiers-documents/* (lecture seule,
+  CSP sandbox). Ce préfixe ne doit pas commencer par /documents, déjà pris par FileBrowser (handle /documents*).
+  Modèle de langage : qwen3:1.7b (≤ 8,5 Go de RAM détectée, écrit dans .env par install.sh) ou
+  qwen3:4b-instruct-2507-q4_K_M. Options identiques à chaque appel (num_ctx 4096, num_thread = cœurs,
+  think false) : une valeur différente recharge le modèle. Ollama garde en cache le début commun du prompt
+  (noyau + exemples) : ne rien y mettre qui change à chaque question.
+  Évaluation : tests/generer-documents.py écrit tests/documents (10 documents fictifs, 5 formats) ;
+  tests/questions.json (10 réponses, 5 proches, 5 hors sujet) ; assistant/evaluation.mjs (commande en tête).
   Banc : docker exec -i dashboard node assistant/banc.mjs < tests/banc-embeddings.json (travaille dans
   /tmp du conteneur ; le modèle comparé doit être présent dans Ollama, à retirer ensuite).
   Résultat du banc (nomad, 2026-09-22, livre de 639 pages, 1453 morceaux, 5 questions) : embeddinggemma:300m
   en 768 dimensions retenu (MRR vecteurs 0,90 ; 256 d : 0,85 ; bge-m3 : 0,75), 1,7 morceau/s contre 0,7 pour
   bge-m3, 650 Mo chargé contre 1,2 Go ; vecteurs 768 d : 29 Mo pour 10 000 morceaux. Ollama n'occupe que
-  2 cœurs sur 4 pendant l'indexation : num_thread à régler au lot 3.
+  2 cœurs sur 4 par défaut : num_thread = nombre de cœurs (lot 3) donne 3,05 morceaux/s (livre en 8 min) ;
+  lots de 16 sans gain, gardés à 8. Poids des mots-clés 0,5 dans la fusion (bonne page en tête 2 fois sur 5
+  au lieu de 1 ; 0 ferait mieux sur le livre mais perdrait les termes exacts). Question pendant une
+  indexation : 50 à 370 ms. Modèles comparés (lot 3, tests/documents) : qwen3:1.7b retenu (1er mot 5 s,
+  16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
+  RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.

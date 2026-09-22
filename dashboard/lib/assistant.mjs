@@ -45,7 +45,8 @@ function config() {
     dimensions: Number(e.ASSISTANT_DIMENSIONS) || 0,
     lot: Number(e.ASSISTANT_LOT) || 8,
     extraits: reglages.extraits,
-    poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 1,
+    // Keywords weigh half as much as the vectors (bench, lot 3); needed for exact terms and codes
+    poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 0.5,
     candidats: 20,
     cible: 400,
     chevauchement: 55

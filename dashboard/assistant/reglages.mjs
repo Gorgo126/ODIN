@@ -20,9 +20,10 @@ export const DEFAUTS = {
   modeleChat: 'qwen3:1.7b',
   extraits: 4,
   // Best raw cosine of the question against every chunk, calibrated on tests/documents (lot 3,
-  // EmbeddingGemma 768 d): answerable 0.40–0.72, close 0.21–0.39, off-topic 0.02–0.15. Between
-  // 0.38 and 0.40 the model decides, with [NON_TROUVE].
-  seuilReponse: 0.38,
+  // EmbeddingGemma 768 d): answerable 0.40–0.72, close 0.21–0.39, off-topic 0.02–0.15. At 0.38,
+  // a close question (0.389) got an answer invented from an unrelated chunk: 0.40, a cautious
+  // outcome 2 rather than an invention.
+  seuilReponse: 0.4,
   seuilProches: 0.18,
   temperature: 0.4,
   memoire: true,

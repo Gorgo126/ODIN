@@ -22,7 +22,7 @@ const cfg = {
   dimensions: 0, keepAlive: '30m', inactivite: 300000,
   threads: Number(e.ASSISTANT_THREADS) || (await import('os')).availableParallelism(),
   numCtx: 4096, lot: 8, extraits: 4, candidats: 20, cible: 400, chevauchement: 55,
-  poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 1
+  poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 0.5
 };
 const reglages = valider({
   ...DEFAUTS, modeleChat: cfg.modeleChat, debug: true,
