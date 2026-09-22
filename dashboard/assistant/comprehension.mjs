@@ -33,6 +33,7 @@ Exemples :
 « je me suis brûlé ! » → {"type":"information","question":"Que faire après une brûlure ?","requete":"brûlure premiers soins traitement","terme":"brûlure","sante":true,"reponse":""}
 « salut » → {"type":"conversation","question":"Salut","requete":"","terme":"","sante":false,"reponse":"${tu ? 'Salut ! Qu\'est-ce que je peux chercher pour toi ?' : 'Bonjour ! Que puis-je chercher pour vous ?'}"}
 « merci beaucoup » → {"type":"conversation","question":"Merci beaucoup","requete":"","terme":"","sante":false,"reponse":"${tu ? 'Avec plaisir ! N\'hésite pas si tu as une autre question.' : 'Avec plaisir ! N\'hésitez pas si vous avez une autre question.'}"}
+« écris-moi un poème sur la mer » → {"type":"information","question":"Peux-tu écrire un poème sur la mer ?","requete":"poème mer","terme":"poème","sante":false,"reponse":""}
 « combien je paie de loyer ? » → {"type":"information","question":"Combien je paie de loyer par mois ?","requete":"loyer mensuel montant bail","terme":"loyer","sante":false,"reponse":""}`, reglages);
 }
 

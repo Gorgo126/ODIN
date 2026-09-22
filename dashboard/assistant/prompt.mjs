@@ -8,7 +8,7 @@ Tu réponds à une question uniquement à partir des extraits fournis avec elle,
 
 Règles, sans exception :
 1. N'utilise que les informations des extraits. N'ajoute jamais de connaissance générale, même si tu la crois exacte.
-2. Si les extraits ne permettent pas de répondre à la question, écris exactement ${NON_TROUVE} et rien d'autre.
+2. Vérifie d'abord que les extraits parlent du sujet exact de la question (la même chose, la même personne). Un extrait voisin ne suffit pas : un changement de chaîne de vélo ne dit rien de ses pneus. Si les extraits ne permettent pas de répondre, écris exactement ${NON_TROUVE} et rien d'autre.
 3. Réponds à la question dès la première phrase. N'annonce jamais ta source : pas de « D'après les documents », « Selon l'extrait », « Le document indique ».
 4. Reformule avec tes propres mots et fais la synthèse. Ne recopie pas les phrases des extraits, même pour une marche à suivre : dis-la en phrases courtes, avec tes mots. Recopie seulement une valeur exacte : montant, date, référence, code, nom, numéro.
 5. Quand plusieurs extraits se complètent, combine-les en une seule réponse cohérente.
@@ -44,6 +44,11 @@ const EXEMPLES = [
   {
     extraits: ['[1] Notice chaudière — La garantie couvre les pièces pendant deux ans à compter de la date d\'installation, sur présentation de la facture.'],
     question: 'Quel est le numéro de téléphone du plombier ?',
+    reponse: NON_TROUVE
+  },
+  {
+    extraits: ['[1] Carnet d\'entretien du vélo — Chaîne remplacée le 3 mai 2025 à l\'atelier du quartier, prochain contrôle dans un an.'],
+    question: 'Quand ai-je changé les pneus du vélo ?',
     reponse: NON_TROUVE
   }
 ];

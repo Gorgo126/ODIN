@@ -50,14 +50,17 @@ function repliProches(reglages, documents) {
 
 // Only the passages close to the best one reach the model: an off-topic passage misleads a small
 // model (an amount taken from the wrong document) and costs about 4 s of reading on CPU. Kept:
-// cosine within ECART of the best usable passage, or among the first two by keywords in the
-// documents; a passage whose source is below its « close » threshold is dropped.
+// cosine within ECART of the best usable passage, the best keyword match of the documents, and the
+// best passage of every source above its answer threshold (a question covered by the documents
+// and by a wiki gets both). A passage whose source is below its « close » threshold is dropped.
 const ECART = 0.1;
 function utiles(extraits, reglages) {
   const valables = extraits.filter((e) => (e.cosinus ?? -1) >= seuil(reglages, e).proches);
   if (!valables.length) return [];
   const meilleur = Math.max(...valables.map((e) => e.cosinus));
-  return valables.filter((e) => e.cosinus >= meilleur - ECART || (e.rangMots && e.rangMots <= 2));
+  const premiers = new Set(Object.keys(SEUILS).map((o) => valables.filter((e) => e.origine === o)
+    .sort((a, b) => b.cosinus - a.cosinus)[0]).filter((e) => e && e.cosinus >= seuil(reglages, e).reponse));
+  return valables.filter((e) => e.cosinus >= meilleur - ECART || e.rangMots === 1 || premiers.has(e));
 }
 
 function sources(texte, extraits) {
@@ -91,9 +94,12 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   durees.comprehension = Date.now() - debut;
 
   if (c.type === 'conversation') {
-    // No search, no fact: a reply with a figure in it is replaced by a neutral one
+    // No search, no fact: a reply with a figure in it is replaced by a neutral one, and thanks always
+    // get a thanks reply (a small model tends to repeat its greeting example)
     const tu = reglages.personnalite.tutoiement;
-    const texte = c.reponse && !/\d/.test(c.reponse) ? c.reponse : (tu ? 'Avec plaisir ! Pose-moi une question quand tu veux.' : 'Avec plaisir ! Posez-moi une question quand vous voulez.');
+    const neutre = tu ? 'Avec plaisir ! Pose-moi une question quand tu veux.' : 'Avec plaisir ! Posez-moi une question quand vous voulez.';
+    const merci = /\bmerci\b/i.test(question) && !/plaisir|rien|service/i.test(c.reponse);
+    const texte = c.reponse && !/\d/.test(c.reponse) && !merci ? c.reponse : neutre;
     premier();
     yield { type: 'texte', texte };
     durees.total = Date.now() - debut;
