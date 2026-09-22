@@ -21,8 +21,9 @@ const texte = (html) => decoder(html.replace(/<sup\b[\s\S]*?<\/sup>/gi, '').repl
 
 // Installed books with a full-text index, from the local OPDS catalogue (kept one minute)
 let catalogue = { quand: 0, livres: [] };
-export async function livresIndexes() {
-  if (Date.now() - catalogue.quand < 60000) return catalogue.livres;
+// A pack installed or removed is seen within a minute; a removed one is seen at once (see below)
+export async function livresIndexes(relire = false) {
+  if (!relire && Date.now() - catalogue.quand < 60000) return catalogue.livres;
   const r = await lire(`${KIWIX}/kiwix/catalog/v2/entries?count=1000`, DELAI);
   if (!r.ok) throw new Error(`catalogue Kiwix : ${r.statut}`);
   const xml = r.texte;
@@ -65,9 +66,17 @@ function paragraphes(html) {
 // Both queries (full keywords and main term) in parallel, results interleaved without duplicates,
 // then the paragraphs of the first `articles` articles
 export async function passagesWikis(requetes, { articles = 15 } = {}) {
-  const livres = await livresIndexes();
+  let livres = await livresIndexes();
   if (!livres.length) return [];
-  const listes = await Promise.all([...new Set(requetes.filter(Boolean))].map((q) => chercher(q, livres, articles).catch(() => [])));
+  const toutes = () => Promise.all([...new Set(requetes.filter(Boolean))].map((q) => chercher(q, livres, articles).catch(() => null)));
+  let listes = await toutes();
+  // Kiwix refuses the whole search when a pack of the list was removed meanwhile: catalogue read
+  // again, search done once more
+  if (listes.includes(null)) {
+    livres = await livresIndexes(true);
+    listes = livres.length ? await toutes() : [];
+  }
+  listes = listes.map((l) => l || []);
   const vus = new Set();
   const retenus = [];
   for (let i = 0; retenus.length < articles && listes.some((l) => i < l.length); i++) {

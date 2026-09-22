@@ -73,6 +73,7 @@ for (const q of questions) {
   const manquantes = (q.sources || []).filter((o) => !origines.has(o));
   if (manquantes.length) echecs.push(`sources absentes : ${manquantes.join(', ')}`);
   if (q.sante && !/\b112\b/.test(texte)) echecs.push('rappel du 112 absent');
+  if (q.urgence && !/112/.test(texte.split('\n')[0])) echecs.push('rappel du 112 absent en tête');
   if (fin?.issue === 1 && q.attendu && !q.attendu.some((a) => bas.includes(a.toLowerCase()))) echecs.push(`aucun de ${JSON.stringify(q.attendu)}`);
   const interdits = (q.interdit || []).filter((a) => bas.includes(a.toLowerCase()));
   if (interdits.length) echecs.push(`interdit : ${JSON.stringify(interdits)}`);
@@ -84,7 +85,8 @@ for (const q of questions) {
   console.log(`${echecs.length ? 'KO' : 'OK'} [attendu ${q.issue}, obtenu ${fin?.issue ?? '?'}] cos ${cosinus || '–'} | copie ${Math.round(copie * 100)} %`);
   console.log(`   Temps : compréhension ${d.comprehension ?? '–'} ms, recherche ${d.recherche ?? '–'} ms (${Object.entries(d.sources || {}).map(([k, v]) => `${k} ${v}`).join(', ')}), 1er mot ${d.premierMot ?? '–'} ms, total ${d.total ?? '–'} ms`);
   console.log(`   Q : ${q.question}`);
-  if (fin?.comprehension) console.log(`   Compris : ${fin.comprehension.type}${fin.comprehension.valide ? '' : ' (repli)'}, « ${fin.comprehension.question} », requête « ${fin.comprehension.requete} », terme « ${fin.comprehension.terme} »${fin.comprehension.sante ? ', santé' : ''}`);
+  if (fin?.categorie) console.log(`   Conversation : ${fin.categorie}`);
+  if (fin?.comprehension) console.log(`   Compris${fin.comprehension.valide ? '' : ' (repli)'} : « ${fin.comprehension.question} », requête « ${fin.comprehension.requete} », terme « ${fin.comprehension.terme} »${fin.comprehension.sante ? ', santé' : ''}${fin.urgence ? ', GRAVITÉ' : ''}`);
   console.log(`   R : ${texte.replace(/\s+/g, ' ').trim()}`);
   if (fin?.sources?.length) console.log(`   Sources : ${fin.sources.map((s) => `${s.etiquette} ${s.titre}${s.pages.length ? ` p. ${s.pages}` : ''}`).join(' · ')}`);
   if (fin?.documents?.length) console.log(`   Proches : ${fin.documents.map((x) => `${x.etiquette} ${x.titre}`).join(' · ')}`);

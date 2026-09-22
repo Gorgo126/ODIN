@@ -11,7 +11,7 @@ function Texte({ texte, renvois }) {
       {morceaux.map((m, i) => {
         const n = m.match(/^\[(\d+)\]$/)?.[1];
         const r = n && renvois?.[n];
-        return r ? <a key={i} href={r.lien} className="chat-renvoi" title={`${r.etiquette} : ${r.titre}`}>{n}</a> : m;
+        return r ? <a key={i} href={r.lien} className="chat-renvoi" title={r.libelle}>{n}</a> : m;
       })}
     </p>
   );
@@ -27,14 +27,14 @@ function Reponse({ r }) {
         <p className="chat-sources">
           Sources :{' '}
           {r.fin.sources.map((s, i) => (
-            <span key={s.lien}>{i > 0 && ' · '}<small className="chat-origine">{s.etiquette}</small> <a href={s.lien}>{s.titre}</a>{s.pages.length > 0 && ` (p. ${s.pages.join(', ')})`}</span>
+            <span key={s.n}>{i > 0 && ' · '}<a href={s.lien} className="chat-renvoi">{s.n}</a> {s.libelle}</span>
           ))}
         </p>
       )}
       {r.fin?.documents?.length > 0 && (
         <div className="grille chat-documents">
           {r.fin.documents.map((d) => (
-            <a key={d.lien} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.etiquette}</em></a>
+            <a key={d.lien} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.libelle}</em></a>
           ))}
         </div>
       )}
@@ -85,7 +85,8 @@ export default function Chat({ nom, memoire }) {
           const ev = JSON.parse(l);
           if (ev.type === 'etat') maj((r) => ({ ...r, etat: ev.etat }));
           else if (ev.type === 'texte') maj((r) => ({ ...r, texte: r.texte + ev.texte }));
-          else if (ev.type === 'fin') maj((r) => ({ ...r, fin: ev }));
+          // The final text carries the references renumbered by source
+          else if (ev.type === 'fin') maj((r) => ({ ...r, fin: ev, texte: ev.texte ?? r.texte }));
           else if (ev.type === 'erreur') maj((r) => ({ ...r, erreur: ev.message }));
         }
       }

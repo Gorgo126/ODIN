@@ -477,13 +477,15 @@ export class Index {
     const exact = docs.extraits.find((e) => e.rangMots === 1);
     if (exact && !extraits.includes(exact)) extraits.splice(extraits.length - 1, 1, exact);
     // Closest items for outcome 2: documents with their summary, wiki articles and book pages
+    // One card per document: a summary that says what it is about, never its text (outcome 2 must
+    // not answer). Books are grouped by book, with the page of their best passage.
     const vus = new Set();
     const proches = [...docs.documents, ...externes.filter((p) => p.cosinus != null).map((p) => ({
       origine: p.origine, source: p.source, titre: p.titre, type: p.origine === 'wiki' ? 'article' : 'livre',
-      resume: p.origine === 'wiki' ? p.texte.slice(0, 200) : `${p.section ? `${p.section}, ` : ''}p. ${p.page}`,
+      resume: p.origine === 'wiki' ? `article du wiki${p.section ? `, section « ${p.section} »` : ''}` : `livre${p.section ? `, chapitre « ${p.section} »` : ''}`,
       lien: p.lien, page: p.page, cosinus: p.cosinus
     }))].sort((a, b) => (b.cosinus ?? -1) - (a.cosinus ?? -1)).filter((d) => {
-      const cle = d.lien || d.chemin;
+      const cle = d.origine === 'documents' ? d.chemin : d.origine === 'livre' ? `livre:${d.source}` : d.lien;
       if (vus.has(cle)) return false;
       vus.add(cle);
       return true;

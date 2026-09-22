@@ -221,6 +221,31 @@
         "eau"
       ],
       "sante": true
+    },
+    {
+      "question": "comment faire du feu ?",
+      "issue": 1,
+      "sources": [
+        "wiki"
+      ]
+    },
+    {
+      "question": "j'ai mal de tête très très fort",
+      "issue": 2,
+      "urgence": true,
+      "interdit": [
+        "migraine",
+        "médicament",
+        "il faut"
+      ]
+    },
+    {
+      "question": "au revoir",
+      "issue": 0
+    },
+    {
+      "question": "ok super",
+      "issue": 0
     }
   ]
 }

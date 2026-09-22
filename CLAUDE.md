@@ -176,7 +176,13 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   (0,18) documents proches, sinon phrase « je ne sais pas » sans appel. Seuls les extraits à moins de 0,1 du
   meilleur cosinus (ou 2 premiers par mots-clés) vont au modèle : un extrait hors sujet l'égare et coûte ~4 s.
   [NON_TROUVE] détecté sur le début du flux → issue 2. Issue 2 retenue en entier et vérifiée : un nombre
-  absent de la question, des titres et des résumés remplace le texte par une phrase fixe.
+  inventé, une tournure de réponse (cause, remède, conseil, impératif) ou une phrase qui ne parle pas des
+  documents remplacent le texte par une phrase fixe. Les cartes sont dédoublonnées par document (un livre
+  = une carte, avec sa page) et ne montrent jamais le texte des passages.
+  Renvois : le modèle numérote les extraits, l'affichage numérote les sources. Les passages d'un même
+  document deviennent une source, numérotée dans l'ordre de citation, et le texte final (champ texte de
+  l'événement fin) porte ces numéros. La ligne des sources ne liste que les sources citées :
+  « WikiMed · Brûlure », « Livre · Là où il n'y a pas de docteur, p. 164 », « Mes documents · … ».
   Route POST /api/assistant/question : NDJSON en flux (Cache-Control no-transform : sinon la compression de
   Next retient les morceaux) ; Caddy le laisse passer sans tampon (vérifié). /api/assistant/* sans connexion :
   401 JSON (verifier/route.js) ; les pages restent en redirection. Sources : PDF dans la visionneuse
@@ -186,12 +192,23 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   qwen3:4b-instruct-2507-q4_K_M. Options identiques à chaque appel (num_ctx 4096, num_thread = cœurs,
   think false) : une valeur différente recharge le modèle. Ollama garde en cache le début commun du prompt
   (noyau + exemples) : ne rien y mettre qui change à chaque question.
-  Compréhension (assistant/comprehension.mjs) avant toute recherche : JSON strict (format = schéma
-  Ollama) → conversation (réponse courte, aucune recherche, aucun chiffre) ou information (question
-  autonome, requête de mots-clés, terme principal, drapeau santé). JSON invalide : la phrase brute.
+  Conversation (assistant/conversation.mjs) : règles fixes, jamais le modèle. Message de 6 mots au plus
+  dont tous les mots sont du vocabulaire de politesse (salutation, remerciement, acquiescement, au
+  revoir) : réponse toute faite, aucun appel. Tout le reste part en recherche (« comment faire du feu ? »).
+  Compréhension (assistant/comprehension.mjs) : JSON strict (format = schéma Ollama) pour reformuler
+  seulement : question autonome, requête (mots-clés + termes médicaux et synonymes), terme principal,
+  drapeaux sante et gravite. JSON invalide : la phrase brute.
+  Sécurité (assistant/securite.mjs) : signes de gravité détectés par règles sur la question (douleur
+  intense ou soudaine, respiration, saignement, perte de connaissance, brûlure étendue, intoxication…)
+  ou par le drapeau du modèle → rappel d'appeler le 112 en tête de la réponse, dans les trois issues ;
+  question de santé sans gravité → rappel en fin de réponse.
   Sources : Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
   LOCAL, deux requêtes en parallèle, 15 articles, paragraphes ≥ 60 caractères coupés à 700, BM25 local,
-  8 vectorisés), Livres (source-livres.mjs : pages.json des livres installés, 4 paragraphes vectorisés).
+  8 vectorisés ; bonus BM25 quand le titre de section contient les mots de la requête), Livres
+  (source-livres.mjs : pages.json des livres installés, 4 paragraphes vectorisés).
+  Packs et livres ajoutés ou retirés sont pris en compte sans redémarrage : catalogue Kiwix relu au plus
+  toutes les 60 s (et tout de suite si une recherche échoue, pack retiré), livres relus à chaque question
+  d'après la date de pages.json.
   Classement commun par cosinus ; le meilleur résultat par mots-clés des documents garde sa place.
   Seuils par source (reglages.mjs). Santé ou sécurité : rappel du 112 toujours ajouté.
   Morceaux : un titre ferme le morceau dès 25 jetons (une section par morceau : sinon le modèle mêle

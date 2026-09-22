@@ -85,11 +85,18 @@ const adresse = (reglages) => (reglages.personnalite.tutoiement ? 'tu' : 'vous')
 // Small models follow the last message best: the key rules are repeated there
 const rappel = (reglages) => `\n\n(Réponds directement, avec tes propres mots, en ${reglages.personnalite.tutoiement ? 'tutoyant : « tu », « ton », « ta », jamais « vous »' : 'vouvoyant : « vous », « votre »'}, avec les renvois [n]. Si les extraits ne répondent pas : ${NON_TROUVE}.)`;
 
-// Label of a source, shown to the model and under the answer
+// Label of a source, shown to the model and under the answer: « WikiMed », « Livre », « Mes
+// documents ». A wiki pack is named by its wiki (« Encyclopédie médicale WikiMed » → « WikiMed »).
 export function etiquette(e) {
-  if (e.origine === 'wiki') return `Wiki (${e.source})`;
-  if (e.origine === 'livre') return `Livres (${e.source})`;
+  if (e.origine === 'wiki') return (e.source || '').split(/\s+/).find((m) => /^wiki/i.test(m)) || e.source || 'Wiki';
+  if (e.origine === 'livre') return 'Livre';
   return 'Mes documents';
+}
+
+// « WikiMed · Brûlure », « Livre · Là où il n'y a pas de docteur, p. 164 »
+export function titreSource(s) {
+  const pages = (s.pages || []).filter(Boolean);
+  return `${etiquette(s)} · ${s.titre}${pages.length ? `, p. ${pages.join(', ')}` : ''}`;
 }
 
 // Outcome 1: messages for the answer written from the chunks
@@ -113,12 +120,14 @@ export function messagesProches(reglages, documents, question) {
   const p = reglages.personnalite;
   const systeme = `Tu es {nom}, l'assistant documentaire d'ODIN.
 On t'a posé une question, et aucun document ne contient la réponse exacte. Voici les documents qui s'en rapprochent le plus, avec leur titre et un résumé.
-Écris 1 ou 2 phrases courtes et naturelles : dis d'abord que tu n'as pas trouvé de réponse exacte, puis dis en quelques mots de quoi parlent les documents qui peuvent aider. Ne cite que les documents vraiment liés à la question.
-Interdit : répondre à la question elle-même, supposer ou déduire quoi que ce soit, donner un chiffre, une date ou un nom, parler d'un document absent de la liste, faire une liste, utiliser des crochets.
+Écris 1 ou 2 phrases courtes : commence par dire que tu n'as pas trouvé de réponse précise, puis dis seulement de quoi parlent les documents ci-dessous, avec leurs mots.
+Interdit, sans exception : répondre à la question, donner ne serait-ce qu'un début de réponse, nommer une maladie, une cause, un remède ou un geste, supposer, déduire, conseiller, donner un chiffre, une date ou un nom qui n'est pas dans la liste, parler d'un document absent de la liste, faire une liste, utiliser des crochets.
 ${p.tutoiement ? 'Tu tutoies la personne.' : 'Tu vouvoies la personne.'} Ton : ${p.ton}. Réponds dans la langue de la question.
 
-Exemple : « Je n'ai pas trouvé de réponse exacte, mais le contrat de bail aborde la question des charges, et le relevé de mars en détaille les montants. »`;
-  const liste = documents.map((d) => `- « ${d.titre} » (${etiquette(d)}) : ${d.resume || 'pas de résumé'}`).join('\n');
+Exemples :
+Question « Combien je paie de charges ? » → « Je n'ai pas trouvé de réponse précise. Le contrat de bail parle des charges, et le relevé de mars détaille les prélèvements du mois. »
+Question « J'ai mal à la tête, que faire ? » → « Je n'ai pas trouvé de réponse précise. L'article « Céphalée » du wiki traite des maux de tête, et le livre a un chapitre sur la douleur. »`;
+  const liste = documents.map((d) => `- « ${d.titre} » (${etiquette(d)})${d.resume ? ` : ${d.resume}` : ''}`).join('\n');
   return [
     { role: 'system', content: remplacer(systeme, reglages) },
     { role: 'user', content: `Question : ${question}\n\nDocuments proches :\n${liste}` }
