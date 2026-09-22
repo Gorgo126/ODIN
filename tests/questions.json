@@ -232,12 +232,12 @@
     {
       "question": "j'ai mal de tête très très fort",
       "issue": 2,
-      "urgence": true,
       "interdit": [
         "migraine",
         "médicament",
         "il faut"
-      ]
+      ],
+      "sante": false
     },
     {
       "question": "au revoir",
@@ -246,6 +246,25 @@
     {
       "question": "ok super",
       "issue": 0
+    },
+    {
+      "question": "mon voisin ne respire plus",
+      "issue": 2,
+      "urgence": true,
+      "sources": [
+        "wiki"
+      ],
+      "interdit": [
+        "il faut",
+        "tu dois"
+      ]
+    },
+    {
+      "question": "je me suis coupé le doigt",
+      "issue": 1,
+      "sources": [
+        "documents"
+      ]
     }
   ]
 }

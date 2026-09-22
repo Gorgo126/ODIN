@@ -198,10 +198,16 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Compréhension (assistant/comprehension.mjs) : JSON strict (format = schéma Ollama) pour reformuler
   seulement : question autonome, requête (mots-clés + termes médicaux et synonymes), terme principal,
   drapeaux sante et gravite. JSON invalide : la phrase brute.
-  Sécurité (assistant/securite.mjs) : signes de gravité détectés par règles sur la question (douleur
-  intense ou soudaine, respiration, saignement, perte de connaissance, brûlure étendue, intoxication…)
-  ou par le drapeau du modèle → rappel d'appeler le 112 en tête de la réponse, dans les trois issues ;
-  question de santé sans gravité → rappel en fin de réponse.
+  Sécurité (assistant/securite.mjs) : seuls les signes vraiment graves (perte de connaissance, respiration,
+  douleur thoracique, saignement abondant, brûlure étendue ou profonde, fracture ouverte, convulsion,
+  intoxication, noyade, électrisation, et appel au suicide) déclenchent l'avertissement, par règles sur la
+  question ; le drapeau du modèle n'est suivi que hors blessures courantes (coupure au doigt, petite
+  brûlure, mal de tête). L'avertissement s'affiche alors en tête, dans les trois issues, avec le message
+  des réglages (champ urgence, variable {nom}) : les secours « si c'est possible », sinon les guides
+  installés. ODIN sert là où tout est coupé : jamais de rappel du 112 sur une question de santé ordinaire.
+  Guides médicaux : livre dont la fiche porte avertissement « sante », pack Kiwix dont le titre parle de
+  médecine ou de santé. En cas d'urgence, leur meilleur passage est toujours envoyé au modèle, et une
+  urgence sans autre résultat passe en issue 2 sur ces guides, pour renvoyer à la bonne page.
   Sources : Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
   LOCAL, deux requêtes en parallèle, 15 articles, paragraphes ≥ 60 caractères coupés à 700, BM25 local,
   8 vectorisés ; bonus BM25 quand le titre de section contient les mots de la requête), Livres

@@ -481,7 +481,7 @@ export class Index {
     // not answer). Books are grouped by book, with the page of their best passage.
     const vus = new Set();
     const proches = [...docs.documents, ...externes.filter((p) => p.cosinus != null).map((p) => ({
-      origine: p.origine, source: p.source, titre: p.titre, type: p.origine === 'wiki' ? 'article' : 'livre',
+      origine: p.origine, source: p.source, guide: p.guide, titre: p.titre, type: p.origine === 'wiki' ? 'article' : 'livre',
       resume: p.origine === 'wiki' ? `article du wiki${p.section ? `, section « ${p.section} »` : ''}` : `livre${p.section ? `, chapitre « ${p.section} »` : ''}`,
       lien: p.lien, page: p.page, cosinus: p.cosinus
     }))].sort((a, b) => (b.cosinus ?? -1) - (a.cosinus ?? -1)).filter((d) => {

@@ -22,7 +22,8 @@ async function charger() {
       if (l?.cle !== cle) {
         const fiche = JSON.parse(await fs.readFile(path.join(DOSSIER, id, 'fiche.json'), 'utf8'));
         const pages = JSON.parse(await fs.readFile(fichier, 'utf8'));
-        l = { cle, id, titre: fiche.titre || id, pages: pages.map((p) => ({ ...p, norm: normaliser(p.texte) })) };
+        // A health book (« Là où il n'y a pas de docteur ») is a guide: it can help when no one else can
+        l = { cle, id, titre: fiche.titre || id, guide: fiche.avertissement === 'sante', pages: pages.map((p) => ({ ...p, norm: normaliser(p.texte) })) };
         cache.set(id, l);
       }
       return l;
@@ -58,6 +59,7 @@ export async function passagesLivres(requetes, { pages = 5 } = {}) {
     .map((t) => ({
       origine: 'livre',
       source: l.titre,
+      guide: l.guide,
       titre: l.titre,
       section: p.chapitre || '',
       page: p.page,

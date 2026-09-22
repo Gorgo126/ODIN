@@ -72,8 +72,8 @@ for (const q of questions) {
   const origines = new Set([...(fin?.sources || []), ...(fin?.documents || [])].map((x) => x.origine));
   const manquantes = (q.sources || []).filter((o) => !origines.has(o));
   if (manquantes.length) echecs.push(`sources absentes : ${manquantes.join(', ')}`);
-  if (q.sante && !/\b112\b/.test(texte)) echecs.push('rappel du 112 absent');
-  if (q.urgence && !/112/.test(texte.split('\n')[0])) echecs.push('rappel du 112 absent en tête');
+  if (q.urgence && !/112/.test(texte.split('\n')[0])) echecs.push('avertissement d\'urgence absent en tête');
+  if (!q.urgence && /112/.test(texte)) echecs.push('avertissement d\'urgence affiché à tort');
   if (fin?.issue === 1 && q.attendu && !q.attendu.some((a) => bas.includes(a.toLowerCase()))) echecs.push(`aucun de ${JSON.stringify(q.attendu)}`);
   const interdits = (q.interdit || []).filter((a) => bas.includes(a.toLowerCase()));
   if (interdits.length) echecs.push(`interdit : ${JSON.stringify(interdits)}`);

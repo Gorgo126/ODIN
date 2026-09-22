@@ -17,6 +17,9 @@ export const DEFAUTS = {
     'Je cherche, mais tes documents ne disent rien à ce sujet.',
     'Aucun de tes documents n\'aborde cette question.'
   ],
+  // Shown first when the question describes a sign of gravity. ODIN serves where everything else
+  // may be cut off: the emergency services first « if possible », the installed guides otherwise.
+  urgence: 'Si c\'est grave, contacte les secours (112) si c\'est possible. Sinon, consulte les guides médicaux installés sur ODIN.',
   modeleChat: 'qwen3:1.7b',
   extraits: 4,
   // Best raw cosine per source, decided before any call to the language model. Documents
@@ -58,6 +61,7 @@ export function valider(r = {}) {
       consignes: typeof p.consignes === 'string' ? p.consignes.trim().slice(0, 1000) : d.consignes
     },
     jeNeSaisPas: phrases.length ? phrases : DEFAUTS.jeNeSaisPas,
+    urgence: texte(r.urgence, 500, DEFAUTS.urgence),
     modeleChat: texte(r.modeleChat, 100, DEFAUTS.modeleChat),
     extraits: Math.round(nombre(r.extraits, 1, 8, DEFAUTS.extraits)),
     seuils,

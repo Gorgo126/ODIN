@@ -24,11 +24,12 @@ const SYSTEME = `Tu prépares la recherche d'une question posée à {nom}, l'ass
 - requete : 4 à 8 mots-clés de recherche, sans mots vides : les mots importants de la question, plus les termes médicaux, techniques ou encyclopédiques et les synonymes courants.
 - terme : le terme principal seul, au singulier, tel qu'un titre d'encyclopédie.
 - sante : true si la question touche à la santé, au corps, à un accident, à un danger ou à la sécurité.
-- gravite : true si la personne décrit un signe de gravité : douleur intense, soudaine ou inhabituelle, difficulté à respirer, saignement important, perte de connaissance, brûlure étendue, intoxication.
+- gravite : true seulement pour un signe vraiment grave : perte de connaissance, difficulté à respirer, douleur dans la poitrine, saignement abondant ou qui ne s'arrête pas, brûlure étendue ou profonde, fracture ouverte, convulsion, intoxication, noyade, électrisation. Une blessure courante (coupure au doigt, petite brûlure, mal de tête) est false.
 
 Exemples :
 « je me suis brûlé ! » → {"question":"Que faire après une brûlure ?","requete":"brûlure premiers soins traitement","terme":"brûlure","sante":true,"gravite":false}
 « j'ai mal de tête » → {"question":"Que faire contre un mal de tête ?","requete":"mal de tête céphalée migraine douleur traitement","terme":"céphalée","sante":true,"gravite":false}
+« il ne respire plus » → {"question":"Que faire quand une personne ne respire plus ?","requete":"arrêt respiratoire respiration bouche-à-bouche réanimation","terme":"arrêt respiratoire","sante":true,"gravite":true}
 « comment faire du feu ? » → {"question":"Comment allumer un feu ?","requete":"allumer feu bois foyer allumage","terme":"feu","sante":false,"gravite":false}
 « combien je paie de loyer ? » → {"question":"Combien je paie de loyer par mois ?","requete":"loyer mensuel montant bail charges","terme":"loyer","sante":false,"gravite":false}`;
 

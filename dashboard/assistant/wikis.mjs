@@ -31,6 +31,8 @@ export async function livresIndexes(relire = false) {
     id: e.match(/<id>urn:uuid:([^<]*)/)?.[1],
     titre: decoder(e.match(/<title>([^<]*)/)?.[1] || ''),
     index: /(^|;)_ftindex:yes(;|$)/.test(e.match(/<tags>([^<]*)/)?.[1] || ''),
+    // Medical packs (WikiMed…) can help when the emergency services cannot be reached
+    guide: /medic|sant[ée]|docteur|secours|soins/i.test(`${e.match(/<title>([^<]*)/)?.[1] || ''} ${e.match(/<summary>([^<]*)/)?.[1] || ''}`),
     contenu: e.match(/type="text\/html" href="\/kiwix\/content\/([^"/]+)"/)?.[1]
   })).filter((l) => l.id && l.index && l.contenu);
   catalogue = { quand: Date.now(), livres };
@@ -94,6 +96,7 @@ export async function passagesWikis(requetes, { articles = 15 } = {}) {
       return paragraphes(r.texte).map((p) => ({
         origine: 'wiki',
         source: livre?.titre || 'Wiki',
+        guide: !!livre?.guide,
         titre: a.titre,
         section: p.section,
         texte: p.texte,

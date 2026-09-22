@@ -2,7 +2,7 @@ import { discuter } from './generation.mjs';
 import { comprendre } from './comprehension.mjs';
 import { messagesReponse, messagesProches, remplacer, etiquette, titreSource } from './prompt.mjs';
 import { conversation, reponseConversation } from './conversation.mjs';
-import { signeDeGravite, rappelUrgence, rappelSante } from './securite.mjs';
+import { signeDeGravite, messageUrgence, estGuide } from './securite.mjs';
 
 // Answer pipeline of the assistant, as a stream of events:
 //   { type: 'etat', etat: 'comprehension' | 'recherche' | 'redaction' }
@@ -56,12 +56,18 @@ function repliProches(reglages, documents) {
 // best passage of every source above its answer threshold (a question covered by the documents
 // and by a wiki gets both). A passage whose source is below its « close » threshold is dropped.
 const ECART = 0.1;
-function utiles(extraits, reglages) {
+function utiles(extraits, reglages, urgence = false) {
   const valables = extraits.filter((e) => (e.cosinus ?? -1) >= seuil(reglages, e).proches);
   if (!valables.length) return [];
   const meilleur = Math.max(...valables.map((e) => e.cosinus));
   const premiers = new Set(Object.keys(SEUILS).map((o) => valables.filter((e) => e.origine === o)
     .sort((a, b) => b.cosinus - a.cosinus)[0]).filter((e) => e && e.cosinus >= seuil(reglages, e).reponse));
+  // Emergency: the best passage of a medical guide always goes with it, even a little below the
+  // answer threshold — the guide is what remains when no one can be reached
+  if (urgence) {
+    const guide = valables.filter(estGuide).sort((a, b) => b.cosinus - a.cosinus)[0];
+    if (guide) premiers.add(guide);
+  }
   return valables.filter((e) => e.cosinus >= meilleur - ECART || e.rangMots === 1 || premiers.has(e));
 }
 
@@ -137,10 +143,10 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   durees.comprehension = Date.now() - debut;
   // A sign of gravity found in the question itself, or by the model: the 112 comes first, whatever
   // is found afterwards
-  const urgence = signeDeGravite(question) || c.gravite;
+  const urgence = signeDeGravite(question, c.gravite);
   if (urgence) {
     premier();
-    yield { type: 'texte', texte: `${rappelUrgence(reglages)}\n\n` };
+    yield { type: 'texte', texte: `${messageUrgence(reglages)}\n\n` };
   }
 
   yield { type: 'etat', etat: 'recherche' };
@@ -161,10 +167,13 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
     }
     const niveaux = Object.entries(r.meilleurs).filter(([, m]) => m != null);
     let issue = niveaux.some(([s, m]) => m >= reglages.seuils[s].reponse) ? 1 : niveaux.some(([s, m]) => m >= reglages.seuils[s].proches) ? 2 : 3;
-    let texte = urgence ? `${rappelUrgence(reglages)}\n\n` : '';
+    let texte = urgence ? `${messageUrgence(reglages)}\n\n` : '';
     const ajouter = (t) => { texte += t; return { type: 'texte', texte: t }; };
-    const extraits = utiles(r.extraits, reglages);
+    const extraits = utiles(r.extraits, reglages, urgence);
     if (issue === 1 && !extraits.length) issue = 2;
+    // Emergency: never stop at the warning when a guide has something on the subject
+    const guides = r.documents.filter((d) => estGuide(d) && (d.cosinus ?? -1) >= seuil(reglages, d).proches);
+    if (urgence && issue === 3 && guides.length) issue = 2;
 
     if (issue === 1) {
       yield { type: 'etat', etat: 'redaction' };
@@ -190,6 +199,8 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
     let documents = [];
     if (issue === 2) {
       documents = r.documents.filter((d, i) => i === 0 || (d.cosinus ?? -1) >= seuil(reglages, d).proches);
+      // Emergency: the guides first, so the answer points to them
+      if (urgence && guides.length) documents = [...guides, ...documents.filter((d) => !guides.includes(d))].slice(0, 3);
       if (!documents.length) issue = 3;
     }
     if (issue === 2) {
@@ -212,7 +223,6 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
       yield ajouter(remplacer(phrases[Math.floor(Math.random() * phrases.length)], reglages));
     }
 
-    if (c.sante && !/\b112\b/.test(texte)) yield ajouter(`\n\n${rappelSante(reglages)}`);
 
     durees.total = Date.now() - debut;
     yield {
