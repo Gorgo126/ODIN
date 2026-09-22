@@ -21,14 +21,11 @@ const cfg = {
   modeleChat: e.MODELE_CHAT || DEFAUTS.modeleChat,
   dimensions: 0, keepAlive: '30m', inactivite: 300000,
   threads: Number(e.ASSISTANT_THREADS) || (await import('os')).availableParallelism(),
-  numCtx: 4096, lot: 8, extraits: 4, candidats: 20, cible: 400, chevauchement: 55,
+  numCtx: 4096, lot: 8, extraits: 4, candidats: 20, cible: 400, chevauchement: 55, articlesWiki: 15,
   poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 0.5
 };
-const reglages = valider({
-  ...DEFAUTS, modeleChat: cfg.modeleChat, debug: true,
-  ...(e.SEUIL_REPONSE ? { seuilReponse: Number(e.SEUIL_REPONSE) } : {}),
-  ...(e.SEUIL_PROCHES ? { seuilProches: Number(e.SEUIL_PROCHES) } : {})
-});
+// SEUILS='{"wikis":{"reponse":0.5,"proches":0.3}}' overrides the thresholds of some sources
+const reglages = valider({ ...DEFAUTS, modeleChat: cfg.modeleChat, debug: true, seuils: { ...DEFAUTS.seuils, ...JSON.parse(e.SEUILS || '{}') } });
 const { questions } = JSON.parse(await fs.readFile(`${DOSSIER}/questions.json`, 'utf8'));
 
 // Share of the answer's 5-word sequences found in the chunks; words with a digit (amounts, dates,
@@ -51,7 +48,7 @@ console.log(`Index : ${etat.documents} documents, ${etat.morceaux} morceaux en $
 for (const f of index.db.prepare('SELECT chemin, resume, resume_modele FROM fichiers WHERE statut = \'indexe\' ORDER BY chemin').all()) {
   console.log(`  résumé${f.resume_modele ? '' : ' provisoire'} ${f.chemin} : ${f.resume}`);
 }
-console.log(`\nModèle ${cfg.modeleChat}, seuils ${reglages.seuilReponse} / ${reglages.seuilProches}, poids des mots-clés ${cfg.poidsMots}\n`);
+console.log(`\nModèle ${cfg.modeleChat}, seuils ${JSON.stringify(reglages.seuils)}, poids des mots-clés ${cfg.poidsMots}\n`);
 
 const resultats = [];
 for (const q of questions) {
@@ -60,7 +57,8 @@ for (const q of questions) {
   for await (const ev of repondre({
     question: q.question, reglages, cfg,
     rechercher: (question, o) => index.rechercher(question, o),
-    reprendre: (jeton) => index.reprendre(jeton)
+    reprendre: (jeton) => index.reprendre(jeton),
+    ...(q.portee === 'documents' ? { sources: ['documents'] } : {})
   })) {
     if (ev.type === 'texte') texte += ev.texte;
     else if (ev.type === 'fin') fin = ev;
@@ -70,27 +68,38 @@ for (const q of questions) {
   const echecs = [];
   if (erreur) echecs.push(`erreur : ${erreur}`);
   if (fin && fin.issue !== q.issue) echecs.push(`issue ${fin.issue} au lieu de ${q.issue}`);
+  if (q.issue === 0 && fin?.durees.recherche !== undefined) echecs.push('recherche lancée pour une conversation');
+  const origines = new Set([...(fin?.sources || []), ...(fin?.documents || [])].map((x) => x.origine));
+  const manquantes = (q.sources || []).filter((o) => !origines.has(o));
+  if (manquantes.length) echecs.push(`sources absentes : ${manquantes.join(', ')}`);
+  if (q.sante && !/\b112\b/.test(texte)) echecs.push('rappel du 112 absent');
   if (fin?.issue === 1 && q.attendu && !q.attendu.some((a) => bas.includes(a.toLowerCase()))) echecs.push(`aucun de ${JSON.stringify(q.attendu)}`);
   const interdits = (q.interdit || []).filter((a) => bas.includes(a.toLowerCase()));
   if (interdits.length) echecs.push(`interdit : ${JSON.stringify(interdits)}`);
   const copie = fin?.issue === 1 ? partCopiee(texte, fin.debug.extraits.filter((x) => x.envoye)) : 0;
   if (copie > 0.4) echecs.push(`copie ${Math.round(copie * 100)} %`);
   resultats.push({ q, fin, echecs, copie });
-  console.log(`${echecs.length ? 'KO' : 'OK'} [attendu ${q.issue}, obtenu ${fin?.issue ?? '?'}] cos ${fin?.meilleurCosinus?.toFixed(3)} | 1er mot ${fin?.durees.premierMot ?? '–'} ms, total ${fin?.durees.total ?? '–'} ms | copie ${Math.round(copie * 100)} %`);
+  const d = fin?.durees || {};
+  const cosinus = Object.entries(fin?.meilleurs || {}).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(', ');
+  console.log(`${echecs.length ? 'KO' : 'OK'} [attendu ${q.issue}, obtenu ${fin?.issue ?? '?'}] cos ${cosinus || '–'} | copie ${Math.round(copie * 100)} %`);
+  console.log(`   Temps : compréhension ${d.comprehension ?? '–'} ms, recherche ${d.recherche ?? '–'} ms (${Object.entries(d.sources || {}).map(([k, v]) => `${k} ${v}`).join(', ')}), 1er mot ${d.premierMot ?? '–'} ms, total ${d.total ?? '–'} ms`);
   console.log(`   Q : ${q.question}`);
+  if (fin?.comprehension) console.log(`   Compris : ${fin.comprehension.type}${fin.comprehension.valide ? '' : ' (repli)'}, « ${fin.comprehension.question} », requête « ${fin.comprehension.requete} », terme « ${fin.comprehension.terme} »${fin.comprehension.sante ? ', santé' : ''}`);
   console.log(`   R : ${texte.replace(/\s+/g, ' ').trim()}`);
-  if (fin?.sources?.length) console.log(`   Sources : ${fin.sources.map((s) => s.titre + (s.pages.length ? ` p. ${s.pages}` : '')).join(' · ')}`);
-  if (fin?.documents?.length) console.log(`   Documents : ${fin.documents.map((d) => d.titre).join(' · ')}`);
+  if (fin?.sources?.length) console.log(`   Sources : ${fin.sources.map((s) => `${s.etiquette} ${s.titre}${s.pages.length ? ` p. ${s.pages}` : ''}`).join(' · ')}`);
+  if (fin?.documents?.length) console.log(`   Proches : ${fin.documents.map((x) => `${x.etiquette} ${x.titre}`).join(' · ')}`);
   if (fin?.issue === 1) console.log(`   Extraits envoyés : ${fin.debug.extraits.filter((x) => x.envoye).length}/${fin.debug.extraits.length}`);
   if (echecs.length) console.log(`   ⚠ ${echecs.join(' ; ')}`);
 }
 
 const ok = resultats.filter((r) => !r.echecs.length).length;
-const cos = (issue) => resultats.filter((r) => r.q.issue === issue).map((r) => r.fin?.meilleurCosinus ?? 0).sort((a, b) => a - b);
 const moyenne = (l) => Math.round(l.reduce((s, x) => s + x, 0) / (l.length || 1));
-const avecMot = resultats.filter((r) => r.fin && r.fin.issue !== 3);
+const avecMot = resultats.filter((r) => r.fin && [1, 2].includes(r.fin.issue));
 console.log(`\nBilan : ${ok}/${resultats.length} questions sans échec`);
-for (const i of [1, 2, 3]) console.log(`  cosinus max, questions d'issue ${i} : ${cos(i).map((c) => c.toFixed(3)).join(' ')}`);
+for (const i of [1, 2, 3]) for (const s of ['documents', 'wikis', 'livres']) {
+  const l = resultats.filter((r) => r.q.issue === i && r.fin?.meilleurs?.[s] != null).map((r) => r.fin.meilleurs[s]).sort((a, b) => a - b);
+  if (l.length) console.log(`  cosinus max ${s}, questions d'issue ${i} : ${l.map((c) => c.toFixed(3)).join(' ')}`);
+}
 console.log(`  temps moyen jusqu'au 1er mot (issues 1 et 2) : ${moyenne(avecMot.map((r) => r.fin.durees.premierMot))} ms, total : ${moyenne(avecMot.map((r) => r.fin.durees.total))} ms`);
 console.log(`  part copiée moyenne (issue 1) : ${Math.round(100 * resultats.filter((r) => r.fin?.issue === 1).reduce((s, r) => s + r.copie, 0) / (resultats.filter((r) => r.fin?.issue === 1).length || 1))} %`);
 process.exit(ok === resultats.length ? 0 : 1);

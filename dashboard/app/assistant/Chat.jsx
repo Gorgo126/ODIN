@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 
-const ETATS = { reformulation: 'compréhension…', recherche: 'recherche…', redaction: 'rédaction…' };
+const ETATS = { comprehension: 'compréhension…', recherche: 'recherche…', redaction: 'rédaction…' };
 
 // Citations [n] of the answer as small links to their source
 function Texte({ texte, renvois }) {
@@ -11,7 +11,7 @@ function Texte({ texte, renvois }) {
       {morceaux.map((m, i) => {
         const n = m.match(/^\[(\d+)\]$/)?.[1];
         const r = n && renvois?.[n];
-        return r ? <a key={i} href={r.lien} className="chat-renvoi" title={r.titre}>{n}</a> : m;
+        return r ? <a key={i} href={r.lien} className="chat-renvoi" title={`${r.etiquette} : ${r.titre}`}>{n}</a> : m;
       })}
     </p>
   );
@@ -27,14 +27,14 @@ function Reponse({ r }) {
         <p className="chat-sources">
           Sources :{' '}
           {r.fin.sources.map((s, i) => (
-            <span key={s.chemin}>{i > 0 && ' · '}<a href={s.lien}>{s.titre}</a>{s.pages.length > 0 && ` (p. ${s.pages.join(', ')})`}</span>
+            <span key={s.lien}>{i > 0 && ' · '}<small className="chat-origine">{s.etiquette}</small> <a href={s.lien}>{s.titre}</a>{s.pages.length > 0 && ` (p. ${s.pages.join(', ')})`}</span>
           ))}
         </p>
       )}
       {r.fin?.documents?.length > 0 && (
         <div className="grille chat-documents">
           {r.fin.documents.map((d) => (
-            <a key={d.chemin} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.type}</em></a>
+            <a key={d.lien} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.etiquette}</em></a>
           ))}
         </div>
       )}

@@ -48,6 +48,8 @@ function config() {
     // Keywords weigh half as much as the vectors (bench, lot 3); needed for exact terms and codes
     poidsMots: Number(e.ASSISTANT_POIDS_MOTS) || 0.5,
     candidats: 20,
+    // Kiwix articles read per question (their paragraphs are sorted locally, 8 get an embedding)
+    articlesWiki: 15,
     cible: 400,
     chevauchement: 55
   };

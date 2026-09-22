@@ -1,27 +1,226 @@
 {
-  "description": "Questions sur tests/documents. issue : 1 réponse trouvée, 2 documents proches, 3 je ne sais pas. attendu : mots dont au moins un doit figurer dans une réponse d'issue 1. interdit : mots qui ne doivent jamais apparaître (réponse inventée, ou réponse à la question dans l'issue 2).",
+  "description": "Questions sur tests/documents et les sources installées. issue : 0 conversation, 1 réponse trouvée, 2 documents proches, 3 je ne sais pas. portee « documents » : recherche limitée à Mes documents (les 20 questions d'origine). attendu : un de ces mots dans une réponse d'issue 1. interdit : mots qui ne doivent jamais apparaître. sources : origines qui doivent figurer parmi les sources ou les documents proches (documents, wiki, livre).",
   "questions": [
-    { "question": "Combien je paie de loyer par mois, charges comprises ?", "issue": 1, "attendu": ["810"] },
-    { "question": "Quel est le préavis pour quitter mon appartement ?", "issue": 1, "attendu": ["un mois", "1 mois"] },
-    { "question": "Ma chaudière affiche E04, qu'est-ce que je dois faire ?", "issue": 1, "attendu": ["1,5"] },
-    { "question": "Combien j'ai payé d'électricité en mars ?", "issue": 1, "attendu": ["64,20", "64.20"] },
-    { "question": "Quel est le numéro de mon contrat d'assurance habitation ?", "issue": 1, "attendu": ["HAB-2024-55812"] },
-    { "question": "J'ai combien de temps pour déclarer un dégât des eaux ?", "issue": 1, "attendu": ["5 jours", "cinq jours"] },
-    { "question": "Quand est le prochain rappel de vaccin de Léa ?", "issue": 1, "attendu": ["mars 2027"] },
-    { "question": "Il faut combien d'œufs pour les crêpes ?", "issue": 1, "attendu": ["4", "quatre"] },
-    { "question": "Depuis quand je travaille à l'imprimerie ?", "issue": 1, "attendu": ["3 février 2021", "février 2021"] },
-    { "question": "Combien va me coûter le ravalement de la façade ?", "issue": 1, "attendu": ["1 260", "1260"] },
-
-    { "question": "Combien coûte le remplacement complet d'une chaudière ?", "issue": 2, "interdit": ["€", "euros"] },
-    { "question": "Mon assurance couvre-t-elle le vol de mon vélo ?", "issue": 2, "interdit": ["oui, ", "est couvert", "sont couverts"] },
-    { "question": "Quelle est la date de mon prochain rendez-vous chez le dentiste ?", "issue": 2, "interdit": ["2026", "2027"] },
-    { "question": "Quel est le numéro de téléphone de ma propriétaire ?", "issue": 2, "interdit": ["04 ", "06 ", "07 ", "01 23"] },
-    { "question": "Combien de jours de congés payés me reste-t-il ?", "issue": 2, "interdit": ["jours restants", "il te reste", "il vous reste"] },
-
-    { "question": "Quelle est la capitale de l'Australie ?", "issue": 3, "interdit": ["Canberra", "Sydney"] },
-    { "question": "Qui a gagné la Coupe du monde de football en 2018 ?", "issue": 3, "interdit": ["France", "Croatie"] },
-    { "question": "Comment fonctionne la photosynthèse ?", "issue": 3, "interdit": ["chlorophylle", "lumière"] },
-    { "question": "Quelle est la distance entre la Terre et la Lune ?", "issue": 3, "interdit": ["384", "km"] },
-    { "question": "Écris-moi un poème sur la mer.", "issue": 3, "interdit": ["vague", "océan"] }
+    {
+      "question": "Combien je paie de loyer par mois, charges comprises ?",
+      "issue": 1,
+      "attendu": [
+        "810"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quel est le préavis pour quitter mon appartement ?",
+      "issue": 1,
+      "attendu": [
+        "un mois",
+        "1 mois"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Ma chaudière affiche E04, qu'est-ce que je dois faire ?",
+      "issue": 1,
+      "attendu": [
+        "1,5"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Combien j'ai payé d'électricité en mars ?",
+      "issue": 1,
+      "attendu": [
+        "64,20",
+        "64.20"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quel est le numéro de mon contrat d'assurance habitation ?",
+      "issue": 1,
+      "attendu": [
+        "HAB-2024-55812"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "J'ai combien de temps pour déclarer un dégât des eaux ?",
+      "issue": 1,
+      "attendu": [
+        "5 jours",
+        "cinq jours"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quand est le prochain rappel de vaccin de Léa ?",
+      "issue": 1,
+      "attendu": [
+        "mars 2027"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Il faut combien d'œufs pour les crêpes ?",
+      "issue": 1,
+      "attendu": [
+        "4",
+        "quatre"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Depuis quand je travaille à l'imprimerie ?",
+      "issue": 1,
+      "attendu": [
+        "3 février 2021",
+        "février 2021"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Combien va me coûter le ravalement de la façade ?",
+      "issue": 1,
+      "attendu": [
+        "1 260",
+        "1260"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Combien coûte le remplacement complet d'une chaudière ?",
+      "issue": 2,
+      "interdit": [
+        "€",
+        "euros"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Mon assurance couvre-t-elle le vol de mon vélo ?",
+      "issue": 2,
+      "interdit": [
+        "oui, ",
+        "est couvert",
+        "sont couverts"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quelle est la date de mon prochain rendez-vous chez le dentiste ?",
+      "issue": 2,
+      "interdit": [
+        "2026",
+        "2027"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quel est le numéro de téléphone de ma propriétaire ?",
+      "issue": 2,
+      "interdit": [
+        "04 ",
+        "06 ",
+        "07 ",
+        "01 23"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Combien de jours de congés payés me reste-t-il ?",
+      "issue": 2,
+      "interdit": [
+        "jours restants",
+        "il te reste",
+        "il vous reste"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quelle est la capitale de l'Australie ?",
+      "issue": 3,
+      "interdit": [
+        "Canberra",
+        "Sydney"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Qui a gagné la Coupe du monde de football en 2018 ?",
+      "issue": 3,
+      "interdit": [
+        "France",
+        "Croatie"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Comment fonctionne la photosynthèse ?",
+      "issue": 3,
+      "interdit": [
+        "chlorophylle",
+        "lumière"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Quelle est la distance entre la Terre et la Lune ?",
+      "issue": 3,
+      "interdit": [
+        "384",
+        "km"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "Écris-moi un poème sur la mer.",
+      "issue": 3,
+      "interdit": [
+        "vague",
+        "océan"
+      ],
+      "portee": "documents"
+    },
+    {
+      "question": "je me suis brûlé !",
+      "issue": 1,
+      "sources": [
+        "wiki"
+      ],
+      "attendu": [
+        "eau"
+      ],
+      "sante": true
+    },
+    {
+      "question": "salut",
+      "issue": 0
+    },
+    {
+      "question": "merci",
+      "issue": 0
+    },
+    {
+      "question": "Quel est le numéro de mon contrat d'assurance habitation ?",
+      "issue": 1,
+      "sources": [
+        "documents"
+      ],
+      "attendu": [
+        "HAB-2024-55812"
+      ]
+    },
+    {
+      "question": "Que faire en cas de petite brûlure ?",
+      "issue": 1,
+      "sources": [
+        "documents",
+        "wiki"
+      ],
+      "attendu": [
+        "eau"
+      ],
+      "sante": true
+    }
   ]
 }

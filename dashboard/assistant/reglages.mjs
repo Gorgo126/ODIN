@@ -19,12 +19,15 @@ export const DEFAUTS = {
   ],
   modeleChat: 'qwen3:1.7b',
   extraits: 4,
-  // Best raw cosine of the question against every chunk, calibrated on tests/documents (lot 3,
-  // EmbeddingGemma 768 d): answerable 0.40–0.72, close 0.21–0.39, off-topic 0.02–0.15. At 0.38,
-  // a close question (0.389) got an answer invented from an unrelated chunk: 0.40, a cautious
-  // outcome 2 rather than an invention.
-  seuilReponse: 0.4,
-  seuilProches: 0.18,
+  // Best raw cosine per source, decided before any call to the language model. Documents
+  // (calibrated on tests/documents, lot 3, EmbeddingGemma 768 d): answerable 0.40–0.72, close
+  // 0.21–0.39, off-topic 0.02–0.15; at 0.38 a close question got an answer invented from an
+  // unrelated chunk, hence 0.40. Wikis and books: see CLAUDE.md for their calibration.
+  seuils: {
+    documents: { reponse: 0.4, proches: 0.18 },
+    wikis: { reponse: 0.4, proches: 0.18 },
+    livres: { reponse: 0.4, proches: 0.18 }
+  },
   temperature: 0.4,
   memoire: true,
   debug: false
@@ -39,7 +42,11 @@ export function valider(r = {}) {
   const p = r.personnalite || {};
   const d = DEFAUTS.personnalite;
   const phrases = Array.isArray(r.jeNeSaisPas) ? r.jeNeSaisPas.map((s) => texte(s, 300, '')).filter(Boolean).slice(0, 30) : [];
-  const seuilReponse = nombre(r.seuilReponse, 0, 1, DEFAUTS.seuilReponse);
+  const seuils = Object.fromEntries(Object.entries(DEFAUTS.seuils).map(([source, d]) => {
+    const lu = r.seuils?.[source] || {};
+    const reponse = nombre(lu.reponse, 0, 1, d.reponse);
+    return [source, { reponse, proches: Math.min(nombre(lu.proches, 0, 1, d.proches), reponse) }];
+  }));
   return {
     nom: texte(r.nom, 40, DEFAUTS.nom),
     personnalite: {
@@ -52,8 +59,7 @@ export function valider(r = {}) {
     jeNeSaisPas: phrases.length ? phrases : DEFAUTS.jeNeSaisPas,
     modeleChat: texte(r.modeleChat, 100, DEFAUTS.modeleChat),
     extraits: Math.round(nombre(r.extraits, 1, 8, DEFAUTS.extraits)),
-    seuilReponse,
-    seuilProches: Math.min(nombre(r.seuilProches, 0, 1, DEFAUTS.seuilProches), seuilReponse),
+    seuils,
     temperature: nombre(r.temperature, 0, 1.5, DEFAUTS.temperature),
     memoire: typeof r.memoire === 'boolean' ? r.memoire : DEFAUTS.memoire,
     debug: typeof r.debug === 'boolean' ? r.debug : DEFAUTS.debug

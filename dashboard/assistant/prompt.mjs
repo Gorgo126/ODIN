@@ -4,7 +4,7 @@
 export const NON_TROUVE = '[NON_TROUVE]';
 
 const NOYAU = `Tu es {nom}, l'assistant documentaire d'ODIN. Nous sommes le {date}.
-Tu réponds à une question uniquement à partir des extraits de documents fournis avec elle, numérotés [1], [2], etc.
+Tu réponds à une question uniquement à partir des extraits fournis avec elle, numérotés [1], [2], etc. Ils viennent des documents de la personne (« Mes documents »), de wikis installés (« Wiki ») ou de livres (« Livres »).
 
 Règles, sans exception :
 1. N'utilise que les informations des extraits. N'ajoute jamais de connaissance générale, même si tu la crois exacte.
@@ -14,6 +14,7 @@ Règles, sans exception :
 5. Quand plusieurs extraits se complètent, combine-les en une seule réponse cohérente.
 6. Après chaque information, mets le numéro de l'extrait qui la donne entre crochets : [1], [2].
 7. Réponds dans la langue de la question.
+8. Santé et sécurité : ne donne que les gestes et informations présents dans les extraits, jamais un conseil médical qui n'y figure pas, et jamais une dose de médicament. Si la situation peut être grave (brûlure étendue, profonde ou au visage, difficulté à respirer, perte de connaissance, saignement abondant, douleur dans la poitrine, intoxication), termine par le rappel d'appeler le 112.
 
 À ne pas faire (copie de l'extrait) :
 Extrait [1] : « Le loyer mensuel, hors charges, est fixé à la somme de 750 euros, payable le 5 de chaque mois. »
@@ -79,11 +80,18 @@ const adresse = (reglages) => (reglages.personnalite.tutoiement ? 'tu' : 'vous')
 // Small models follow the last message best: the key rules are repeated there
 const rappel = (reglages) => `\n\n(Réponds directement, avec tes propres mots, en ${reglages.personnalite.tutoiement ? 'tutoyant : « tu », « ton », « ta », jamais « vous »' : 'vouvoyant : « vous », « votre »'}, avec les renvois [n]. Si les extraits ne répondent pas : ${NON_TROUVE}.)`;
 
+// Label of a source, shown to the model and under the answer
+export function etiquette(e) {
+  if (e.origine === 'wiki') return `Wiki (${e.source})`;
+  if (e.origine === 'livre') return `Livres (${e.source})`;
+  return 'Mes documents';
+}
+
 // Outcome 1: messages for the answer written from the chunks
 export function messagesReponse(reglages, extraits, question) {
   const lignes = extraits.map((e, i) => {
-    const ou = [e.titre, e.page ? `p. ${e.page}` : '', e.section || ''].filter(Boolean).join(', ');
-    return `[${i + 1}] ${ou} — ${e.texte.replace(/\s+/g, ' ')}`;
+    const ou = [e.origine === 'livre' ? '' : e.titre, e.page ? `p. ${e.page}` : '', e.section || ''].filter(Boolean).join(', ');
+    return `[${i + 1}] ${etiquette(e)}${ou ? ` — ${ou}` : ''} — ${e.texte.replace(/\s+/g, ' ')}`;
   });
   return [
     { role: 'system', content: promptSysteme(reglages) },
@@ -105,19 +113,10 @@ Interdit : répondre à la question elle-même, supposer ou déduire quoi que ce
 ${p.tutoiement ? 'Tu tutoies la personne.' : 'Tu vouvoies la personne.'} Ton : ${p.ton}. Réponds dans la langue de la question.
 
 Exemple : « Je n'ai pas trouvé de réponse exacte, mais le contrat de bail aborde la question des charges, et le relevé de mars en détaille les montants. »`;
-  const liste = documents.map((d) => `- « ${d.titre} » (${d.type}) : ${d.resume || 'pas de résumé'}`).join('\n');
+  const liste = documents.map((d) => `- « ${d.titre} » (${etiquette(d)}) : ${d.resume || 'pas de résumé'}`).join('\n');
   return [
     { role: 'system', content: remplacer(systeme, reglages) },
     { role: 'user', content: `Question : ${question}\n\nDocuments proches :\n${liste}` }
-  ];
-}
-
-// Short memory: the follow-up question rewritten as a standalone one before the search
-export function messagesReformulation(historique, question) {
-  const echange = historique.map((h) => `Question : ${h.question}\nRéponse : ${String(h.reponse || '').slice(0, 600)}`).join('\n\n');
-  return [
-    { role: 'system', content: 'Réécris la dernière question pour qu\'elle se comprenne seule, sans l\'échange précédent : remplace les mots comme « et pour », « ça », « il » par ce qu\'ils désignent. Si elle se comprend déjà seule, recopie-la. Réponds uniquement par la question réécrite, sans guillemets ni commentaire.' },
-    { role: 'user', content: `Échange précédent :\n${echange}\n\nDernière question : ${question}` }
   ];
 }
 

@@ -4,20 +4,22 @@ import { flux } from './ollama.mjs';
 // threads) are the same on every call: a different value would reload it.
 // cfg: { ollama, modeleChat, keepAlive, inactivite, threads, numCtx }
 
-function corps(cfg, messages, temperature) {
+// format: a JSON schema for a structured answer; maxJetons: length limit of the answer
+function corps(cfg, messages, temperature, format, maxJetons) {
   return {
     model: cfg.modeleChat,
     messages,
     stream: true,
     think: false,
     keep_alive: cfg.keepAlive,
-    options: { num_ctx: cfg.numCtx, temperature, ...(cfg.threads ? { num_thread: cfg.threads } : {}) }
+    ...(format ? { format } : {}),
+    options: { num_ctx: cfg.numCtx, temperature, ...(cfg.threads ? { num_thread: cfg.threads } : {}), ...(maxJetons ? { num_predict: maxJetons } : {}) }
   };
 }
 
 // Text pieces as they come
-export async function* discuter(cfg, messages, { temperature = 0.4, signal } = {}) {
-  for await (const o of flux(cfg.ollama, '/api/chat', corps(cfg, messages, temperature), cfg.inactivite, signal)) {
+export async function* discuter(cfg, messages, { temperature = 0.4, signal, format, maxJetons } = {}) {
+  for await (const o of flux(cfg.ollama, '/api/chat', corps(cfg, messages, temperature, format, maxJetons), cfg.inactivite, signal)) {
     if (o.error) throw new Error(`Ollama : ${o.error}`);
     // With think: false there is no reasoning; skipped anyway if a model sends some
     if (o.message?.content) yield o.message.content;

@@ -41,7 +41,7 @@ function paragraphes(texte, page) {
   for (const brut of texte.split(/\n\s*\n/)) {
     const p = brut.trim();
     if (!p || /^\d+$/.test(p)) continue;
-    if (ressembleTitre(p)) blocs.push({ titre: true, texte: espaces(p), page });
+    if (ressembleTitre(p)) blocs.push({ titre: true, devine: true, texte: espaces(p), page });
     else blocs.push({ texte: espaces(p.replace(/\n/g, ' ')), page });
   }
   return blocs;
@@ -128,6 +128,41 @@ function docx(octets) {
   return { titre, blocs };
 }
 
+// Cleanup shared by every format:
+// - running headers and footers (the same short block on 3 pages or slides or more) are dropped;
+// - page numbers (« 12 », « Page 6 », « 3/14 ») are dropped;
+// - a heading needs 3 letters; a PDF or TXT « heading » right after another is a table cell;
+// - short consecutive blocks (figures, labels of a slide) are joined: « 96 · Score SEO ».
+const COURT = 40;
+function nettoyer(blocs) {
+  const cle = (b) => b.texte.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+  const vus = new Map();
+  const chiffre = (b) => /^[\d\s.,:%€$+×x/|-]+$/i.test(b.texte.trim());
+  // Figures alone are not headers: « 96 » and « 100 » would share the same key
+  for (const b of blocs) if (b.texte.length < 150 && !chiffre(b)) vus.set(cle(b), (vus.get(cle(b)) || 0) + 1);
+  const res = [];
+  let valeur = '';   // a figure alone (slide, table) waits for its label, the next block
+  for (const b of blocs) {
+    const nombre = chiffre(b);
+    if (!nombre && b.texte.length < 150 && vus.get(cle(b)) >= 3) continue;
+    // Page numbers only exist in paged formats (PDF)
+    if (b.page && (nombre || /^page\s*\d+(\s*[/|]\s*\d+)?$/i.test(b.texte.trim()))) continue;
+    if (nombre && !b.titre) { valeur = valeur ? `${valeur} ${b.texte.trim()}` : b.texte.trim(); continue; }
+    if (valeur) { b.texte = `${valeur} · ${b.texte}`; valeur = ''; }
+    if (b.titre && (b.texte.match(/\p{L}/gu)?.length || 0) < 3) continue;
+    const prec = res.at(-1);
+    if (!b.titre && b.texte.length < COURT && prec && !prec.titre && prec.texte.length < 200 && prec.page === b.page) {
+      prec.texte = `${prec.texte} · ${b.texte}`;
+      continue;
+    }
+    res.push({ ...b });
+  }
+  if (valeur) res.push({ texte: valeur });
+  // Two headings in a row: only the last one is a heading, the others are plain text
+  for (let i = 0; i < res.length - 1; i++) if (res[i].titre && res[i + 1].titre && res[i].devine) delete res[i].titre;
+  return res.map(({ devine, ...b }) => b);
+}
+
 export async function extraire(fichier) {
   const ext = path.extname(fichier).toLowerCase();
   if (!EXTENSIONS.includes(ext)) throw new FormatNonPrisEnCharge(`format non pris en charge (${ext || 'sans extension'})`);
@@ -142,7 +177,7 @@ export async function extraire(fichier) {
   }
   // A PDF title such as « Microsoft Word - devis.docx » is worse than the file name
   const titre = r.titre && !/^(microsoft|untitled|sans titre)|\.(docx?|pdf|odt)$/i.test(r.titre) ? r.titre : '';
-  return { type: TYPES[ext] || ext.slice(1), titre: titre || nomLisible(fichier), blocs: r.blocs, pages: r.pages };
+  return { type: TYPES[ext] || ext.slice(1), titre: titre || nomLisible(fichier), blocs: nettoyer(r.blocs), pages: r.pages };
 }
 
 // « factures/2024_03-edf.pdf » → « 2024 03 edf »

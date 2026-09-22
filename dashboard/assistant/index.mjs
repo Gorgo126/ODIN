@@ -8,6 +8,9 @@ import { profil, reduire, vectoriser } from './embeddings.mjs';
 import { ErreurOllama } from './ollama.mjs';
 import { completer } from './generation.mjs';
 import { messagesResume } from './prompt.mjs';
+import { classer } from './bm25.mjs';
+import { passagesWikis } from './wikis.mjs';
+import { passagesLivres } from './source-livres.mjs';
 import { normaliser, motsRequete } from '../lib/normalisation.mjs';
 
 // Index of the personal documents: files, chunks, full-text index (FTS5) and vectors (Float32 BLOB,
@@ -16,6 +19,8 @@ import { normaliser, motsRequete } from '../lib/normalisation.mjs';
 const LOT = 8;          // chunks per embedding call (cfg.lot)
 const RECHARGE = 30000; // at most every 30 s during a long indexing, the in-memory vectors are refreshed
 const K_RRF = 60;
+// Raised whenever the extraction or the chunking changes: the index is rebuilt at the next start
+const VERSION_EXTRACTION = 2;
 const PAUSE_MAX = 5 * 60 * 1000; // a pause never forgotten: resumed at the latest after 5 min
 const PDF_VIDE = 30;             // fewer letters per page on average: a scanned PDF
 
@@ -130,14 +135,20 @@ export class Index {
     }
   }
 
-  // Vectors of another embedding model are not comparable: everything is indexed again
+  // Vectors of another embedding model are not comparable, and a better extraction changes the
+  // chunks: in both cases everything is indexed again
   verifierModele() {
     const ancien = this.meta('modele');
+    const version = this.meta('extraction');
     if (ancien && ancien !== this.cfg.modeleEmbedding) {
       log(`Modèle d'embeddings changé (${ancien} → ${this.cfg.modeleEmbedding}) : réindexation complète`);
       this.vider();
+    } else if (ancien && version !== String(VERSION_EXTRACTION)) {
+      log(`Extraction améliorée (version ${VERSION_EXTRACTION}) : réindexation complète`);
+      this.vider();
     }
     this.meta('modele', this.cfg.modeleEmbedding);
+    this.meta('extraction', VERSION_EXTRACTION);
   }
 
   vider() {
@@ -363,28 +374,13 @@ export class Index {
     return this.db.prepare('SELECT rowid AS id, bm25(morceaux_fts, 1.0, 0.6, 0.4) AS score FROM morceaux_fts WHERE morceaux_fts MATCH ? ORDER BY score LIMIT ?').all(requete, n);
   }
 
-  // Hybrid search: vectors and keywords fused by RRF. The best raw cosine over all chunks is kept
-  // apart: the answer thresholds (lot 3) use it, not the fused score.
-  // garder: the indexing stays paused after the search (until reprendre(jeton), when the answer is
-  // written); otherwise it resumes right away.
-  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false } = {}) {
-    const debut = Date.now();
-    if (!sources.includes('documents')) return { extraits: [], documents: [], meilleurCosinus: null, duree: 0 };
-    const jeton = this.suspendre();
-    let q = null;
-    try {
-      const [v] = await vectoriser(this.cfg, [profil(this.cfg.modeleEmbedding).requete(question)]);
-      q = reduire(v, this.memoire.d || v.length);
-    } catch (e) {
-      if (!(e instanceof ErreurOllama)) { this.reprendre(jeton); throw e; }
-      this.erreurOllama = e.message;
-    }
-    if (!garder) this.reprendre(jeton);
+  // Personal documents: vectors and keywords fused by RRF (weighted). The best raw cosine over all
+  // chunks is kept apart: the answer thresholds use it, not the fused score.
+  documentsProches(q, question, n) {
     const candidats = this.cfg.candidats;
     const proches = q && this.memoire.d ? this.plusProches(q, candidats) : [];
     const mots = this.motsCles(question, candidats);
     const fusion = new Map();
-    // Weighted RRF: the keywords count for poidsMots (1 = as much as the vectors)
     const noter = (id, rang, champ, poids) => {
       const f = fusion.get(id) || { id, rrf: 0, rangVecteur: null, rangMots: null };
       f.rrf += poids / (K_RRF + rang + 1);
@@ -394,30 +390,112 @@ export class Index {
     proches.forEach((p, i) => noter(p.id, i, 'rangVecteur', 1));
     mots.forEach((m, i) => noter(m.id, i, 'rangMots', this.cfg.poidsMots ?? 1));
     const classes = [...fusion.values()].sort((a, b) => b.rrf - a.rrf);
-
     const ligne = this.db.prepare(`
       SELECT m.id, m.chemin, m.page, m.section, m.texte, f.titre, f.type, f.resume
       FROM morceaux m JOIN fichiers f ON f.chemin = m.chemin WHERE m.id = ?`);
-    const details = (f) => {
-      const l = ligne.get(f.id);
-      return l && { ...l, rrf: f.rrf, rangVecteur: f.rangVecteur, rangMots: f.rangMots, cosinus: q ? this.cosinus(q, f.id) : null };
-    };
     const extraits = [];
     const documents = new Map();
     for (const f of classes) {
-      const d = details(f);
-      if (!d) continue; // removed since the vectors were loaded
+      const l = ligne.get(f.id);
+      if (!l) continue; // removed since the vectors were loaded
+      const d = { ...l, origine: 'documents', source: 'Mes documents', rrf: f.rrf, rangVecteur: f.rangVecteur, rangMots: f.rangMots, cosinus: q ? this.cosinus(q, f.id) : null };
       if (extraits.length < n) extraits.push(d);
       if (!documents.has(d.chemin) && documents.size < 3) {
-        documents.set(d.chemin, { chemin: d.chemin, titre: d.titre, type: d.type, resume: d.resume, page: d.page, cosinus: d.cosinus });
+        documents.set(d.chemin, { origine: 'documents', source: 'Mes documents', chemin: d.chemin, titre: d.titre, type: d.type, resume: d.resume, page: d.page, cosinus: d.cosinus });
       }
       if (extraits.length >= n && documents.size >= 3) break;
     }
+    return { extraits, documents: [...documents.values()], meilleur: proches[0]?.cos ?? null };
+  }
+
+  // Search in every source. Documents: the index above. Wikis (Kiwix) and books: their passages are
+  // fetched while the question is embedded, sorted by a local BM25 on both queries (keywords and
+  // main term), and only the best ones get an embedding (8 wiki, 4 book paragraphs: CPU time).
+  // Common ranking by cosine (same model, same prefixes). garder: the indexing stays paused after the
+  // search (until reprendre(jeton), when the answer is written); otherwise it resumes right away.
+  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes } = {}) {
+    const debut = Date.now();
+    const durees = {};
+    const mesurer = (nom, promesse) => {
+      const t = Date.now();
+      return promesse.then((v) => { durees[nom] = Date.now() - t; return v; }, (e) => {
+        durees[nom] = Date.now() - t;
+        log(`Source ${nom} indisponible : ${e.message}`);
+        return [];
+      });
+    };
+    const req = (requetes?.length ? requetes : [question]).filter(Boolean);
+    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15 })) : Promise.resolve([]);
+    const pLivres = sources.includes('livres') ? mesurer('livres', passagesLivres(req)) : Promise.resolve([]);
+
+    const jeton = this.suspendre();
+    const prof = profil(this.cfg.modeleEmbedding);
+    let q = null;
+    try {
+      const t = Date.now();
+      // The rewritten question for the vectors, the keyword queries for FTS5, Kiwix and BM25
+      const [v] = await vectoriser(this.cfg, [prof.requete(question)]);
+      q = reduire(v, this.memoire.d || v.length);
+      durees.requete = Date.now() - t;
+    } catch (e) {
+      if (!(e instanceof ErreurOllama)) { this.reprendre(jeton); throw e; }
+      this.erreurOllama = e.message;
+    }
+
+    const docs = sources.includes('documents') ? this.documentsProches(q, req.join(' '), n) : { extraits: [], documents: [], meilleur: null };
+    const [wikis, livres] = await Promise.all([pWikis, pLivres]);
+    const externes = [...classer(wikis, req, 8), ...classer(livres, req, 4)];
+    if (q && externes.length) {
+      const t = Date.now();
+      try {
+        const vs = await vectoriser(this.cfg, externes.map((p) => prof.document(p.section ? `${p.section}\n${p.texte}` : p.texte, p.titre)));
+        externes.forEach((p, i) => {
+          const v = reduire(vs[i], q.length);
+          let c = 0;
+          for (let k = 0; k < q.length; k++) c += v[k] * q[k];
+          p.cosinus = c;
+        });
+      } catch (e) {
+        if (!(e instanceof ErreurOllama)) { this.reprendre(jeton); throw e; }
+      }
+      durees.vecteurs = Date.now() - t;
+    }
+    if (!garder) this.reprendre(jeton);
+
+    const meilleur = (origine) => externes.filter((p) => p.origine === origine && p.cosinus != null).reduce((m, p) => Math.max(m, p.cosinus), -1);
+    const meilleurs = {
+      documents: docs.meilleur,
+      wikis: wikis.length ? Math.max(meilleur('wiki'), -1) : null,
+      livres: livres.length ? Math.max(meilleur('livre'), -1) : null
+    };
+    for (const k of ['wikis', 'livres']) if (meilleurs[k] === -1) meilleurs[k] = null;
+    const extraits = [...docs.extraits, ...externes.filter((p) => p.cosinus != null)]
+      .sort((a, b) => (b.cosinus ?? -1) - (a.cosinus ?? -1))
+      .slice(0, n);
+    // The best keyword match of the documents keeps its place: an exact reference or code can have
+    // a low cosine
+    const exact = docs.extraits.find((e) => e.rangMots === 1);
+    if (exact && !extraits.includes(exact)) extraits.splice(extraits.length - 1, 1, exact);
+    // Closest items for outcome 2: documents with their summary, wiki articles and book pages
+    const vus = new Set();
+    const proches = [...docs.documents, ...externes.filter((p) => p.cosinus != null).map((p) => ({
+      origine: p.origine, source: p.source, titre: p.titre, type: p.origine === 'wiki' ? 'article' : 'livre',
+      resume: p.origine === 'wiki' ? p.texte.slice(0, 200) : `${p.section ? `${p.section}, ` : ''}p. ${p.page}`,
+      lien: p.lien, page: p.page, cosinus: p.cosinus
+    }))].sort((a, b) => (b.cosinus ?? -1) - (a.cosinus ?? -1)).filter((d) => {
+      const cle = d.lien || d.chemin;
+      if (vus.has(cle)) return false;
+      vus.add(cle);
+      return true;
+    }).slice(0, 3);
+    const valeurs = Object.values(meilleurs).filter((v) => v != null);
     return {
       extraits,
-      documents: [...documents.values()],
-      meilleurCosinus: proches[0]?.cos ?? null,
+      documents: proches,
+      meilleurs,
+      meilleurCosinus: valeurs.length ? Math.max(...valeurs) : null,
       vecteurs: !!q,
+      durees: { ...durees, total: Date.now() - debut },
       duree: Date.now() - debut,
       ...(garder ? { jeton } : {})
     };
