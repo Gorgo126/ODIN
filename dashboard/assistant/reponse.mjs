@@ -56,6 +56,7 @@ function repliProches(reglages, documents) {
 // best passage of every source above its answer threshold (a question covered by the documents
 // and by a wiki gets both). A passage whose source is below its « close » threshold is dropped.
 const ECART = 0.1;
+const DELAI_RESEAU = 500; // the probe never delays an answer: after that, « unknown » wording
 function utiles(extraits, reglages, urgence = false) {
   const valables = extraits.filter((e) => (e.cosinus ?? -1) >= seuil(reglages, e).proches);
   if (!valables.length) return [];
@@ -121,7 +122,7 @@ function ressembleAUneReponse(texte, documents) {
   });
 }
 
-export async function* repondre({ question, historique = [], reglages, cfg, rechercher, reprendre, signal, sources: parmi = ['documents', 'wikis', 'livres'] }) {
+export async function* repondre({ question, historique = [], reglages, cfg, rechercher, reprendre, reseau, signal, sources: parmi = ['documents', 'wikis', 'livres'] }) {
   const debut = Date.now();
   const durees = {};
   const options = { temperature: reglages.temperature, signal };
@@ -143,11 +144,15 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   durees.comprehension = Date.now() - debut;
   // A sign of gravity found in the question itself, or by the model: the 112 comes first, whatever
   // is found afterwards
+  // Signs of gravity: the warning closes the answer (the gestures are read first). The state of the
+  // network is asked for now, in the background: it is read only at the end.
   const urgence = signeDeGravite(question, c.gravite);
-  if (urgence) {
-    premier();
-    yield { type: 'texte', texte: `${messageUrgence(reglages)}\n\n` };
-  }
+  const etatReseau = urgence && reseau
+    ? Promise.race([
+      Promise.resolve().then(reseau).catch(() => 'inconnu'),
+      new Promise((r) => setTimeout(() => r('inconnu'), DELAI_RESEAU))
+    ])
+    : null;
 
   yield { type: 'etat', etat: 'recherche' };
   let r;
@@ -167,7 +172,7 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
     }
     const niveaux = Object.entries(r.meilleurs).filter(([, m]) => m != null);
     let issue = niveaux.some(([s, m]) => m >= reglages.seuils[s].reponse) ? 1 : niveaux.some(([s, m]) => m >= reglages.seuils[s].proches) ? 2 : 3;
-    let texte = urgence ? `${messageUrgence(reglages)}\n\n` : '';
+    let texte = '';
     const ajouter = (t) => { texte += t; return { type: 'texte', texte: t }; };
     const extraits = utiles(r.extraits, reglages, urgence);
     if (issue === 1 && !extraits.length) issue = 2;
@@ -224,12 +229,19 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
     }
 
 
+    let reseauUtilise = null;
+    if (urgence) {
+      reseauUtilise = etatReseau ? await etatReseau : 'inconnu';
+      yield ajouter(`\n\n${messageUrgence(reglages, reseauUtilise)}`);
+    }
+
     durees.total = Date.now() - debut;
     yield {
       type: 'fin',
       issue,
       comprehension: c,
       urgence,
+      reseau: reseauUtilise,
       // texte: the whole answer, with its references renumbered by source
       ...(issue === 1 ? sources(texte, extraits) : { texte, renvois: {}, sources: [] }),
       documents: documents.map((d) => ({ origine: d.origine, etiquette: etiquette(d), titre: d.titre, libelle: titreSource({ ...d, pages: d.page ? [d.page] : [] }), type: d.type, chemin: d.chemin, lien: lien(d) })),

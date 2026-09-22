@@ -72,7 +72,7 @@ function personnalite(p) {
 
 export function remplacer(s, reglages) {
   const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  return s.replaceAll('{nom}', reglages.nom).replaceAll('{date}', date);
+  return s.replaceAll('{nom}', reglages.nom).replaceAll('{date}', date).replaceAll('{secours}', reglages.numeroUrgence || '112');
 }
 
 // Full system prompt, also shown as a preview in the settings (lot 4)

@@ -17,9 +17,15 @@ export const DEFAUTS = {
     'Je cherche, mais tes documents ne disent rien à ce sujet.',
     'Aucun de tes documents n\'aborde cette question.'
   ],
-  // Shown first when the question describes a sign of gravity. ODIN serves where everything else
-  // may be cut off: the emergency services first « if possible », the installed guides otherwise.
-  urgence: 'Si c\'est grave, contacte les secours (112) si c\'est possible. Sinon, consulte les guides médicaux installés sur ODIN.',
+  // Shown after the answer when the question describes a sign of gravity, in the wording that fits
+  // what ODIN knows of the network. ODIN never tells anyone not to call: no internet for ODIN does
+  // not mean the phone network is down. {secours} is the emergency number.
+  numeroUrgence: '112',
+  urgences: {
+    disponible: 'ODIN a encore accès à internet, donc le réseau fonctionne sans doute aussi : appelle le {secours} sans attendre. En attendant les secours, suis les guides ci-dessus.',
+    indisponible: 'ODIN n\'a plus accès à internet. Essaie quand même le {secours}, le réseau téléphonique peut fonctionner alors qu\'internet est coupé. Si tu n\'obtiens personne, appuie-toi sur les guides médicaux ci-dessus.',
+    inconnu: 'Essaie d\'appeler le {secours}. Si tu n\'obtiens personne, appuie-toi sur les guides médicaux ci-dessus.'
+  },
   modeleChat: 'qwen3:1.7b',
   extraits: 4,
   // Best raw cosine per source, decided before any call to the language model. Documents
@@ -61,7 +67,8 @@ export function valider(r = {}) {
       consignes: typeof p.consignes === 'string' ? p.consignes.trim().slice(0, 1000) : d.consignes
     },
     jeNeSaisPas: phrases.length ? phrases : DEFAUTS.jeNeSaisPas,
-    urgence: texte(r.urgence, 500, DEFAUTS.urgence),
+    numeroUrgence: (texte(r.numeroUrgence, 20, DEFAUTS.numeroUrgence).match(/[\d +]{2,20}/) || [DEFAUTS.numeroUrgence])[0].trim(),
+    urgences: Object.fromEntries(Object.entries(DEFAUTS.urgences).map(([k, d]) => [k, texte(r.urgences?.[k], 500, d)])),
     modeleChat: texte(r.modeleChat, 100, DEFAUTS.modeleChat),
     extraits: Math.round(nombre(r.extraits, 1, 8, DEFAUTS.extraits)),
     seuils,

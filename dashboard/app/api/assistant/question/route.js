@@ -1,4 +1,4 @@
-import { demander, reglagesAssistant, configGeneration } from '../../../../lib/assistant.mjs';
+import { demander, reglagesAssistant, configGeneration, reseauAssistant } from '../../../../lib/assistant.mjs';
 import { repondre } from '../../../../assistant/reponse.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,8 @@ export async function POST(req) {
     cfg: configGeneration(reglages),
     rechercher: (q, options) => demander('rechercher', { question: q, ...options }),
     reprendre: (jeton) => demander('reprendre', { jeton }, 10000).catch(() => {}),
+    // Network state for the emergency warning: the home page probe, never a second one
+    reseau: reseauAssistant,
     signal: AbortSignal.any([req.signal, arret.signal])
   });
   const encodeur = new TextEncoder();

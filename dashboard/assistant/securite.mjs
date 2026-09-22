@@ -33,7 +33,9 @@ export function signeDeGravite(question, drapeauModele = false) {
   return drapeauModele && !COURANT.test(n);
 }
 
-export const messageUrgence = (reglages) => remplacer(reglages.urgence, reglages);
+// Wording chosen from what ODIN knows of the network (« disponible », « indisponible », « inconnu »):
+// with internet the phone network probably works too; without it, trying is still worth it.
+export const messageUrgence = (reglages, reseau) => remplacer(reglages.urgences[reseau] || reglages.urgences.inconnu, reglages);
 
 // A source that can help right away when the emergency services cannot be reached
 export const estGuide = (e) => e?.guide === true;

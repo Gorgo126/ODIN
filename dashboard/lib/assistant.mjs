@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { readFileSync } from 'fs';
 import { DEFAUTS, valider } from '../assistant/reglages.mjs';
+import { liaison } from './liaison.mjs';
 
 const FICHIER_REGLAGES = '/config/assistant.json';
 
@@ -15,6 +16,19 @@ export function reglagesAssistant() {
 }
 
 const threads = () => Number(process.env.ASSISTANT_THREADS) || os.availableParallelism();
+
+// State of the network for the emergency warning: the « Connectivité externe » probe of the home
+// page, read as it is (it refreshes by itself every 45 s and answers at once). An answer is never
+// delayed by it: without a result in 300 ms, the wording for an unknown state is used.
+export async function reseauAssistant() {
+  try {
+    const l = await Promise.race([liaison(), new Promise((r) => setTimeout(() => r(null), 300))]);
+    if (!l || l.silence || l.etat === 'inconnu') return 'inconnu';
+    return l.enLigne ? 'disponible' : 'indisponible';
+  } catch {
+    return 'inconnu';
+  }
+}
 
 // Options of the language model calls: identical on every call, or Ollama reloads the model
 export function configGeneration(reglages) {
