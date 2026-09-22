@@ -5,7 +5,8 @@
 ### Le savoir du monde, même quand internet s'arrête.
 
 Un serveur de connaissances **100 % hors ligne**, installable en une commande sur Ubuntu ou Debian.<br>
-Wikipédia, des milliers de livres, des cartes et vos documents, pour tous les appareils du réseau local.
+Wikipédia, des milliers de livres, des cartes, vos documents et un assistant qui les lit pour vous,<br>
+pour tous les appareils du réseau local.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-c8963e?style=flat-square)](#licence)
 [![Ubuntu 24.04 · Debian 12](https://img.shields.io/badge/Ubuntu%2024.04%20·%20Debian%2012-2b2b2b?style=flat-square&logo=linux&logoColor=white)](#installation)
@@ -41,6 +42,7 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 | 📚 | **Bibliothèque** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
 | 📁 | **Documents** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Carte** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
+| 🤖 | **Assistant** | Il cherche dans vos documents, la bibliothèque et vos livres, puis répond avec ses propres mots, uniquement à partir de ce qu'il a trouvé, en citant ses sources. Quand il ne sait pas, il le dit. |
 | 🖥️ | **Tableau de bord** | L'état des services, une recherche dans toute la bibliothèque, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
 
 L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite.
@@ -65,6 +67,46 @@ Monde (villes et routes, ou tout le détail)
 Chaque pack est extrait à la demande du fichier mondial [Protomaps](https://protomaps.com) (données
 OpenStreetMap), pour ne télécharger que la région voulue. La liste se modifie dans
 [`catalogue/cartes.txt`](catalogue/cartes.txt).
+
+### L'assistant
+
+Il ne répond **que** à partir de ce qui est installé sur la machine : vos documents personnels, les
+wikis de la bibliothèque et vos livres PDF. Il n'utilise jamais ses connaissances générales, et il
+n'invente pas de source.
+
+1. **Il comprend d'abord la demande.** « je me suis brûlé ! » devient une recherche sur « brûlure,
+   premiers soins, traitement ». Une salutation reçoit une réponse polie, sans aucune recherche.
+2. **Il cherche dans les trois sources en même temps**, par le sens et par les mots.
+3. **Il répond avec ses mots**, en citant ses sources : « Livre · Là où il n'y a pas de docteur,
+   p. 164 », « WikiMed · Brûlure », « Mes documents · Contrat de bail ». Les renvois [1] [2] dans le
+   texte ouvrent la bonne page.
+4. **S'il ne trouve pas la réponse exacte**, il dit en une phrase quels documents s'en approchent.
+   S'il ne trouve rien du tout, il le dit simplement.
+5. **Santé et sécurité** : si la question décrit un signe grave (difficulté à respirer, saignement
+   important, perte de connaissance…), la réponse se termine toujours par un rappel d'appeler les
+   secours, adapté à ce qu'ODIN sait du réseau, et renvoie vers les guides médicaux installés.
+
+Vos documents sont indexés tout seuls, dès que vous en déposez dans **Documents** : PDF, Word, texte,
+Markdown et HTML. Rien ne sort de la machine, et tout fonctionne sans internet.
+
+Dans **Configuration**, l'assistant reçoit un nom, un visage (dix dessins en pixel art), une couleur,
+un ton, le tutoiement ou le vouvoiement, et la longueur de ses réponses. La même page affiche l'état
+de son index et permet de le reconstruire.
+
+#### Voir comment il a répondu (`?debug=1`)
+
+Ouvrez **`http://odin.local/assistant?debug=1`** pour afficher, sous chaque réponse, un bloc
+« Debug » dépliable :
+
+- la **question reformulée** et les mots-clés de recherche qu'il a choisis ;
+- les **passages** trouvés dans chaque source, avec leur **score de proximité** (le cosinus), et ceux
+  qui ont réellement été envoyés au modèle ;
+- le **temps de chaque étape** : compréhension, recherche, rédaction.
+
+C'est utile pour comprendre une réponse décevante : soit la recherche n'a pas trouvé le bon passage,
+soit le modèle l'a mal utilisé. L'option ne vaut que pour l'onglet ouvert, ne change rien aux
+réponses et n'est enregistrée nulle part : rechargez la page sans `?debug=1` pour revenir à
+l'affichage normal.
 
 ## Comment ça marche
 
@@ -100,17 +142,19 @@ flowchart TB
     CA -->|"/kiwix"| K["Kiwix<br/><sub>moteur ZIM</sub>"]
     CA -->|"/documents"| F["FileBrowser<br/><sub>fichiers</sub>"]
     CA -->|"/tuiles"| T[("Cartes PMTiles<br/><sub>data/cartes</sub>")]
+    D -->|"assistant"| O["Ollama<br/><sub>qwen3 · EmbeddingGemma</sub>"]
     D -.->|"recherche · lecture"| K
     D -.->|"extraction pmtiles"| T
+    D -.->|"index des documents"| I[("SQLite<br/><sub>data/assistant</sub>")]
 ```
 
 | Service | Image (version figée) | Rôle |
 |---|---|---|
 | `caddy` | `caddy:2.11.4-alpine` | Porte d'entrée, routage, authentification déléguée au tableau de bord. |
-| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche, lecteur d'articles, carte (MapLibre GL), ajout de packs. Contient l'outil `pmtiles` qui extrait les régions. |
+| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche, lecteur d'articles, carte (MapLibre GL), ajout de packs, et l'assistant : son index (SQLite) et ses réponses. Contient l'outil `pmtiles` qui extrait les régions. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
-| `ollama` | `ollama/ollama:0.34.2` | Moteur des modèles d'IA, joignable seulement à l'intérieur d'ODIN. Indexe vos documents (EmbeddingGemma) pour l'assistant documentaire, en préparation. |
+| `ollama` | `ollama/ollama:0.34.2` | Moteur des modèles, joignable seulement à l'intérieur d'ODIN : EmbeddingGemma pour l'index, qwen3 pour la rédaction des réponses. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
 ne lit que les tuiles affichées.
@@ -135,7 +179,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── cartes/          #   packs de cartes (.pmtiles)
     ├── documents/       #   fichiers partagés
     ├── ollama/          #   modèles d'IA
-    ├── assistant/       #   index des documents (SQLite)
+    ├── assistant/       #   index des documents de l'assistant (SQLite)
     └── config/          #   mot de passe (haché avec scrypt)
 ```
 
@@ -161,7 +205,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 |---|---|
 | Système | Ubuntu 24.04 LTS ou Debian 12, architecture x86_64 |
 | Processeur | 4 cœurs |
-| Mémoire | 8 Go |
+| Mémoire | 8 Go (l'assistant en utilise environ 2,5 Go quand il répond) |
 | Disque | 40 Go, plus la taille des contenus (de 80 Mo à plusieurs dizaines de Go par pack) |
 | Réseau | Une connexion internet **pendant l'installation seulement** |
 
@@ -172,7 +216,7 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 ```
 
 Le script installe Docker si besoin, récupère ODIN dans `/opt/odin`, démarre les services et
-télécharge le modèle d'indexation des documents (EmbeddingGemma, 620 Mo) et le fond de carte mondial (45 Mo). À la fin, il affiche
+télécharge les modèles de l'assistant (EmbeddingGemma, 620 Mo, et qwen3, 1,4 Go, choisi selon la mémoire de la machine) et le fond de carte mondial (45 Mo). À la fin, il affiche
 les adresses où joindre ODIN.
 
 ### Première visite
@@ -180,6 +224,7 @@ les adresses où joindre ODIN.
 1. Depuis n'importe quel appareil du réseau, ouvrez **http://odin.local**, ou l'adresse IP affichée à la fin de l'installation.
 2. Choisissez le mot de passe qui protégera ODIN.
 3. Dans **Configuration**, installez les contenus et les cartes voulus tant que la connexion est disponible.
+4. Ouvrez **l'assistant** : donnez-lui un nom, un visage et une couleur, puis posez-lui une question.
 
 C'est prêt : vous pouvez débrancher internet.
 
