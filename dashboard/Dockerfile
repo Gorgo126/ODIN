@@ -44,5 +44,9 @@ RUN apk add --no-cache "poppler-utils~25.12"
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
+# Worker thread of the document assistant, run as plain files outside the Next bundle, with the
+# shared modules it imports from lib/
+COPY --from=build /app/assistant ./assistant
+COPY --from=build /app/lib ./lib
 EXPOSE 3000
 CMD ["node", "server.js"]

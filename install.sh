@@ -60,7 +60,7 @@ else
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/cartes"
+mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/cartes" "$CIBLE/data/assistant"
 [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 
@@ -128,6 +128,13 @@ if [ -n "$AVANT" ]; then
     docker compose restart "${a_relancer[@]}"
   fi
 fi
+
+msg "Modèle d'indexation des documents"
+# Downloaded now: offline, the assistant must never need to fetch anything
+MODELE_EMBEDDING=$(sed -n 's/^MODELE_EMBEDDING=//p' .env | tail -1)
+MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
+docker exec ollama ollama pull "$MODELE_EMBEDDING" \
+  || echo "  Modèle $MODELE_EMBEDDING non téléchargé : relancez l'installeur avec internet."
 
 msg "Fond de carte mondial"
 # Installed through the dashboard, which holds the pinned pmtiles tool

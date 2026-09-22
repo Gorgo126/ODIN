@@ -1,0 +1,19 @@
+{
+  "corpus": [
+    "/livres/pas-de-docteur/document.pdf",
+    "/documents/Test/DPS-Chauffagiste_Briefing-site-web_p5-14.pdf",
+    "/documents/Test/Présentation.html",
+    "/documents/Test/test.txt"
+  ],
+  "modeles": [
+    { "modele": "embeddinggemma:300m", "dimensions": [768, 256] },
+    { "modele": "bge-m3:567m", "dimensions": [0] }
+  ],
+  "questions": [
+    { "question": "Que faire quand on s'est brûlé légèrement la main ?", "fichier": "document.pdf", "pages": [163, 164] },
+    { "question": "Comment savoir si un os est cassé et comment le maintenir en place ?", "fichier": "document.pdf", "pages": [155, 156] },
+    { "question": "Mon enfant a la diarrhée, comment voir s'il manque d'eau ?", "fichier": "document.pdf", "pages": [254, 255] },
+    { "question": "Comment préparer une boisson avec du sucre et du sel pour un malade ?", "fichier": "document.pdf", "pages": [255, 256] },
+    { "question": "Quelqu'un a été sorti de l'eau et ne respire plus, que faire ?", "fichier": "document.pdf", "pages": [133, 134] }
+  ]
+}

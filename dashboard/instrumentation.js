@@ -6,5 +6,8 @@ export async function register() {
     // Books installed without their text (older version, failed extraction): made searchable
     const { rattraperTextes } = await import('./lib/livres.mjs');
     rattraperTextes().catch((e) => console.error(`Extraction des textes : ${e.message}`));
+    // Document assistant: its worker thread indexes data/documents from startup
+    const { demarrerAssistant } = await import('./lib/assistant.mjs');
+    demarrerAssistant();
   }
 }

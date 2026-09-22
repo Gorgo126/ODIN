@@ -110,7 +110,7 @@ flowchart TB
 | `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche, lecteur d'articles, carte (MapLibre GL), ajout de packs. Contient l'outil `pmtiles` qui extrait les régions. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
-| `ollama` | `ollama/ollama:0.34.2` | Moteur des modèles d'IA, joignable seulement à l'intérieur d'ODIN. L'assistant documentaire qui s'en sert est en préparation. |
+| `ollama` | `ollama/ollama:0.34.2` | Moteur des modèles d'IA, joignable seulement à l'intérieur d'ODIN. Indexe vos documents (EmbeddingGemma) pour l'assistant documentaire, en préparation. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
 ne lit que les tuiles affichées.
@@ -135,6 +135,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── cartes/          #   packs de cartes (.pmtiles)
     ├── documents/       #   fichiers partagés
     ├── ollama/          #   modèles d'IA
+    ├── assistant/       #   index des documents (SQLite)
     └── config/          #   mot de passe (haché avec scrypt)
 ```
 
@@ -171,7 +172,7 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 ```
 
 Le script installe Docker si besoin, récupère ODIN dans `/opt/odin`, démarre les services et
-télécharge le fond de carte mondial (45 Mo). À la fin, il affiche
+télécharge le modèle d'indexation des documents (EmbeddingGemma, 620 Mo) et le fond de carte mondial (45 Mo). À la fin, il affiche
 les adresses où joindre ODIN.
 
 ### Première visite
@@ -217,3 +218,6 @@ touche pas à vos données dans `data/`.
 ## Licence
 
 [MIT](https://opensource.org/license/mit). Les contenus Kiwix et les modèles d'IA gardent leurs propres licences.
+EmbeddingGemma (Google), qui indexe vos documents, est distribué sous les
+[conditions d'utilisation de Gemma](https://ai.google.dev/gemma/terms) : ce n'est pas une licence libre, et
+l'usage du modèle doit respecter sa [politique d'utilisation](https://ai.google.dev/gemma/prohibited_use_policy).
