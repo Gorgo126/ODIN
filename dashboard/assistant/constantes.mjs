@@ -41,6 +41,12 @@ export const CONSTANTES = {
   // The last exchange is kept, so a follow-up question (« et pour avril ? ») is understood
   memoire: true,
 
+  // Answer to a question about the assistant itself (« qui es-tu ? »), built from the settings
+  presentation: {
+    tu: 'Je m\'appelle {nom}. Je réponds à tes questions en cherchant dans tes documents, les livres et la bibliothèque d\'ODIN. Je ne sais rien d\'autre.',
+    vous: 'Je m\'appelle {nom}. Je réponds à vos questions en cherchant dans vos documents, les livres et la bibliothèque d\'ODIN. Je ne sais rien d\'autre.'
+  },
+
   // Sentence of the assistant when the page opens
   accueil: 'Pose-moi une question sur tes documents, la bibliothèque ou tes livres.'
 };

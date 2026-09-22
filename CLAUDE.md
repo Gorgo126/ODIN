@@ -204,6 +204,14 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Compréhension (assistant/comprehension.mjs) : JSON strict (format = schéma Ollama) pour reformuler
   seulement : question autonome, requête (mots-clés + termes médicaux et synonymes), terme principal,
   drapeaux sante et gravite. JSON invalide : la phrase brute.
+  Contexte (assistant/contexte.mjs) : l'échange précédent n'est joint à la compréhension que si la
+  question ne tient pas debout seule (moins de 5 mots, début et/donc/alors/pourquoi/comment ça/et si,
+  pronom ou démonstratif sans référent, ou aucun mot hors mots outils). Sinon elle est traitée seule :
+  une question complète ne doit jamais être relue à travers la précédente. Garde-fou : si la requête
+  réécrite ne partage aucun mot significatif avec la question, la reformulation est jetée.
+  Le modèle de rédaction ne reçoit jamais l'échange précédent, seulement les passages et la question.
+  Questions sur l'assistant (« qui es-tu ? ») : règles dans conversation.mjs, réponse fixe bâtie sur
+  les réglages (CONSTANTES.presentation), sans recherche.
   Sécurité (assistant/securite.mjs) : seuls les signes vraiment graves (perte de connaissance, respiration,
   douleur thoracique, saignement abondant, brûlure étendue ou profonde, fracture ouverte, convulsion,
   intoxication, noyade, électrisation, et appel au suicide) déclenchent l'avertissement, par règles sur la

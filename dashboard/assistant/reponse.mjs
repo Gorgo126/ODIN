@@ -2,6 +2,7 @@ import { discuter } from './generation.mjs';
 import { comprendre } from './comprehension.mjs';
 import { messagesReponse, messagesProches, remplacer, etiquette, titreSource } from './prompt.mjs';
 import { conversation, reponseConversation } from './conversation.mjs';
+import { besoinDeContexte, reformulationFiable } from './contexte.mjs';
 import { signeDeGravite, messageUrgence, estGuide } from './securite.mjs';
 
 // Answer pipeline of the assistant, as a stream of events:
@@ -140,7 +141,15 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   }
 
   yield { type: 'etat', etat: 'comprehension' };
-  const c = await comprendre(cfg, reglages, question, reglages.memoire ? historique : [], signal);
+  // The previous exchange is joined only when the question cannot stand on its own: a complete
+  // question is never read through the one before it.
+  const contexte = reglages.memoire && besoinDeContexte(question) ? historique : [];
+  const c = await comprendre(cfg, reglages, question, contexte, signal);
+  // A rewritten query that shares nothing with the question has drifted: the raw question is used
+  if (!reformulationFiable(question, `${c.requete} ${c.question}`)) {
+    Object.assign(c, { question, requete: question, terme: '', valide: false, derive: true });
+  }
+  c.contexte = contexte.length > 0;
   durees.comprehension = Date.now() - debut;
   // A sign of gravity found in the question itself, or by the model: the warning closes the answer
   // Signs of gravity: the warning closes the answer (the gestures are read first). The state of the
