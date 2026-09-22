@@ -46,6 +46,13 @@ function ouvrir(fichier) {
     -- Normalized text (no accents, no case, ligatures expanded), rowid = morceaux.id
     CREATE VIRTUAL TABLE IF NOT EXISTS morceaux_fts USING fts5 (
       texte, section, titre, content = '', contentless_delete = 1, tokenize = 'unicode61');
+    -- Conversations of the assistant. One password, one household: no user here.
+    CREATE TABLE IF NOT EXISTS conversations (
+      id INTEGER PRIMARY KEY, titre TEXT NOT NULL, cree INTEGER NOT NULL, modifie INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY, conversation INTEGER NOT NULL, role TEXT NOT NULL, texte TEXT NOT NULL,
+      sources TEXT, issue INTEGER, quand INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS messages_conversation ON messages (conversation);
   `);
   // Added in lot 3: 1 once the language model has written the summary (0 = first sentence only)
   if (!db.prepare('PRAGMA table_info(fichiers)').all().some((c) => c.name === 'resume_modele')) {
@@ -338,6 +345,58 @@ export class Index {
       resume = resume.charAt(0).toUpperCase() + resume.slice(1);
       if (resume) this.db.prepare('UPDATE fichiers SET resume = ?, resume_modele = 1 WHERE chemin = ?').run(resume, f.chemin);
     }
+  }
+
+  // Conversations: kept in the same base, next to the index. A reindexing never touches them.
+  conversations() {
+    return this.db.prepare('SELECT id, titre, cree, modifie FROM conversations ORDER BY modifie DESC LIMIT 200').all();
+  }
+
+  conversation(id) {
+    const c = this.db.prepare('SELECT id, titre, cree, modifie FROM conversations WHERE id = ?').get(Number(id));
+    if (!c) return null;
+    const messages = this.db.prepare('SELECT id, role, texte, sources, issue, quand FROM messages WHERE conversation = ? ORDER BY id').all(c.id);
+    return { ...c, messages: messages.map((m) => ({ ...m, sources: m.sources ? JSON.parse(m.sources) : [] })) };
+  }
+
+  // An exchange is written once the answer is finished: an empty conversation is never saved.
+  // The title is the beginning of the first question, without any call to the model.
+  ajouterEchange({ conversation, question, reponse, sources = [], issue = null }) {
+    const maintenant = Date.now();
+    let id = Number(conversation) || null;
+    if (id && !this.db.prepare('SELECT 1 FROM conversations WHERE id = ?').get(id)) id = null;
+    if (!id) {
+      const titre = question.replace(/\s+/g, ' ').trim().slice(0, 50) || 'Sans titre';
+      id = Number(this.db.prepare('INSERT INTO conversations (titre, cree, modifie) VALUES (?, ?, ?)').run(titre, maintenant, maintenant).lastInsertRowid);
+    } else {
+      this.db.prepare('UPDATE conversations SET modifie = ? WHERE id = ?').run(maintenant, id);
+    }
+    const inserer = this.db.prepare('INSERT INTO messages (conversation, role, texte, sources, issue, quand) VALUES (?, ?, ?, ?, ?, ?)');
+    inserer.run(id, 'question', question, null, null, maintenant);
+    inserer.run(id, 'reponse', reponse, JSON.stringify(sources), issue, Date.now());
+    return this.conversation(id);
+  }
+
+  renommerConversation(id, titre) {
+    const t = String(titre || '').replace(/\s+/g, ' ').trim().slice(0, 100);
+    if (!t) throw new Error('Titre vide');
+    this.db.prepare('UPDATE conversations SET titre = ? WHERE id = ?').run(t, Number(id));
+    return this.conversations();
+  }
+
+  supprimerConversation(id) {
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('DELETE FROM messages WHERE conversation = ?').run(Number(id));
+      this.db.prepare('DELETE FROM conversations WHERE id = ?').run(Number(id));
+      this.db.exec('COMMIT');
+    } catch (e) { this.db.exec('ROLLBACK'); throw e; }
+    return this.conversations();
+  }
+
+  viderConversations() {
+    this.db.exec('DELETE FROM messages; DELETE FROM conversations;');
+    return [];
   }
 
   // Nearest chunks by cosine (vectors are normalized: a dot product), best first

@@ -35,6 +35,12 @@ parentPort.on('message', async ({ id, type, args = {} }) => {
     if (type === 'etat') resultat = index.etat();
     else if (type === 'rechercher') resultat = await index.rechercher(String(args.question), args);
     else if (type === 'reprendre') resultat = index.reprendre(args.jeton);
+    else if (type === 'conversations') resultat = index.conversations();
+    else if (type === 'conversation') resultat = index.conversation(args.id);
+    else if (type === 'ajouterEchange') resultat = index.ajouterEchange(args);
+    else if (type === 'renommer') resultat = index.renommerConversation(args.id, args.titre);
+    else if (type === 'supprimerConversation') resultat = index.supprimerConversation(args.id);
+    else if (type === 'viderConversations') resultat = index.viderConversations();
     else if (type === 'reindexer') {
       index.scanner({ complet: args.complet === true }).catch((e) => log(`Indexation interrompue : ${e.message}`));
       resultat = index.etat();

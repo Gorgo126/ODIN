@@ -29,12 +29,25 @@ export async function POST(req) {
     signal: AbortSignal.any([req.signal, arret.signal])
   });
   const encodeur = new TextEncoder();
+  const conversation = Number(corps?.conversation) || null;
+  let fin = null;
   const flux = new ReadableStream({
     async pull(controleur) {
       try {
         const { value, done } = await evenements.next();
-        if (done) controleur.close();
-        else controleur.enqueue(encodeur.encode(JSON.stringify(value) + '\n'));
+        if (done) {
+          // The exchange is saved once the answer is finished: an empty conversation is never kept
+          if (fin) {
+            const c = await demander('ajouterEchange', {
+              conversation, question, reponse: fin.texte || '', sources: fin.sources || [], issue: fin.issue
+            }, 10000).catch(() => null);
+            if (c) controleur.enqueue(encodeur.encode(JSON.stringify({ type: 'conversation', id: c.id, titre: c.titre, modifie: c.modifie }) + '\n'));
+          }
+          controleur.close();
+          return;
+        }
+        if (value.type === 'fin') fin = value;
+        controleur.enqueue(encodeur.encode(JSON.stringify(value) + '\n'));
       } catch (e) {
         controleur.enqueue(encodeur.encode(JSON.stringify({ type: 'erreur', message: e.message }) + '\n'));
         controleur.close();
