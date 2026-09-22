@@ -1,4 +1,5 @@
 import { normaliser, motsRequete } from '../lib/normalisation.mjs';
+import { CONSTANTES } from './constantes.mjs';
 
 // BM25 over a handful of passages (paragraphs of wiki articles or book pages), to choose the few
 // worth an embedding. Words of 5 letters or more also match longer forms (brûlure → brûlures).
@@ -8,6 +9,26 @@ import { normaliser, motsRequete } from '../lib/normalisation.mjs';
 const K1 = 1.2;
 const B = 0.75;
 const BONUS_SECTION = 0.5; // per query word found in the section heading
+// Rules around the main term (assistant/terme.mjs). Without a sure term, none of them applies.
+const POIDS = {
+  titreExact: 3,        // « Fièvre » for the term « fièvre »
+  titreCommence: 1.8,   // « Fièvre jaune » : one more word at most
+  specialisation: 2 / 3, // « Fièvre pourprée des montagnes Rocheuses », only if a general one exists
+  sectionGenerale: 1.4  // section from the closed list of constantes.mjs
+};
+const SECTIONS = new Set(CONSTANTES.sectionsGenerales);
+
+// How the title of a passage relates to the main term
+function rapportAuTerme(titre, terme) {
+  const t = normaliser(titre || '').replace(/\s+/g, ' ').trim();
+  if (!t || !terme) return { type: 'aucun', extras: [] };
+  const motsTerme = terme.split(' ').filter(Boolean);
+  const motsTitre = t.split(' ').filter(Boolean);
+  const extras = motsTitre.filter((m) => !motsTerme.includes(m));
+  if (t === terme) return { type: 'exact', extras };
+  if (t.startsWith(`${terme} `)) return { type: extras.length <= 1 ? 'commence' : 'specialise', extras };
+  return { type: t.includes(terme) ? 'specialise' : 'aucun', extras };
+}
 
 export const termes = (requetes) => motsRequete(requetes.filter(Boolean).join(' '));
 
@@ -20,9 +41,12 @@ export function couper(texte, max = 700) {
   return fin > max / 2 ? debut.slice(0, fin + 1) : `${debut.replace(/\s+\S*$/, '')} …`;
 }
 
-export function classer(passages, requetes, n) {
+export function classer(passages, requetes, n, { terme = null } = {}) {
   const mots = termes(requetes);
   if (!mots.length || !passages.length) return [];
+  // A general article among the candidates: only then is a specialised one pushed back
+  const rapports = passages.map((p) => rapportAuTerme(p.titre, terme));
+  const general = rapports.some((r) => r.type === 'exact' || r.type === 'commence');
   const docs = passages.map((p) => normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
   const moyenne = docs.reduce((s, d) => s + d.length, 0) / docs.length;
   const compte = (d, m) => d.reduce((k, t) => k + (t === m || (m.length >= 5 && t.startsWith(m)) ? 1 : 0), 0);
@@ -36,13 +60,23 @@ export function classer(passages, requetes, n) {
     return mots.filter((m) => s.some((t) => t === m || (m.length >= 5 && t.startsWith(m)))).length;
   };
   return passages
-    .map((p, i) => ({
-      p,
-      score: frequences[i].reduce((s, f, j) => s + idf[j] * (f * (K1 + 1)) / (f + K1 * (1 - B + B * docs[i].length / moyenne)), 0)
-        * (1 + BONUS_SECTION * enSection(p))
-    }))
+    .map((p, i) => {
+      const brut = frequences[i].reduce((s, f, j) => s + idf[j] * (f * (K1 + 1)) / (f + K1 * (1 - B + B * docs[i].length / moyenne)), 0)
+        * (1 + BONUS_SECTION * enSection(p));
+      const r = rapports[i];
+      const regles = [];
+      let score = brut;
+      if (r.type === 'exact') { score *= POIDS.titreExact; regles.push(`titre exact ×${POIDS.titreExact}`); }
+      else if (r.type === 'commence') { score *= POIDS.titreCommence; regles.push(`titre commence ×${POIDS.titreCommence}`); }
+      else if (r.type === 'specialise' && general && r.extras.length >= 2 && !r.extras.some((m) => mots.some((q) => q === m || (m.length >= 5 && m.startsWith(q))))) {
+        score *= POIDS.specialisation;
+        regles.push(`cas particulier ×${POIDS.specialisation.toFixed(2)}`);
+      }
+      if (SECTIONS.has(normaliser(p.section || '').trim())) { score *= POIDS.sectionGenerale; regles.push(`section générale ×${POIDS.sectionGenerale}`); }
+      return { p, score, brut, regles };
+    })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, n)
-    .map((x) => ({ ...x.p, texte: couper(x.p.texte), bm25: x.score }));
+    .map((x) => ({ ...x.p, texte: couper(x.p.texte), bm25: x.score, bm25Brut: x.brut, regles: x.regles }));
 }

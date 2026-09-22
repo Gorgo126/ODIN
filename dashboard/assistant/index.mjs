@@ -9,6 +9,7 @@ import { ErreurOllama } from './ollama.mjs';
 import { completer } from './generation.mjs';
 import { messagesResume } from './prompt.mjs';
 import { classer } from './bm25.mjs';
+import { termePrincipal } from './terme.mjs';
 import { passagesWikis } from './wikis.mjs';
 import { passagesLivres } from './source-livres.mjs';
 import { normaliser, motsRequete } from '../lib/normalisation.mjs';
@@ -503,7 +504,13 @@ export class Index {
 
     const docs = sources.includes('documents') ? this.documentsProches(q, req.join(' '), n) : { extraits: [], documents: [], meilleur: null };
     const [wikis, livres] = await Promise.all([pWikis, pLivres]);
-    const externes = [...classer(wikis, req, 8), ...classer(livres, req, 4)];
+    // Main term: the one of the understanding step when each of its words comes from the question,
+    // otherwise the rarest word of the question among the passages found. Without a sure term, the
+    // title and section rules do not apply at all.
+    const tous = [...wikis, ...livres];
+    const frequence = (mot) => tous.filter((p) => normaliser(`${p.titre} ${p.section} ${p.texte}`).includes(mot)).length;
+    const principal = termePrincipal(requetes?.[1], question, frequence);
+    const externes = [...classer(wikis, req, 8, { terme: principal.terme }), ...classer(livres, req, 4, { terme: principal.terme })];
     if (q && externes.length) {
       const t = Date.now();
       try {
@@ -555,6 +562,7 @@ export class Index {
       documents: proches,
       meilleurs,
       meilleurCosinus: valeurs.length ? Math.max(...valeurs) : null,
+      terme: principal,
       vecteurs: !!q,
       durees: { ...durees, total: Date.now() - debut },
       duree: Date.now() - debut,

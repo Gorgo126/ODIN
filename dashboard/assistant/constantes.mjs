@@ -38,6 +38,10 @@ export const CONSTANTES = {
     livres: { reponse: 0.45, proches: 0.3 }
   },
 
+  // Sections that hold what one usually looks for. Closed list, exact match after normalisation:
+  // a passage under one of them is preferred (see assistant/bm25.mjs).
+  sectionsGenerales: ['premiers soins', 'traitement', 'que faire', 'symptomes', 'prevention', 'diagnostic'],
+
   // The last exchange is kept, so a follow-up question (« et pour avril ? ») is understood
   memoire: true,
 

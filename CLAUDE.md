@@ -235,6 +235,14 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   toutes les 60 s (et tout de suite si une recherche échoue, pack retiré), livres relus à chaque question
   d'après la date de pages.json.
   Classement commun par cosinus ; le meilleur résultat par mots-clés des documents garde sa place.
+  Terme principal (assistant/terme.mjs) : celui de la compréhension s'il ne contient que des mots venus
+  de la question (comparaison par racine), sinon le mot le plus rare de la question parmi les passages
+  trouvés, sinon aucun. Sans terme sûr, les règles de titre ne s'appliquent pas. Elles pèsent sur le
+  BM25 local (assistant/bm25.mjs) : titre exact ×3, titre commençant par le terme avec un mot de plus
+  au maximum ×1,8, cas particulier (le terme plus deux mots ou plus, absents de la question) ×2/3 mais
+  seulement si un article général figure parmi les candidats, section de la liste fermée
+  (CONSTANTES.sectionsGenerales) ×1,4. Le mode debug montre le score brut, le terme retenu et les
+  règles appliquées à chaque passage.
   Seuils par source (reglages.mjs). Santé ou sécurité : rappel du 112 toujours ajouté.
   Morceaux : un titre ferme le morceau dès 25 jetons (une section par morceau : sinon le modèle mêle
   les consignes). OLLAMA_NUM_PARALLEL=2 : compréhension et réponse gardent chacune leur cache de prompt.

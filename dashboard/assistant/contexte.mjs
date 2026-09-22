@@ -12,7 +12,12 @@ const OUTILS = new Set([
   'eux', 'faire', 'fais', 'fait', 'faut', 'il', 'ils', 'j', 'je', 'l', 'la', 'le', 'les', 'leur', 'lui', 'm', 'ma', 'mais', 'me', 'mes',
   'moi', 'mon', 'n', 'ne', 'nos', 'notre', 'nous', 'on', 'ont', 'ou', 'par', 'pas', 'peut', 'plus', 'pour', 'pourquoi', 'quand', 'que',
   'quel', 'quelle', 'quelles', 'quels', 'qui', 'quoi', 'sa', 'sais', 'sait', 'se', 'ses', 'si', 'son', 'sont', 'sur', 't', 'ta', 'te',
-  'tes', 'toi', 'ton', 'tu', 'un', 'une', 'vos', 'votre', 'vous', 'y', 'alors', 'aussi', 'bien', 'encore', 'meme', 'tout', 'toute'
+  'tes', 'toi', 'ton', 'tu', 'un', 'une', 'vos', 'votre', 'vous', 'y', 'alors', 'aussi', 'bien', 'encore', 'meme', 'tout', 'toute',
+  // Catch-all nouns and adjectives: they never tell a question apart (« forte fièvre » → fièvre)
+  'cas', 'facon', 'maniere', 'chose', 'truc', 'moment', 'fois', 'type', 'sorte', 'genre', 'exemple', 'besoin', 'probleme',
+  'fort', 'forte', 'forts', 'fortes', 'grand', 'grande', 'petit', 'petite', 'gros', 'grosse', 'bon', 'bonne', 'mauvais', 'mauvaise',
+  'nouveau', 'nouvelle', 'vieux', 'vieille', 'beau', 'belle', 'chaud', 'chaude', 'froid', 'froide', 'rapide', 'lent', 'lente',
+  'grave', 'leger', 'legere', 'simple', 'difficile', 'important', 'importante', 'urgent', 'urgente', 'meilleur', 'pire', 'vrai', 'faux'
 ]);
 
 // Pronouns and demonstratives that point at something said before
@@ -33,8 +38,11 @@ export function besoinDeContexte(question) {
   return motsUtiles(question).length === 0;
 }
 
-// Two words are the same subject if one begins the other (fièvre / fièvres, accouche / accoucher)
-const memeMot = (a, b) => a === b || (a.length >= 4 && b.startsWith(a)) || (b.length >= 4 && a.startsWith(b));
+// Two words talk about the same thing when one begins the other (fièvre / fièvres), or when they
+// share their first four letters (purifier / purification, brûlé / brûlure)
+export const memeMot = (a, b) => a === b
+  || (a.length >= 4 && b.startsWith(a)) || (b.length >= 4 && a.startsWith(b))
+  || (a.length >= 5 && b.length >= 5 && a.slice(0, 4) === b.slice(0, 4));
 
 // A rewritten query that shares nothing with the question is a drift: it is thrown away
 export function reformulationFiable(question, requete) {

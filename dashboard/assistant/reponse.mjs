@@ -259,7 +259,8 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
       ...(reglages.debug ? {
         debug: {
           seuils: reglages.seuils,
-          extraits: r.extraits.map((e) => ({ origine: e.origine, source: e.source, titre: e.titre, chemin: e.chemin, page: e.page, section: e.section, texte: e.texte, cosinus: e.cosinus, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots, bm25: e.bm25, envoye: extraits.includes(e) })),
+          terme: r.terme,
+          extraits: r.extraits.map((e) => ({ origine: e.origine, source: e.source, titre: e.titre, chemin: e.chemin, page: e.page, section: e.section, texte: e.texte, cosinus: e.cosinus, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots, bm25: e.bm25, bm25Brut: e.bm25Brut, regles: e.regles, envoye: extraits.includes(e) })),
           documentsProches: r.documents
         }
       } : {})
