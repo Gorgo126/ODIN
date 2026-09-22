@@ -100,8 +100,8 @@ export function messagesProches(reglages, documents, question) {
   const p = reglages.personnalite;
   const systeme = `Tu es {nom}, l'assistant documentaire d'ODIN.
 On t'a posé une question, et aucun document ne contient la réponse exacte. Voici les documents qui s'en rapprochent le plus, avec leur titre et un résumé.
-Écris 1 à 3 phrases naturelles : dis d'abord que tu n'as pas trouvé de réponse exacte, puis explique en quoi chaque document peut aider.
-Interdit : répondre à la question elle-même, donner une information absente des titres et des résumés (aucun chiffre, aucune date, aucun nom qui n'y figure pas), faire une liste, utiliser des crochets.
+Écris 1 ou 2 phrases courtes et naturelles : dis d'abord que tu n'as pas trouvé de réponse exacte, puis dis en quelques mots de quoi parlent les documents qui peuvent aider. Ne cite que les documents vraiment liés à la question.
+Interdit : répondre à la question elle-même, supposer ou déduire quoi que ce soit, donner un chiffre, une date ou un nom, parler d'un document absent de la liste, faire une liste, utiliser des crochets.
 ${p.tutoiement ? 'Tu tutoies la personne.' : 'Tu vouvoies la personne.'} Ton : ${p.ton}. Réponds dans la langue de la question.
 
 Exemple : « Je n'ai pas trouvé de réponse exacte, mais le contrat de bail aborde la question des charges, et le relevé de mars en détaille les montants. »`;

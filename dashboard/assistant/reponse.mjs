@@ -40,6 +40,16 @@ function repliProches(reglages, documents) {
   return `Je n'ai pas trouvé de réponse exacte, mais ${noms.length > 1 ? 'ces documents s\'en rapprochent' : 'ce document s\'en rapproche'} : ${liste}. ${cherche}`;
 }
 
+// Only the chunks close to the best one reach the model: an off-topic chunk misleads a small model
+// (an amount taken from the wrong document) and costs about 4 s of reading on CPU. Kept: cosine
+// within ECART of the best, or among the first two by keywords (exact references, codes).
+const ECART = 0.1;
+function utiles(extraits, meilleur, seuilProches) {
+  const gardes = extraits.filter((e) => (e.cosinus ?? 0) >= meilleur - ECART || (e.rangMots && e.rangMots <= 2 && (e.cosinus ?? 0) >= seuilProches));
+  if (gardes.length) return gardes;
+  return extraits.length ? [extraits.reduce((a, b) => ((b.cosinus ?? 0) > (a.cosinus ?? 0) ? b : a))] : [];
+}
+
 function sources(texte, extraits) {
   const cites = [...new Set([...texte.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])))].filter((n) => n >= 1 && n <= extraits.length);
   const renvois = Object.fromEntries(cites.map((n) => {
@@ -95,11 +105,12 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
     let texte = '';
     const premier = () => { durees.premierMot ??= Date.now() - debut; };
 
+    const extraits = utiles(r.extraits, cos, reglages.seuilProches);
     if (issue === 1) {
       yield { type: 'etat', etat: 'redaction' };
       let tampon = '';
       let decide = false;
-      for await (const t of discuter(cfg, messagesReponse(reglages, r.extraits, autonome), options)) {
+      for await (const t of discuter(cfg, messagesReponse(reglages, extraits, autonome), options)) {
         if (decide) { texte += t; yield { type: 'texte', texte: t }; continue; }
         tampon += t;
         const m = marqueur(tampon);
@@ -144,14 +155,14 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
       type: 'fin',
       issue,
       ...(autonome !== question ? { questionAutonome: autonome } : {}),
-      ...(issue === 1 ? sources(texte, r.extraits) : { renvois: {}, sources: [] }),
+      ...(issue === 1 ? sources(texte, extraits) : { renvois: {}, sources: [] }),
       documents: documents.map((d) => ({ titre: d.titre, type: d.type, chemin: d.chemin, lien: lienDocument(d.chemin, d.page) })),
       meilleurCosinus: r.meilleurCosinus,
       durees,
       ...(reglages.debug ? {
         debug: {
           seuils: { reponse: reglages.seuilReponse, proches: reglages.seuilProches },
-          extraits: r.extraits.map((e) => ({ titre: e.titre, chemin: e.chemin, page: e.page, section: e.section, texte: e.texte, cosinus: e.cosinus, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots })),
+          extraits: r.extraits.map((e) => ({ titre: e.titre, chemin: e.chemin, page: e.page, section: e.section, texte: e.texte, cosinus: e.cosinus, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots, envoye: extraits.includes(e) })),
           documentsProches: r.documents
         }
       } : {})

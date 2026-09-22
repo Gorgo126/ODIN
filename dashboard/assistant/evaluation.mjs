@@ -73,7 +73,7 @@ for (const q of questions) {
   if (fin?.issue === 1 && q.attendu && !q.attendu.some((a) => bas.includes(a.toLowerCase()))) echecs.push(`aucun de ${JSON.stringify(q.attendu)}`);
   const interdits = (q.interdit || []).filter((a) => bas.includes(a.toLowerCase()));
   if (interdits.length) echecs.push(`interdit : ${JSON.stringify(interdits)}`);
-  const copie = fin?.issue === 1 ? partCopiee(texte, fin.debug.extraits) : 0;
+  const copie = fin?.issue === 1 ? partCopiee(texte, fin.debug.extraits.filter((x) => x.envoye)) : 0;
   if (copie > 0.4) echecs.push(`copie ${Math.round(copie * 100)} %`);
   resultats.push({ q, fin, echecs, copie });
   console.log(`${echecs.length ? 'KO' : 'OK'} [attendu ${q.issue}, obtenu ${fin?.issue ?? '?'}] cos ${fin?.meilleurCosinus?.toFixed(3)} | 1er mot ${fin?.durees.premierMot ?? '–'} ms, total ${fin?.durees.total ?? '–'} ms | copie ${Math.round(copie * 100)} %`);
@@ -81,6 +81,7 @@ for (const q of questions) {
   console.log(`   R : ${texte.replace(/\s+/g, ' ').trim()}`);
   if (fin?.sources?.length) console.log(`   Sources : ${fin.sources.map((s) => s.titre + (s.pages.length ? ` p. ${s.pages}` : '')).join(' · ')}`);
   if (fin?.documents?.length) console.log(`   Documents : ${fin.documents.map((d) => d.titre).join(' · ')}`);
+  if (fin?.issue === 1) console.log(`   Extraits envoyés : ${fin.debug.extraits.filter((x) => x.envoye).length}/${fin.debug.extraits.length}`);
   if (echecs.length) console.log(`   ⚠ ${echecs.join(' ; ')}`);
 }
 
