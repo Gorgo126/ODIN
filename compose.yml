@@ -18,7 +18,7 @@ services:
       - filebrowser
 
   dashboard:
-    image: ghcr.io/gorgo126/odin-dashboard:67a3d7dcb6e6302976829ccc5cec306b6355ed4b
+    image: ghcr.io/gorgo126/odin-dashboard:b1230fe28074f4ccd8986ca0e4f3b6f5a4bb951f
     container_name: dashboard
     environment:
       - HTTP_PORT=${HTTP_PORT}
