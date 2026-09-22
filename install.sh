@@ -57,7 +57,7 @@ else
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/openwebui" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/synchro" "$CIBLE/data/cartes"
+mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/cartes"
 [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 
@@ -82,12 +82,35 @@ cd "$CIBLE"
 docker compose pull
 docker compose up -d
 
+# --- Migration: former assistant (Open WebUI + synchro). To be removed after v1. ---
+# Removes its containers, image, models and test data. The documents in data/documents stay untouched.
+migrer_ancien_assistant() {
+  local retire=0 ctn img m d
+  ctn=$(docker ps -aq --filter 'name=^ia$' --filter 'name=^synchro$')
+  if [ -n "$ctn" ]; then docker rm -f $ctn >/dev/null; retire=1; fi
+  img=$(docker image ls -q ghcr.io/open-webui/open-webui | sort -u)
+  if [ -n "$img" ]; then docker image rm -f $img >/dev/null || true; retire=1; fi
+  # Ollama may still be starting right after up -d
+  for _ in $(seq 30); do docker exec ollama ollama list >/dev/null 2>&1 && break; sleep 1; done
+  for m in qwen2.5:3b bge-m3:latest; do
+    if docker exec ollama ollama list 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qxF "$m"; then
+      docker exec ollama ollama rm "$m" >/dev/null; retire=1
+    fi
+  done
+  for d in openwebui synchro; do
+    if [ -d "$CIBLE/data/$d" ]; then rm -rf "${CIBLE:?}/data/$d"; retire=1; fi
+  done
+  if [ "$retire" -eq 1 ]; then echo "  Ancien assistant (Open WebUI) retiré : conteneurs, image, modèles et données de test."; fi
+}
+migrer_ancien_assistant
+# --- End of migration ---
+
 # A service reading a file of the repository keeps the old version after an update: git replaces
-# the file, a single-file mount stays on the old one, and synchro keeps its code in memory.
+# the file and a single-file mount stays on the old one.
 # up -d only recreates services whose compose.yml definition changed, so restart the others.
 if [ -n "$AVANT" ]; then
   a_relancer=()
-  for couple in "caddy:Caddyfile" "filebrowser:config/filebrowser.yaml" "synchro:synchro"; do
+  for couple in "caddy:Caddyfile" "filebrowser:config/filebrowser.yaml"; do
     depot diff --quiet "$AVANT" HEAD -- "${couple#*:}" || a_relancer+=("${couple%%:*}")
   done
   if [ ${#a_relancer[@]} -gt 0 ]; then
@@ -95,10 +118,6 @@ if [ -n "$AVANT" ]; then
     docker compose restart "${a_relancer[@]}"
   fi
 fi
-
-msg "Modèles d'IA (plusieurs Go, cela peut prendre un moment)"
-docker exec ollama ollama pull "${MODELE_CHAT:-qwen2.5:3b}"
-docker exec ollama ollama pull bge-m3
 
 msg "Fond de carte mondial"
 # Installed through the dashboard, which holds the pinned pmtiles tool

@@ -18,7 +18,7 @@ toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
   d'inactivité (pmtiles extract a une longue phase de préparation silencieuse) ; les livres non plus, mais
   gardent 15 s au plus pour obtenir la réponse HTTP. Dans les deux cas, l'annulation est manuelle.
 - Aucun CDN, police externe, analytique ou vérification de mise à jour. Pour une image tierce,
-  désactiver ces fonctions par variable d'environnement (Open WebUI : OFFLINE_MODE=true).
+  désactiver ces fonctions par variable d'environnement (Ollama : OLLAMA_NO_CLOUD=true).
 - Tout ce qu'un service télécharge au premier usage (modèles, index, caches) doit être
   téléchargé pendant l'installation, pas à la première utilisation hors ligne.
 - Toute nouvelle fonction qui touche au réseau passe le test hors ligne (voir « Test hors ligne »).
@@ -65,10 +65,10 @@ Sur une VM test, jamais sur nomad (il modifie le pare-feu du système). Coupe in
 le réseau local, comme une box sans accès internet ; chaque tentative bloquée est journalisée.
 
 1. Préparer en ligne (VM vierge ci-dessus) : mot de passe, un petit pack (climat), un PDF dans
-   Documents, une question à l'IA.
+   Documents.
 2. Couper : sudo /opt/odin/scripts/hors-ligne.sh couper (persiste au redémarrage).
-3. Redémarrer à froid (multipass stop test, puis multipass start test), puis vérifier : 7 conteneurs, logs de synchro, connexion,
-   accueil, recherche, lecteur, /kiwix, dépôt d'un document puis question sur lui à l'IA,
+3. Redémarrer à froid (multipass stop test, puis multipass start test), puis vérifier : 5 conteneurs, connexion,
+   accueil, recherche, lecteur, /kiwix, dépôt d'un document,
    page Configuration (« Catalogue injoignable » en moins de 3 s, boutons désactivés).
 4. Navigateur, outils de développement ouverts (onglet Réseau) : aucune requête vers un autre hôte
    que l'IP d'ODIN, sur chaque page. Indispensable : le PC du propriétaire, lui, a internet.
@@ -82,18 +82,17 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
 
 Un seul compose.yml écrit à la main, aucun orchestrateur.
 
-- caddy : façade unique, ports ${HTTP_PORT}:80 et ${IA_PORT}:8081. Routes /documents  filebrowser,
-  /kiwix  kiwix, reste  dashboard. :8081  Open WebUI. auto_https off.
+- caddy : façade unique, port ${HTTP_PORT}:80. Routes /documents  filebrowser,
+  /kiwix  kiwix, reste  dashboard. auto_https off.
   Après toute modification du Caddyfile : docker compose restart caddy (up -d ne le relit pas).
 - Authentification unique : forward_auth vers /api/auth/verifier du dashboard. Mot de passe choisi à la
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
 - dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Dépendances : Next, React, et pour
   la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
 - kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
-- ollama + ia (Open WebUI, WEBUI_AUTH=false) : qwen2.5:3b pour discuter, bge-m3 pour l'indexation.
+- ollama : moteur des modèles de l'assistant, joignable seulement sur le réseau Docker interne
+  (http://ollama:11434), aucun port publié.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
-- synchro : node:20-alpine + synchro/synchro.mjs, répercute data/documents vers la collection
-  Open WebUI "Mes documents" et cache bge-m3 du sélecteur.
 - Cartes : packs PMTiles (fonds Protomaps, données OSM) dans data/cartes/<id>.pmtiles, servis par
   Caddy sur /tuiles/* (file_server, requêtes Range, derrière l'authentification). Catalogue :
   catalogue/cartes.txt (id|ouest,sud,est,nord ou -|zoom max|libellé). Un pack = pmtiles extract
@@ -139,6 +138,17 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   le lien ouvre /livres/<id>?page=N&q=…, où la visionneuse surligne les mots sur cette page seulement
   (la recherche de pdf.js, #search=, téléchargerait tout le livre).
 
+- Assistant documentaire (en construction, lots 1 à 5) : remplace Open WebUI et synchro, retirés au lot 1.
+  Décisions validées : UI, API et ingestion dans le dashboard, ingestion et calcul des similarités dans
+  un worker_thread (jamais sur la boucle d'événements de Next) ; Node 24 pour node:sqlite (FTS5), aucune
+  dépendance npm ajoutée ; pas de sqlite-vec : vecteurs en BLOB Float32 dans SQLite, chargés en mémoire
+  (Float32Array), cosinus en JS ; préfixes d'embeddinggemma toujours appliqués (requêtes et documents) ;
+  appels Ollama avec délai d'inactivité sur le flux, sans délai total (le 1er appel charge le modèle en CPU) ;
+  OLLAMA_MAX_LOADED_MODELS=2 et keep_alive sur les deux modèles ; /assistant et son API derrière
+  l'authentification, flux non tamponné par Caddy. qwen3:4b désigne la version « thinking » : figer
+  qwen3:4b-instruct-2507-q4_K_M. install.sh contient un bloc de migration (retrait d'Open WebUI, synchro,
+  qwen2.5:3b, bge-m3, data/openwebui, data/synchro), à retirer après la v1.
+
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
@@ -159,10 +169,6 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 ## Pièges déjà rencontrés
 
 - kiwix-serve ajoute déjà --port=8080 ; tourne en UID 1001 ; boucle si library.xml est absent.
-- Open WebUI ne supporte pas un sous-chemin ; ses réglages sont figés au premier démarrage
-  et ignorent ensuite les variables d'environnement (OFFLINE_MODE fait exception, lue à chaque démarrage).
-  Les permissions USER_PERMISSIONS_* ne s'appliquent pas aux administrateurs ; avec WEBUI_AUTH=false,
-  tout le monde est administrateur.
 - Next standalone ne copie pas public/ : le Dockerfile doit le faire.
 - download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries.
 - Le build arm64 émulé bloque GitHub Actions.
@@ -171,14 +177,14 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
   OLLAMA_NO_CLOUD=true le coupe, les ollama pull restent possibles.
 - FileBrowser Quantum interroge api.github.com au démarrage (version) : server.disableUpdateCheck: true.
 - Au démarrage de la machine, Docker relance tous les conteneurs ensemble et ignore depends_on :
-  synchro attend donc lui-même qu'Open WebUI réponde.
+  tout code qui dépend d'un autre service (le dashboard envers Ollama) l'attend lui-même.
 - État partagé du dashboard (sonde, tâches, réglages) : toujours dans globalThis, car instrumentation.js
   et les routes sont des bundles séparés qui chargeraient chacun leur copie des modules.
 - Pour trouver qui appelle internet : tcpdump -i any udp port 53 sur l'hôte, en redémarrant un service à la fois.
 - Mise à jour (install.sh relancé) : git remplace compose.yml, Caddyfile et config/, seul .env est gardé.
   Un fichier monté seul (Caddyfile, filebrowser.yaml) reste sur l'ancienne version dans le conteneur, et
   up -d ne recrée que les services dont compose.yml a changé : install.sh compare l'ancien et le nouveau
-  commit et redémarre caddy, filebrowser ou synchro si leurs fichiers ont changé. Tout nouveau fichier
+  commit et redémarre caddy ou filebrowser si leurs fichiers ont changé. Tout nouveau fichier
   monté doit être ajouté à cette liste.
 - install.sh tourne en root sur /opt/odin appartenant à l'utilisateur : git exige safe.directory
   (fonction depot dans install.sh).

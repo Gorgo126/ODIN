@@ -5,7 +5,6 @@ import { livresInstalles } from './livres.mjs';
 export const SERVICES = [
   { id: 'bibliotheque', nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
   { id: 'documents', nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
-  { id: 'ia', nom: 'Assistant IA', url: 'http://ia:8080/health', lien: '/', port: '8081' },
   // Pages of the dashboard itself: available as soon as one pack of their kind is installed
   { id: 'livres', nom: 'Livres', lien: '/livres', interne: true },
   { id: 'carte', nom: 'Carte', lien: '/carte', interne: true }

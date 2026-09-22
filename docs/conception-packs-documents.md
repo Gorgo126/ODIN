@@ -395,6 +395,10 @@ courant et propagé aux pages impaires. Si `pages.json` manque (extraction inter
 
 ## 7. IA
 
+> **Caduque.** Open WebUI et la synchro ont été retirés au profit de l'assistant documentaire intégré au
+> dashboard (voir CLAUDE.md). Les livres, déjà découpés par page dans `pages.json`, deviendront une source de
+> cet assistant ; cette section sera réécrite à ce moment-là.
+
 ### Une collection par livre, en lecture seule côté ODIN
 
 - La synchro gagne une 2ᵉ source, `/livres` (lecture seule) : **une collection Open WebUI par livre**, par

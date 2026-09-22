@@ -52,8 +52,3 @@
 		reverse_proxy dashboard:3000
 	}
 }
-
-:8081 {
-	import protege
-	reverse_proxy ia:8080
-}

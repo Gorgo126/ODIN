@@ -1,9 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-export default function Cadre({ nom, lien, port }) {
+export default function Cadre({ nom, lien }) {
   const cadre = useRef(null);
-  const [racine, setRacine] = useState(null);
   const [src, setSrc] = useState(null);
   const [cle, setCle] = useState(0);
   const [titre, setTitre] = useState('');
@@ -11,15 +10,13 @@ export default function Cadre({ nom, lien, port }) {
 
   // Adresse de départ : le service, ou la page où l'on était avant un rechargement
   useEffect(() => {
-    const base = port ? `${location.protocol}//${location.hostname}:${port}${lien}` : lien;
-    setRacine(base);
     const chemin = new URLSearchParams(location.search).get('chemin');
-    setSrc(!port && chemin && chemin.startsWith(lien) ? chemin : base);
-  }, [lien, port]);
+    setSrc(chemin && chemin.startsWith(lien) ? chemin : lien);
+  }, [lien]);
 
-  // Suit la navigation dans le cadre (possible uniquement pour les services sur la même adresse)
+  // Suit la navigation dans le cadre
   useEffect(() => {
-    if (!src || port) return;
+    if (!src) return;
     const t = setInterval(() => {
       try {
         const w = cadre.current.contentWindow;
@@ -31,14 +28,14 @@ export default function Cadre({ nom, lien, port }) {
       } catch {}
     }, 1000);
     return () => clearInterval(t);
-  }, [src, port]);
+  }, [src]);
 
   useEffect(() => {
     document.title = `${titre && titre !== nom ? titre + '  ' : ''}${nom}  ODIN`;
   }, [titre, nom]);
 
   function revenir() {
-    setSrc(racine);
+    setSrc(lien);
     setTitre('');
     setCle((c) => c + 1);
   }
@@ -56,7 +53,7 @@ export default function Cadre({ nom, lien, port }) {
           </>
         )}
         {src && (
-          <a className="externe" href={port ? src : actuel || src} target="_blank" rel="noopener" title="Ouvrir dans un nouvel onglet"></a>
+          <a className="externe" href={actuel || src} target="_blank" rel="noopener" title="Ouvrir dans un nouvel onglet"></a>
         )}
       </nav>
       {src && (

@@ -5,7 +5,7 @@
 ### Le savoir du monde, même quand internet s'arrête.
 
 Un serveur de connaissances **100 % hors ligne**, installable en une commande sur Ubuntu ou Debian.<br>
-Wikipédia, des milliers de livres, des cartes, vos documents et un assistant IA, pour tous les appareils du réseau local.
+Wikipédia, des milliers de livres, des cartes et vos documents, pour tous les appareils du réseau local.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-c8963e?style=flat-square)](#licence)
 [![Ubuntu 24.04 · Debian 12](https://img.shields.io/badge/Ubuntu%2024.04%20·%20Debian%2012-2b2b2b?style=flat-square&logo=linux&logoColor=white)](#installation)
@@ -26,7 +26,7 @@ simplement quand on ne veut pas que ses questions quittent la maison.
 
 **ODIN est une réserve de savoir que l'on prépare une fois et qui sert ensuite pour de bon.**
 On l'installe sur une petite machine pendant qu'on a une connexion, on y charge les contenus
-voulus (encyclopédie, médecine, livres, manuels, modèles d'IA), puis on le débranche d'internet.
+voulus (encyclopédie, médecine, livres, manuels, cartes), puis on le débranche d'internet.
 Chaque téléphone, tablette ou ordinateur du réseau local y accède ensuite avec un simple
 navigateur, **sans application, sans compte en ligne et sans aucune connexion extérieure**.
 
@@ -41,7 +41,6 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 | 📚 | **Bibliothèque** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
 | 📁 | **Documents** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Carte** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
-| 🤖 | **Assistant IA** | Un modèle de langage qui tourne sur la machine (qwen2.5:3b). Il répond à vos questions et consulte vos documents, qui sont indexés automatiquement. |
 | 🖥️ | **Tableau de bord** | L'état des services, une recherche dans toute la bibliothèque, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
 
 L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite.
@@ -75,7 +74,6 @@ flowchart LR
         direction TB
         I["install.sh"] --> S["Services Docker"]
         C["Catalogue Kiwix"] -->|packs ZIM| S
-        M["Modèles d'IA"] --> S
     end
     subgraph usage["② Utilisation (sans internet)"]
         direction TB
@@ -97,16 +95,11 @@ Tout passe par **Caddy**, la seule porte d'entrée. Caddy vérifie la session au
 ```mermaid
 flowchart TB
     N["🌐 Navigateur du réseau local"] -->|":80"| CA
-    N -->|":8081"| CA
     CA["Caddy<br/><sub>façade unique · authentification</sub>"]
     CA -->|"/"| D["Tableau de bord<br/><sub>Next.js 15</sub>"]
     CA -->|"/kiwix"| K["Kiwix<br/><sub>moteur ZIM</sub>"]
     CA -->|"/documents"| F["FileBrowser<br/><sub>fichiers</sub>"]
     CA -->|"/tuiles"| T[("Cartes PMTiles<br/><sub>data/cartes</sub>")]
-    CA -->|":8081"| W["Open WebUI<br/><sub>assistant IA</sub>"]
-    W --> OL["Ollama<br/><sub>qwen2.5:3b · bge-m3</sub>"]
-    SY["synchro<br/><sub>Node.js</sub>"] -->|"indexe les documents"| W
-    F -.->|"data/documents"| SY
     D -.->|"recherche · lecture"| K
     D -.->|"extraction pmtiles"| T
 ```
@@ -117,9 +110,7 @@ flowchart TB
 | `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche, lecteur d'articles, carte (MapLibre GL), ajout de packs. Contient l'outil `pmtiles` qui extrait les régions. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
-| `ollama` | `ollama/ollama:0.34.2` | Exécute les modèles : qwen2.5:3b pour discuter, bge-m3 pour l'indexation. |
-| `ia` | `ghcr.io/open-webui/open-webui` | Open WebUI en mode hors ligne, sans comptes (l'accès est déjà protégé par ODIN). |
-| `synchro` | `node:20.20.2-alpine3.23` | Reporte chaque fichier de `data/documents` dans la collection « Mes documents » d'Open WebUI. |
+| `ollama` | `ollama/ollama:0.34.2` | Moteur des modèles d'IA, joignable seulement à l'intérieur d'ODIN. L'assistant documentaire qui s'en sert est en préparation. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
 ne lit que les tuiles affichées.
@@ -138,14 +129,12 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 ├── catalogue/           # contenus (packs.txt) et cartes (cartes.txt) proposés
 ├── config/              # configuration de FileBrowser
 ├── dashboard/           # code du tableau de bord (Next.js)
-├── synchro/             # synchronisation documents → IA
 ├── scripts/             # ajout de contenus en ligne de commande, outils de test
 └── data/                # vos données, jamais versionnées
     ├── zim/             #   archives ZIM + library.xml
     ├── cartes/          #   packs de cartes (.pmtiles)
     ├── documents/       #   fichiers partagés
     ├── ollama/          #   modèles d'IA
-    ├── openwebui/       #   conversations et index
     └── config/          #   mot de passe (haché avec scrypt)
 ```
 
@@ -154,9 +143,8 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 - **Aucune ressource externe** : pas de CDN, pas de police téléchargée, pas d'analytique.
 - **La carte embarque tout** : style, polices des étiquettes et icônes sont dans l'image. Aucune tuile
   ni police n'est demandée à un serveur extérieur.
-- **Aucun service ne vérifie ses mises à jour** : Open WebUI tourne avec `OFFLINE_MODE=true`, sans
-  télémétrie et sans exécution de code ; Ollama avec `OLLAMA_NO_CLOUD=true` ; FileBrowser sans
-  vérification de version.
+- **Aucun service ne vérifie ses mises à jour** : Ollama tourne avec `OLLAMA_NO_CLOUD=true`, FileBrowser
+  sans vérification de version.
 - **Chaque appel réseau d'ODIN a un délai.** Hors ligne, le catalogue répond « injoignable » en
   2 secondes, et un téléchargement interrompu s'arrête après 30 secondes sans données. On peut
   aussi l'annuler, ou le reprendre plus tard là où il s'était arrêté. Les tailles des packs restent
@@ -172,7 +160,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 |---|---|
 | Système | Ubuntu 24.04 LTS ou Debian 12, architecture x86_64 |
 | Processeur | 4 cœurs |
-| Mémoire | 8 Go (l'assistant IA en utilise la majeure partie) |
+| Mémoire | 8 Go |
 | Disque | 40 Go, plus la taille des contenus (de 80 Mo à plusieurs dizaines de Go par pack) |
 | Réseau | Une connexion internet **pendant l'installation seulement** |
 
@@ -183,7 +171,7 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 ```
 
 Le script installe Docker si besoin, récupère ODIN dans `/opt/odin`, démarre les services et
-télécharge les modèles d'IA (environ 3 Go) et le fond de carte mondial (45 Mo). À la fin, il affiche
+télécharge le fond de carte mondial (45 Mo). À la fin, il affiche
 les adresses où joindre ODIN.
 
 ### Première visite
@@ -191,8 +179,6 @@ les adresses où joindre ODIN.
 1. Depuis n'importe quel appareil du réseau, ouvrez **http://odin.local**, ou l'adresse IP affichée à la fin de l'installation.
 2. Choisissez le mot de passe qui protégera ODIN.
 3. Dans **Configuration**, installez les contenus et les cartes voulus tant que la connexion est disponible.
-4. L'assistant IA est sur le port **8081** (par exemple http://odin.local:8081). Pour interroger vos
-   documents, tapez `#` dans la conversation et choisissez « Mes documents ».
 
 C'est prêt : vous pouvez débrancher internet.
 
@@ -202,13 +188,12 @@ Des variables, placées **après `sudo`**, ajustent l'installation :
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
-  | sudo NOM_HOTE=bibliotheque MODELE_CHAT=qwen2.5:7b bash
+  | sudo NOM_HOTE=bibliotheque bash
 ```
 
 | Variable | Défaut | Effet |
 |---|---|---|
 | `NOM_HOTE` | `odin` | Nom de la machine sur le réseau (`http://<nom>.local`). |
-| `MODELE_CHAT` | `qwen2.5:3b` | Modèle de conversation téléchargé depuis Ollama. |
 | `BRANCHE` | `main` | Branche d'ODIN à installer. |
 | `DEPOT` | ce dépôt | Dépôt Git à cloner, pour une copie personnelle d'ODIN. |
 
