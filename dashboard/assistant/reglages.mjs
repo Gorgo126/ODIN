@@ -22,11 +22,12 @@ export const DEFAUTS = {
   // Best raw cosine per source, decided before any call to the language model. Documents
   // (calibrated on tests/documents, lot 3, EmbeddingGemma 768 d): answerable 0.40–0.72, close
   // 0.21–0.39, off-topic 0.02–0.15; at 0.38 a close question got an answer invented from an
-  // unrelated chunk, hence 0.40. Wikis and books: see CLAUDE.md for their calibration.
+  // unrelated chunk, hence 0.40. Wikis (installed on nomad: medicine, Wikivoyage, mathematics):
+  // covered questions 0.53–0.64, others 0.27–0.37. Books: covered 0.43–0.66, others 0.02–0.18.
   seuils: {
     documents: { reponse: 0.4, proches: 0.18 },
-    wikis: { reponse: 0.4, proches: 0.18 },
-    livres: { reponse: 0.4, proches: 0.18 }
+    wikis: { reponse: 0.48, proches: 0.42 },
+    livres: { reponse: 0.45, proches: 0.3 }
   },
   temperature: 0.4,
   memoire: true,

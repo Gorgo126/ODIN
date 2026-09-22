@@ -1,6 +1,9 @@
 // « Wiki » source of the assistant: full-text search of kiwix-serve on every installed ZIM that
 // has a full-text index (flag read in the LOCAL catalogue, never online), then the paragraphs of
-// the first articles. Internal network only; every call has a delay.
+// the first articles. Internal network only; every call has a delay. Node's http module, not
+// fetch: see http.mjs.
+
+import { lire } from './http.mjs';
 
 const KIWIX = process.env.KIWIX_URL || 'http://kiwix:8080';
 const DELAI = 5000;
@@ -20,9 +23,9 @@ const texte = (html) => decoder(html.replace(/<sup\b[\s\S]*?<\/sup>/gi, '').repl
 let catalogue = { quand: 0, livres: [] };
 export async function livresIndexes() {
   if (Date.now() - catalogue.quand < 60000) return catalogue.livres;
-  const r = await fetch(`${KIWIX}/kiwix/catalog/v2/entries?count=1000`, { signal: AbortSignal.timeout(DELAI) });
-  if (!r.ok) throw new Error(`catalogue Kiwix : ${r.status}`);
-  const xml = await r.text();
+  const r = await lire(`${KIWIX}/kiwix/catalog/v2/entries?count=1000`, DELAI);
+  if (!r.ok) throw new Error(`catalogue Kiwix : ${r.statut}`);
+  const xml = r.texte;
   const livres = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map(([, e]) => ({
     id: e.match(/<id>urn:uuid:([^<]*)/)?.[1],
     titre: decoder(e.match(/<title>([^<]*)/)?.[1] || ''),
@@ -36,9 +39,9 @@ export async function livresIndexes() {
 async function chercher(q, livres, n) {
   const p = new URLSearchParams({ pattern: q, format: 'xml', pageLength: String(n) });
   livres.forEach((l) => p.append('books.id', l.id));
-  const r = await fetch(`${KIWIX}/kiwix/search?${p}`, { signal: AbortSignal.timeout(DELAI) });
-  if (!r.ok) throw new Error(`recherche Kiwix : ${r.status}`);
-  const xml = await r.text();
+  const r = await lire(`${KIWIX}/kiwix/search?${p}`, DELAI);
+  if (!r.ok) throw new Error(`recherche Kiwix : ${r.statut}`);
+  const xml = r.texte;
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, item]) => ({
     titre: decoder(item.match(/<title>([^<]*)/)?.[1] || ''),
     chemin: decoder(item.match(/<link>([^<]*)/)?.[1] || '').split('#')[0]
@@ -76,10 +79,10 @@ export async function passagesWikis(requetes, { articles = 15 } = {}) {
   const pack = (chemin) => livres.find((l) => chemin.startsWith(`/kiwix/content/${l.contenu}/`));
   const lus = await Promise.all(retenus.map(async (a) => {
     try {
-      const r = await fetch(KIWIX + a.chemin, { signal: AbortSignal.timeout(DELAI) });
-      if (!r.ok || !(r.headers.get('content-type') || '').includes('text/html')) return [];
+      const r = await lire(KIWIX + a.chemin, DELAI);
+      if (!r.ok || !r.type.includes('text/html')) return [];
       const livre = pack(a.chemin);
-      return paragraphes(await r.text()).map((p) => ({
+      return paragraphes(r.texte).map((p) => ({
         origine: 'wiki',
         source: livre?.titre || 'Wiki',
         titre: a.titre,

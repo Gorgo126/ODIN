@@ -186,6 +186,16 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   qwen3:4b-instruct-2507-q4_K_M. Options identiques à chaque appel (num_ctx 4096, num_thread = cœurs,
   think false) : une valeur différente recharge le modèle. Ollama garde en cache le début commun du prompt
   (noyau + exemples) : ne rien y mettre qui change à chaque question.
+  Compréhension (assistant/comprehension.mjs) avant toute recherche : JSON strict (format = schéma
+  Ollama) → conversation (réponse courte, aucune recherche, aucun chiffre) ou information (question
+  autonome, requête de mots-clés, terme principal, drapeau santé). JSON invalide : la phrase brute.
+  Sources : Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
+  LOCAL, deux requêtes en parallèle, 15 articles, paragraphes ≥ 60 caractères coupés à 700, BM25 local,
+  8 vectorisés), Livres (source-livres.mjs : pages.json des livres installés, 4 paragraphes vectorisés).
+  Classement commun par cosinus ; le meilleur résultat par mots-clés des documents garde sa place.
+  Seuils par source (reglages.mjs). Santé ou sécurité : rappel du 112 toujours ajouté.
+  Morceaux : un titre ferme le morceau dès 25 jetons (une section par morceau : sinon le modèle mêle
+  les consignes). OLLAMA_NUM_PARALLEL=2 : compréhension et réponse gardent chacune leur cache de prompt.
   Évaluation : tests/generer-documents.py écrit tests/documents (10 documents fictifs, 5 formats) ;
   tests/questions.json (10 réponses, 5 proches, 5 hors sujet) ; assistant/evaluation.mjs (commande en tête).
   Banc : docker exec -i dashboard node assistant/banc.mjs < tests/banc-embeddings.json (travaille dans
@@ -246,5 +256,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - MapLibre 6 dessine lui-même l'arabe et l'hébreu ; le module RTL est obsolète et remplacerait ce rendu.
 - pmtiles extract réserve la taille finale du fichier dès le début : la progression se lit dans sa
   sortie (« NN% | »), pas dans la taille du .part. Une extraction interrompue repart de zéro.
+- fetch de Node 24 (undici) vers kiwix-serve (Connection: close, gros articles) : plantage sur
+  assert(!this.paused) dans Parser.finish, qui arrête le fil. L'assistant lit Kiwix avec le module http
+  (assistant/http.mjs). lib/recherche.mjs et lib/lecture.mjs utilisent encore fetch vers Kiwix.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
