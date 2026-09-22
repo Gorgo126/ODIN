@@ -13,15 +13,17 @@ export async function POST(req) {
     .map((h) => ({ question: String(h?.question ?? '').slice(0, 1000), reponse: String(h?.reponse ?? '').slice(0, 2000) }))
     .filter((h) => h.question);
 
-  // Debug comes from ?debug=1 on the page, never from the saved settings
+  // Debug comes from ?debug=1 on the page, never from the saved settings; « modele » is the
+  // temporary switch of the model trial (?modele=4b)
   const reglages = { ...reglagesAssistant(), debug: corps?.debug === true };
+  const essai = typeof corps?.modele === 'string' ? corps.modele : null;
   // Stopped when the visitor leaves (closed tab) or the stream is cancelled
   const arret = new AbortController();
   const evenements = repondre({
     question,
     historique,
     reglages,
-    cfg: configGeneration(reglages),
+    cfg: configGeneration(reglages, essai),
     rechercher: (q, options) => demander('rechercher', { question: q, ...options }),
     reprendre: (jeton) => demander('reprendre', { jeton }, 10000).catch(() => {}),
     // Network state for the emergency warning: the home page probe, never a second one

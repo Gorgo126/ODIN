@@ -45,11 +45,18 @@ export async function reseauAssistant() {
   }
 }
 
+// Temporary, for the model trial: /assistant?modele=4b picks the bigger model for that tab only.
+// To be removed once the choice is made.
+export const MODELES_ESSAI = {
+  '1.7b': process.env.MODELE_CHAT || 'qwen3:1.7b',
+  '4b': process.env.MODELE_CHAT_4B || 'qwen3:4b-instruct-2507-q4_K_M'
+};
+
 // Options of the language model calls: identical on every call, or Ollama reloads the model
-export function configGeneration(reglages) {
+export function configGeneration(reglages, essai) {
   return {
     ollama: process.env.OLLAMA_URL || 'http://ollama:11434',
-    modeleChat: process.env.MODELE_CHAT || reglages.modeleChat,
+    modeleChat: MODELES_ESSAI[essai] || process.env.MODELE_CHAT || reglages.modeleChat,
     keepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
     // Inactivity delay of Ollama calls: long enough to load a model on CPU
     inactivite: 120000,

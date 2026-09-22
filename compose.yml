@@ -69,7 +69,8 @@ services:
       # Embedding and language models stay loaded together: no unload/reload between the search
       # and the answer. Two slots per model: the understanding prompt and the answer prompt each
       # keep their cached start (with one slot they evict each other); about 450 MB more.
-      - OLLAMA_MAX_LOADED_MODELS=2
+      # 3 during the model trial (EmbeddingGemma + the two language models); back to 2 afterwards
+      - OLLAMA_MAX_LOADED_MODELS=3
       - OLLAMA_NUM_PARALLEL=2
       - OLLAMA_KEEP_ALIVE=30m
     volumes:
