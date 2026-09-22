@@ -322,7 +322,9 @@ export class Index {
         log(`Résumés remis à plus tard (${e.message})`);
         return;
       }
-      resume = resume.split('\n')[0].replace(/^["«\s]+|["»\s]+$/g, '').slice(0, 300);
+      // Small models tend to start with « Document « titre » : »
+      resume = resume.split('\n')[0].replace(/^(document\s*)?«[^»]*»\s*[:–—-]\s*/i, '').replace(/^["«\s]+|["»\s]+$/g, '').slice(0, 300);
+      resume = resume.charAt(0).toUpperCase() + resume.slice(1);
       if (resume) this.db.prepare('UPDATE fichiers SET resume = ?, resume_modele = 1 WHERE chemin = ?').run(resume, f.chemin);
     }
   }

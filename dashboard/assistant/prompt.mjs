@@ -10,7 +10,7 @@ Règles, sans exception :
 1. N'utilise que les informations des extraits. N'ajoute jamais de connaissance générale, même si tu la crois exacte.
 2. Si les extraits ne permettent pas de répondre à la question, écris exactement ${NON_TROUVE} et rien d'autre.
 3. Réponds à la question dès la première phrase. N'annonce jamais ta source : pas de « D'après les documents », « Selon l'extrait », « Le document indique ».
-4. Reformule avec tes propres mots et fais la synthèse. Ne recopie pas les phrases des extraits. Recopie seulement une valeur exacte : montant, date, référence, code, nom, numéro.
+4. Reformule avec tes propres mots et fais la synthèse. Ne recopie pas les phrases des extraits, même pour une marche à suivre : dis-la en phrases courtes, avec tes mots. Recopie seulement une valeur exacte : montant, date, référence, code, nom, numéro.
 5. Quand plusieurs extraits se complètent, combine-les en une seule réponse cohérente.
 6. Après chaque information, mets le numéro de l'extrait qui la donne entre crochets : [1], [2].
 7. Réponds dans la langue de la question.
@@ -21,7 +21,8 @@ Question : Quand dois-je payer le loyer ?
 Mauvaise réponse : « Le loyer mensuel, hors charges, est fixé à la somme de 750 euros, payable le 5 de chaque mois. »
 Bonne réponse : « Le 5 de chaque mois [1]. »`;
 
-// Two worked examples given as earlier turns: small models follow a shown answer better than a rule
+// Worked examples given as earlier turns: small models follow a shown answer better than a rule.
+// An answer may differ with the form of address (tu / vous).
 const EXEMPLES = [
   {
     extraits: [
@@ -30,6 +31,14 @@ const EXEMPLES = [
     ],
     question: 'Combien coûte l\'appartement par mois ?',
     reponse: '810 € par mois au total : 750 € de loyer [1] et 60 € de provision pour charges, ajustée une fois par an selon les dépenses réelles [2].'
+  },
+  {
+    extraits: ['[1] Notice lave-linge — En cas de code F05, fermez le robinet d\'arrivée d\'eau, débranchez l\'appareil, puis nettoyez le filtre de vidange situé en bas à droite derrière la trappe, avant de relancer un cycle.'],
+    question: 'Ma machine à laver affiche F05, je fais quoi ?',
+    reponse: {
+      tu: 'Coupe l\'eau et débranche la machine, puis nettoie le filtre de vidange, derrière la petite trappe en bas à droite. Tu peux ensuite relancer un cycle [1].',
+      vous: 'Coupez l\'eau et débranchez la machine, puis nettoyez le filtre de vidange, derrière la petite trappe en bas à droite. Vous pouvez ensuite relancer un cycle [1].'
+    }
   },
   {
     extraits: ['[1] Notice chaudière — La garantie couvre les pièces pendant deux ans à compter de la date d\'installation, sur présentation de la facture.'],
@@ -66,6 +75,9 @@ export function promptSysteme(reglages) {
 }
 
 const blocExtraits = (lignes, question) => `Extraits :\n${lignes.join('\n')}\n\nQuestion : ${question}`;
+const adresse = (reglages) => (reglages.personnalite.tutoiement ? 'tu' : 'vous');
+// Small models follow the last message best: the key rules are repeated there
+const rappel = (reglages) => `\n\n(Réponds directement, avec tes propres mots, en ${reglages.personnalite.tutoiement ? 'tutoyant : « tu », « ton », « ta », jamais « vous »' : 'vouvoyant : « vous », « votre »'}, avec les renvois [n]. Si les extraits ne répondent pas : ${NON_TROUVE}.)`;
 
 // Outcome 1: messages for the answer written from the chunks
 export function messagesReponse(reglages, extraits, question) {
@@ -77,9 +89,9 @@ export function messagesReponse(reglages, extraits, question) {
     { role: 'system', content: promptSysteme(reglages) },
     ...EXEMPLES.flatMap((x) => [
       { role: 'user', content: blocExtraits(x.extraits, x.question) },
-      { role: 'assistant', content: x.reponse }
+      { role: 'assistant', content: typeof x.reponse === 'string' ? x.reponse : x.reponse[adresse(reglages)] }
     ]),
-    { role: 'user', content: blocExtraits(lignes, question) }
+    { role: 'user', content: blocExtraits(lignes, question) + rappel(reglages) }
   ];
 }
 
@@ -89,7 +101,7 @@ export function messagesProches(reglages, documents, question) {
   const systeme = `Tu es {nom}, l'assistant documentaire d'ODIN.
 On t'a posé une question, et aucun document ne contient la réponse exacte. Voici les documents qui s'en rapprochent le plus, avec leur titre et un résumé.
 Écris 1 à 3 phrases naturelles : dis d'abord que tu n'as pas trouvé de réponse exacte, puis explique en quoi chaque document peut aider.
-Interdit : répondre à la question elle-même, donner une information absente des titres et des résumés, faire une liste, utiliser des crochets.
+Interdit : répondre à la question elle-même, donner une information absente des titres et des résumés (aucun chiffre, aucune date, aucun nom qui n'y figure pas), faire une liste, utiliser des crochets.
 ${p.tutoiement ? 'Tu tutoies la personne.' : 'Tu vouvoies la personne.'} Ton : ${p.ton}. Réponds dans la langue de la question.
 
 Exemple : « Je n'ai pas trouvé de réponse exacte, mais le contrat de bail aborde la question des charges, et le relevé de mars en détaille les montants. »`;
@@ -112,7 +124,7 @@ export function messagesReformulation(historique, question) {
 // One-line summary of a document, written at indexing time (used by outcome 2)
 export function messagesResume(titre, debut) {
   return [
-    { role: 'system', content: 'Tu résumes des documents personnels. Écris une seule phrase de 25 mots au plus qui dit de quel type de document il s\'agit et quels sujets il aborde, sans aucun chiffre ni détail précis. Réponds uniquement par cette phrase, en français.' },
+    { role: 'system', content: 'Tu résumes des documents personnels. Écris une seule phrase de 25 mots au plus, qui commence par le type de document (« Contrat de… », « Relevé… », « Notice… ») et dit quels sujets il aborde, sans aucun chiffre ni détail précis. Réponds uniquement par cette phrase, en français, sans répéter le titre.' },
     { role: 'user', content: `Document « ${titre} » :\n${debut}` }
   ];
 }

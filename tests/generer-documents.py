@@ -189,7 +189,9 @@ def pdf(chemin, titre, paras, lignes_par_page=48):
     xref = len(sortie)
     sortie += f'xref\n0 {len(objets) + 1}\n0000000000 65535 f \n'.encode()
     sortie += b''.join(f'{p:010d} 00000 n \n'.encode() for p in positions)
-    sortie += f'trailer\n<< /Size {len(objets) + 1} /Root 1 0 R /Info << /Title ({titre.encode("ascii", "ignore").decode()}) >> >>\nstartxref\n{xref}\n%%EOF\n'.encode()
+    # Title in PDFDocEncoding (Latin-1 for French accents), as office software writes it
+    titre_pdf = enc(titre.replace('—', '-').replace('’', "'"))
+    sortie += f'trailer\n<< /Size {len(objets) + 1} /Root 1 0 R /Info << /Title ('.encode() + titre_pdf + f') >> >>\nstartxref\n{xref}\n%%EOF\n'.encode()
     with open(chemin, 'wb') as f:
         f.write(sortie)
 

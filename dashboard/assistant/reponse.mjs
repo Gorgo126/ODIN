@@ -25,6 +25,21 @@ function marqueur(debut) {
   return n.length < 10 && ('NON_TROUVE'.startsWith(n) || 'NON TROUVE'.startsWith(n)) ? 'peut-etre' : 'non';
 }
 
+// Outcome 2 must never answer: a number that is neither in the question nor in the titles and
+// summaries was invented. The text is then replaced by a plain sentence listing the documents.
+function sansInvention(texte, documents, question) {
+  const permis = new Set(`${question} ${documents.map((d) => `${d.titre} ${d.resume || ''}`).join(' ')}`.match(/\d+/g) || []);
+  return (texte.match(/\d+/g) || []).every((n) => permis.has(n)) && !/\[/.test(texte);
+}
+
+function repliProches(reglages, documents) {
+  const tu = reglages.personnalite.tutoiement;
+  const noms = documents.map((d) => `« ${d.titre} »`);
+  const liste = noms.length > 1 ? `${noms.slice(0, -1).join(', ')} et ${noms.at(-1)}` : noms[0];
+  const cherche = tu ? 'Tu y trouveras peut-être de quoi avancer.' : 'Vous y trouverez peut-être de quoi avancer.';
+  return `Je n'ai pas trouvé de réponse exacte, mais ${noms.length > 1 ? 'ces documents s\'en rapprochent' : 'ce document s\'en rapproche'} : ${liste}. ${cherche}`;
+}
+
 function sources(texte, extraits) {
   const cites = [...new Set([...texte.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])))].filter((n) => n >= 1 && n <= extraits.length);
   const renvois = Object.fromEntries(cites.map((n) => {
@@ -108,13 +123,13 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
       if (!documents.length) issue = 3;
     }
     if (issue === 2) {
+      // Short text (1 to 3 sentences), checked as a whole before it is shown
       yield { type: 'etat', etat: 'redaction' };
-      for await (const t of discuter(cfg, messagesProches(reglages, documents, autonome), options)) {
-        premier();
-        texte += t;
-        yield { type: 'texte', texte: t };
-      }
-      if (!texte.trim()) issue = 3;
+      for await (const t of discuter(cfg, messagesProches(reglages, documents, autonome), options)) texte += t;
+      texte = texte.trim();
+      if (!texte || !sansInvention(texte, documents, autonome)) texte = repliProches(reglages, documents);
+      premier();
+      yield { type: 'texte', texte };
     }
 
     if (issue === 3) {
