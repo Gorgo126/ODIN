@@ -202,9 +202,13 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   douleur thoracique, saignement abondant, brûlure étendue ou profonde, fracture ouverte, convulsion,
   intoxication, noyade, électrisation, et appel au suicide) déclenchent l'avertissement, par règles sur la
   question ; le drapeau du modèle n'est suivi que hors blessures courantes (coupure au doigt, petite
-  brûlure, mal de tête). L'avertissement s'affiche alors en tête, dans les trois issues, avec le message
-  des réglages (champ urgence, variable {nom}) : les secours « si c'est possible », sinon les guides
-  installés. ODIN sert là où tout est coupé : jamais de rappel du 112 sur une question de santé ordinaire.
+  brûlure, mal de tête). L'avertissement conclut alors la réponse (les gestes se lisent d'abord),
+  dans les trois issues. Son texte dépend du réseau : trois formulations réglables (urgences.disponible,
+  .indisponible, .inconnu ; variables {nom} et {secours} ; numéro dans numeroUrgence). Aucune ne dit de
+  ne pas appeler : ODIN sans internet ne veut pas dire que le téléphone est coupé. L'état vient de la
+  sonde de « Connectivité externe » (lib/liaison.mjs, rafraîchie toutes les 45 s, lue sans attendre) :
+  jamais de seconde sonde, et sans réponse en 500 ms c'est le texte « état inconnu ». Jamais
+  d'avertissement sur une question de santé ordinaire.
   Guides médicaux : livre dont la fiche porte avertissement « sante », pack Kiwix dont le titre parle de
   médecine ou de santé. En cas d'urgence, leur meilleur passage est toujours envoyé au modèle, et une
   urgence sans autre résultat passe en issue 2 sur ces guides, pour renvoyer à la bonne page.
