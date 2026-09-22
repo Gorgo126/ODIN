@@ -142,15 +142,34 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   (la recherche de pdf.js, #search=, téléchargerait tout le livre).
 
 - Assistant documentaire (en construction, lots 1 à 5) : remplace Open WebUI et synchro, retirés au lot 1.
-  Décisions validées : UI, API et ingestion dans le dashboard, ingestion et calcul des similarités dans
-  un worker_thread (jamais sur la boucle d'événements de Next) ; Node 24 pour node:sqlite (FTS5), aucune
-  dépendance npm ajoutée ; pas de sqlite-vec : vecteurs en BLOB Float32 dans SQLite, chargés en mémoire
-  (Float32Array), cosinus en JS ; préfixes d'embeddinggemma toujours appliqués (requêtes et documents) ;
-  appels Ollama avec délai d'inactivité sur le flux, sans délai total (le 1er appel charge le modèle en CPU) ;
-  OLLAMA_MAX_LOADED_MODELS=2 et keep_alive sur les deux modèles ; /assistant et son API derrière
-  l'authentification, flux non tamponné par Caddy. qwen3:4b désigne la version « thinking » : figer
-  qwen3:4b-instruct-2507-q4_K_M. install.sh contient un bloc de migration (retrait d'Open WebUI, synchro,
-  qwen2.5:3b, bge-m3, data/openwebui, data/synchro), à retirer après la v1.
+  Décisions validées : UI, API et ingestion dans le dashboard ; Node 24 pour node:sqlite (FTS5), aucune
+  dépendance npm ajoutée ; pas de sqlite-vec ; OLLAMA_MAX_LOADED_MODELS=2 et keep_alive (30m) sur les deux
+  modèles ; /assistant et son API derrière l'authentification, flux non tamponné par Caddy.
+  qwen3:4b désigne la version « thinking » : figer qwen3:4b-instruct-2507-q4_K_M. install.sh contient un bloc
+  de migration (retrait d'Open WebUI, synchro, qwen2.5:3b, bge-m3, data/openwebui, data/synchro), à retirer
+  après la v1.
+  Index (lot 2) : dashboard/assistant/*.mjs tourne dans un worker_thread (jamais sur la boucle d'événements
+  de Next), lancé par lib/assistant.mjs depuis instrumentation.js (état dans globalThis). Ces fichiers et lib/
+  sont copiés tels quels dans l'image (hors bundle Next) : le worker ne doit importer que des modules Node
+  et des fichiers de lib/ sans dépendance. Base data/assistant/index.db : fichiers (statut indexe, ignore
+  = format non pris en charge, erreur, attente = Ollama indisponible, réessayé au scan suivant), morceaux
+  (texte, page, section, vecteur Float32 complet en BLOB) et morceaux_fts (FTS5 sans contenu, texte
+  normalisé par lib/normalisation.mjs). Vecteurs chargés en mémoire, coupés à ASSISTANT_DIMENSIONS (0 = tous)
+  et renormalisés : changer de dimensions ne demande pas de réindexer, changer de modèle vide l'index.
+  Formats : PDF (pdftotext, page par page), MD, TXT (UTF-8, sinon Windows-1252), DOCX (lecteur ZIP maison,
+  zlib), HTML. Morceaux d'environ 400 jetons (1 jeton ≈ 4 caractères), chevauchement 55, coupés aux
+  paragraphes et aux titres. Incrémental : taille + date, puis empreinte SHA-256. Déclenchement : démarrage,
+  fs.watch récursif (3 s de délai), scan toutes les 5 min, POST /api/assistant/index ({"complet": true}
+  pour tout refaire). Préfixes d'EmbeddingGemma toujours appliqués (assistant/embeddings.mjs).
+  Recherche : BM25 (mots de 4 lettres et plus en préfixe) + cosinus, 20 candidats chacun, fusion RRF (k=60),
+  4 extraits ; le meilleur cosinus brut est rendu à part (seuils du lot 3). Sans Ollama, mots-clés seuls.
+  Appels Ollama : délai d'inactivité (120 s, en-têtes ou données), jamais de délai total.
+  Banc : docker exec -i dashboard node assistant/banc.mjs < tests/banc-embeddings.json (travaille dans
+  /tmp du conteneur ; le modèle comparé doit être présent dans Ollama, à retirer ensuite).
+  Résultat du banc (nomad, 2026-09-22, livre de 639 pages, 1453 morceaux, 5 questions) : embeddinggemma:300m
+  en 768 dimensions retenu (MRR vecteurs 0,90 ; 256 d : 0,85 ; bge-m3 : 0,75), 1,7 morceau/s contre 0,7 pour
+  bge-m3, 650 Mo chargé contre 1,2 Go ; vecteurs 768 d : 29 Mo pour 10 000 morceaux. Ollama n'occupe que
+  2 cœurs sur 4 pendant l'indexation : num_thread à régler au lot 3.
 
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.

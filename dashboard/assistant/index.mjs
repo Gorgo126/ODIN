@@ -158,6 +158,7 @@ export class Index {
     const presents = await lister(this.cfg.racine);
     const connus = new Map(this.db.prepare('SELECT chemin, taille, mtime, empreinte, statut FROM fichiers').all().map((r) => [r.chemin, r]));
     const vus = new Set(presents.map((f) => f.chemin));
+    let modifie = false;
     for (const chemin of connus.keys()) {
       if (vus.has(chemin)) continue;
       this.db.exec('BEGIN');
@@ -166,6 +167,7 @@ export class Index {
         this.db.prepare('DELETE FROM fichiers WHERE chemin = ?').run(chemin);
         this.db.exec('COMMIT');
         log(`Retiré : ${chemin}`);
+        modifie = true;
       } catch (e) { this.db.exec('ROLLBACK'); throw e; }
     }
     const aFaire = presents.filter((f) => {
@@ -178,6 +180,7 @@ export class Index {
       try {
         await this.traiter(f, connus.get(f.chemin));
         this.erreurOllama = null;
+        modifie = true;
       } catch (e) {
         if (!(e instanceof ErreurOllama)) {
           // Any other failure is this file's alone: recorded, the others go on
@@ -194,7 +197,7 @@ export class Index {
       this.enCours.fait++;
       if (Date.now() - this.charge > RECHARGE) this.charger();
     }
-    if (aFaire.length || connus.size !== presents.length) this.meta('derniere_indexation', Date.now());
+    if (modifie) this.meta('derniere_indexation', Date.now());
   }
 
   async traiter(f, connu) {

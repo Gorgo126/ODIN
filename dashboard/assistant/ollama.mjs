@@ -29,6 +29,9 @@ async function* lignes(url, corps, inactivite) {
       const texte = await r.text().catch(() => '');
       let message = texte;
       try { message = JSON.parse(texte).error || texte; } catch {}
+      if (r.status === 404 && /not found/i.test(message)) {
+        throw new ErreurOllama(`modèle ${corps.model} absent d'Ollama : relancez l'installeur avec internet`);
+      }
       throw new ErreurOllama(`Ollama : ${message.slice(0, 200) || r.status}`);
     }
     const decodeur = new TextDecoder();

@@ -133,8 +133,13 @@ msg "Modèle d'indexation des documents"
 # Downloaded now: offline, the assistant must never need to fetch anything
 MODELE_EMBEDDING=$(sed -n 's/^MODELE_EMBEDDING=//p' .env | tail -1)
 MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
-docker exec ollama ollama pull "$MODELE_EMBEDDING" \
-  || echo "  Modèle $MODELE_EMBEDDING non téléchargé : relancez l'installeur avec internet."
+if docker exec ollama ollama pull "$MODELE_EMBEDDING"; then
+  # The dashboard may have started before the model was there: index now instead of at the next scan
+  docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index", { method: "POST", signal: AbortSignal.timeout(30000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' \
+    || echo "  Indexation des documents : elle démarrera d'elle-même dans les 5 minutes."
+else
+  echo "  Modèle $MODELE_EMBEDDING non téléchargé : relancez l'installeur avec internet."
+fi
 
 msg "Fond de carte mondial"
 # Installed through the dashboard, which holds the pinned pmtiles tool
