@@ -397,6 +397,11 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
   data/openwebui, data/synchro. Gardés : l'image précédente du dashboard (retour arrière). Disque système :
   22 Go → 5,1 Go utilisés. Trouvé et corrigé : un clone --depth 1 -b main ne pouvait pas changer de branche
   (checkout --track refusé) ; l'échec laissait les fichiers de dev sous le HEAD de main.
+- Fusion dans main le 2026-09-23 : 054013b (image figée par 306def3). Main d'avant, pour revenir en arrière si
+  l'installation publique pose problème : af1581102effa1915320c9a61f015394859abbcd. Snapshot nomad :
+  avant-fusion-main. Vérifié après la fusion sur VM vierge depuis main : installation complète, pas de
+  LIVRES_NON_PUBLIES dans .env, « Aucun livre n'est disponible », contrôle hors ligne (15 pages, licence sous
+  l'article, aucune requête vers un autre hôte ; journal : sonde et NTP seulement).
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
