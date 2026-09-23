@@ -385,6 +385,13 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - Livres Hesperian (docs/conception-packs-documents.md, section 10), jusqu'à nouvel ordre du propriétaire :
   ne jamais publier la release GitHub livres-v1, et ne jamais fusionner dans main ce qui installe un livre
   Hesperian, tant que le propriétaire n'a pas reçu l'accord écrit d'Hesperian (usage numérique).
+  Pourquoi (vérifié le 2026-09-23, à ne pas lever sur la seule gratuité du téléchargement) : la politique
+  https://hesperian.org/open-copyright-policy/ (section « Digital Materials ») et les pages liminaires des livres
+  récents exigent une autorisation écrite (permissions@hesperian.org) pour tout usage numérique, même non
+  commercial ; l'autorisation sans demande de la page 2 (usage non lucratif) ne couvre pas le numérique.
+  Demande écrite envoyée par le propriétaire à permissions@hesperian.org le 2026-09-23 : en attente.
+  Même avec l'accord, le PDF devra venir d'Hesperian : catalogue/livres.json le prend aujourd'hui sur
+  dokotoro.org, un site tiers ; changer la source (et l'empreinte) avant toute publication.
   Les tests sur nomad (branche dev) sont autorisés.
 
 ## Pièges déjà rencontrés

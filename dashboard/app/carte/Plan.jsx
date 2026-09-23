@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 
 // Served as-is from public/: MapLibre finds its worker next to its own file
 const RESSOURCES = '/ressources-carte';
-const ATTRIBUTION = '<a href="https://openstreetmap.org/copyright">© OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>';
+// OpenStreetMap data (ODbL 1.0) in Protomaps tiles
+const ATTRIBUTION = '© <a href="https://openstreetmap.org/copyright">contributeurs d\'OpenStreetMap</a> (<a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>) · <a href="https://protomaps.com">Protomaps</a>';
 
 // Opening view when the address holds none: Europe
 const VUE_INITIALE = [[-11, 35], [32, 61]];

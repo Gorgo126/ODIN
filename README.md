@@ -308,9 +308,19 @@ Vous pouvez aussi déposer vos propres fichiers `.zim` dans `/opt/odin/data/zim`
 Relancez simplement la commande d'installation. Elle met à jour les sources et les services, et ne
 touche pas à vos données dans `data/`.
 
-## Licence
+## Licences
 
-[MIT](https://opensource.org/license/mit). Les contenus Kiwix et les modèles d'IA gardent leurs propres licences.
-EmbeddingGemma (Google), qui indexe vos documents, est distribué sous les
-[conditions d'utilisation de Gemma](https://ai.google.dev/gemma/terms) : ce n'est pas une licence libre, et
-l'usage du modèle doit respecter sa [politique d'utilisation](https://ai.google.dev/gemma/prohibited_use_policy).
+**Le code d'ODIN est sous licence [MIT](https://opensource.org/license/mit).** Les contenus qu'ODIN
+installe gardent chacun leur propre licence, qui ne s'étend pas à ODIN : installer un contenu non
+commercial ne rend pas ODIN non commercial, et la licence MIT ne s'applique pas à ces contenus. Chaque
+licence est rappelée dans ODIN, là où le contenu s'affiche.
+
+| Contenu | Origine | Licence | Où ODIN l'indique |
+|---|---|---|---|
+| Wikipédia, Wiktionnaire, Wikisource, Wikilivres, Wikiversité, Wikivoyage | Catalogue Kiwix | Textes [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.fr) (contributeurs de chaque projet) ; les images ont chacune leur licence | Sous chaque article du lecteur ; liste des packs (Configuration) |
+| Vikidia | Catalogue Kiwix | [CC BY-SA 3.0 et GFDL](https://fr.vikidia.org/wiki/Vikidia:Droit_d'auteur) | Idem |
+| Projet Gutenberg | Catalogue Kiwix | Domaine public, avec la [licence et la marque Project Gutenberg](https://www.gutenberg.org/policy/license.html) | Idem |
+| Cartes | [Protomaps](https://protomaps.com), données OpenStreetMap | Données © contributeurs d'OpenStreetMap, [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) | Sur la carte ; section Cartes de Configuration |
+| *Là où il n'y a pas de docteur* (Hesperian, 2019) | PDF d'Hesperian | [Licence ouverte Hesperian](https://hesperian.org/open-copyright-policy/) : usage **non commercial**, attribution, fichier non modifié. La distribution numérique demande l'accord écrit d'Hesperian, demandé en septembre 2026 : d'ici là, le livre n'est pas proposé par la version publiée d'ODIN. | Fiche du livre (origine du fichier, licence, restriction) |
+| EmbeddingGemma (Google), modèle de la recherche | Hugging Face (ggml-org) | [Conditions d'utilisation de Gemma](https://ai.google.dev/gemma/terms) : pas une licence libre ; [politique d'utilisation](https://ai.google.dev/gemma/prohibited_use_policy) à respecter | Ici |
+| Qwen3 (option IA) | Registre Ollama | Apache 2.0 | Page Assistant IA |

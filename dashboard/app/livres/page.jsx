@@ -6,6 +6,8 @@ import LienExterne from '../LienExterne';
 export const dynamic = 'force-dynamic';
 
 const CATEGORIES = { sante: 'Santé', eau: 'Eau', energie: 'Énergie', agriculture: 'Agriculture', technique: 'Technique' };
+// Site a file came from (the address actually used, recorded when it was checked)
+const hote = (u) => { try { return new URL(u).hostname; } catch { return u; } };
 const date = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '');
 
 export default async function Livres() {
@@ -49,7 +51,12 @@ export default async function Livres() {
             {l.edition && <><dt>Édition</dt><dd>{l.edition}{l.isbn ? `  ISBN ${l.isbn}` : ''}</dd></>}
             <dt>Attribution</dt><dd>{l.attribution}</dd>
             {l.credit && <><dt>Crédit</dt><dd>{l.credit}</dd></>}
-            <dt>Licence</dt><dd>{l.licence.nom}{l.licence.conditions ? `  ${l.licence.conditions}` : ''}</dd>
+            <dt>Licence</dt>
+            <dd>
+              {l.licence.nom}{l.licence.conditions ? ` : ${l.licence.conditions}` : ''}.
+              {/non lucrati|non commercial/i.test(l.licence.conditions || '') && ' Cette restriction porte sur le livre, pas sur ODIN (licence MIT).'}
+            </dd>
+            {(l.verifie?.url || l.sources?.[0]) && <><dt>Origine</dt><dd>Fichier téléchargé depuis {hote(l.verifie?.url || l.sources[0])}</dd></>}
             <dt>Recherche</dt>
             <dd>{l.texte ? 'Texte extrait : le livre répond à la recherche d\'ODIN, page par page' : 'Texte pas encore extrait : le livre ne répond pas encore à la recherche'}</dd>
             <dt>Fichier</dt>

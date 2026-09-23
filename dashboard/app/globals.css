@@ -420,3 +420,6 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .chat-passages { margin-top: .4rem; }
 .chat-passages .passage-groupe { margin: .4rem 0; }
 .chat-passages-plies summary { cursor: pointer; font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; color: var(--or); margin-top: .4rem; }
+/* Licence of the pack under an article of the reader */
+.lecture-licence { max-width: 46rem; margin: 2rem auto 1rem; padding: .6rem 1rem 0; border-top: 1px solid var(--bord); font-size: .75rem; opacity: .7; }
+.lecture-licence.hors-liaison a { opacity: .6; cursor: not-allowed; }

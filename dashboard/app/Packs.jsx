@@ -82,7 +82,7 @@ export default function Packs({ liaisonInitiale }) {
           <div key={p.id} className="carte pack">
             <div>
               <strong>{p.libelle}</strong>
-              <em>{p.taille ? octets(p.taille) : p.derniereMesure ? `${octets(p.derniereMesure)} (dernière mesure)` : ''}</em>
+              <em>{p.taille ? octets(p.taille) : p.derniereMesure ? `${octets(p.derniereMesure)} (dernière mesure)` : ''}{p.licence ? ` · licence ${p.licence}` : ''}</em>
             </div>
             {action}
           </div>

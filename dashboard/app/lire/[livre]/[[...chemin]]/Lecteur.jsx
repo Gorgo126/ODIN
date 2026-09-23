@@ -4,7 +4,7 @@ import { useLiaison, HORS_LIAISON } from '../../../useLiaison';
 
 const TAILLES = [0.9, 1, 1.1, 1.25, 1.4];
 
-export default function Lecteur({ livre, livreLien, titre, html, kiwix, liaisonInitiale }) {
+export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence, liaisonInitiale }) {
   const [taille, setTaille] = useState(2);
   const [avis, setAvis] = useState(false);
   const horsLiaison = !useLiaison(liaisonInitiale)?.enLigne;
@@ -54,6 +54,13 @@ export default function Lecteur({ livre, livreLien, titre, html, kiwix, liaisonI
         style={{ '--taille-lecture': TAILLES[taille] + 'rem' }}
         dangerouslySetInnerHTML={{ __html: html }}
       />
+      {licence && (
+        <footer className={`lecture-licence${horsLiaison ? ' hors-liaison' : ''}`} onClick={cliquer}>
+          Texte{licence.auteurs ? ` : ${licence.auteurs}` : ''}, licence{' '}
+          {licence.url ? <a href={licence.url} data-externe="">{licence.licence}</a> : licence.licence}.
+          {licence.note && ` ${licence.note}`}
+        </footer>
+      )}
     </div>
   );
 }
