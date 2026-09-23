@@ -286,6 +286,10 @@ migrer_ancien_assistant() {
   if [ -n "$ctn" ]; then docker rm -f $ctn >/dev/null; retire=1; fi
   img=$(docker image ls -q ghcr.io/open-webui/open-webui | sort -u)
   if [ -n "$img" ]; then docker image rm -f $img >/dev/null || true; retire=1; fi
+  # Image of the former synchro service (exact tag of its compose.yml), unless something else uses it
+  if docker image inspect node:20.20.2-alpine3.23 >/dev/null 2>&1 && [ -z "$(docker ps -aq --filter ancestor=node:20.20.2-alpine3.23)" ]; then
+    docker image rm node:20.20.2-alpine3.23 >/dev/null 2>&1 && retire=1
+  fi
   # Only where Ollama still runs (AI option); it may still be starting right after up -d
   local modeles=""
   if [ -n "$(docker ps -q --filter 'name=^ollama$')" ]; then
@@ -302,7 +306,7 @@ migrer_ancien_assistant() {
   for d in openwebui synchro; do
     if [ -d "$DATA/$d" ]; then rm -rf "${DATA:?}/$d"; retire=1; fi
   done
-  if [ "$retire" -eq 1 ]; then echo "  Ancien assistant (Open WebUI) retiré : conteneurs, image, modèles et données de test."; fi
+  if [ "$retire" -eq 1 ]; then echo "  Ancien assistant (Open WebUI, synchro) retiré : conteneurs, images, modèles et données de test."; fi
 }
 migrer_ancien_assistant || echo "  Avertissement : nettoyage de l'ancien assistant incomplet, l'installation continue."
 # --- End of migration ---
