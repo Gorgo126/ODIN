@@ -238,8 +238,10 @@ alors le modèle adapté (8 milliards de paramètres pour 8 Go, 14 milliards pou
 disque, le télécharge et teste son chargement sur la carte.
 
 > **Non vérifié sur du vrai matériel.** Ce chemin a été écrit sans carte graphique pour le tester : seul
-> son parcours a été testé, en simulation. Sans carte adaptée, rien n'est téléchargé et ODIN fonctionne
-> en recherche avancée.
+> son parcours a été testé, en simulation (carte fictive, modèle sur le processeur). Ni le passage de la
+> carte au conteneur, ni la détection du matériel et l'installation des pilotes sur une vraie machine
+> Ubuntu, ni une carte de 8 Go exactement n'ont été éprouvés. Sans carte adaptée, rien n'est téléchargé
+> et ODIN fonctionne en recherche avancée.
 
 ### Options d'installation
 

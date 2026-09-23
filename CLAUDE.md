@@ -207,8 +207,13 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   data/config/ia.json : modèle, actif, vérification. L'assistant n'existe que si OLLAMA_URL et un modèle actif ;
   sinon la carte de l'accueil est grisée « Non installé » et mène à /ia.
   Vérifié en simulation sur nomad (2026-09-23) : 14B refusé (8 Go), essai téléchargé, empreinte bonne, test
-  gpu 0 (processeur, attendu en simulation). Constat : le PC du propriétaire a une RTX 3080 (10 Go) visible
-  par nvidia-smi dans WSL ; le chemin NVIDIA pourrait peut-être s'y tester (Docker et toolkit dans WSL).
+  gpu 0 (processeur, attendu en simulation).
+  Test GPU réel : NON FAIT. Le PC du propriétaire a une RTX 3080 (10 Go, pilote 610.88) visible par nvidia-smi
+  dans WSL ; le test prévu passait par Docker Desktop/WSL2 (docker run --gpus all), sans rien installer. Docker
+  Desktop n'est plus présent (désinstallé le 2024-04-21) : test abandonné, rien installé ni modifié sur ce PC.
+  Restent donc non vérifiés : le passage du GPU au conteneur Ollama (compose.nvidia.yml, compose.amd.yml), le
+  chargement en mémoire graphique et le temps de réponse, la détection du matériel et l'installation des
+  pilotes sur une vraie machine Ubuntu, et une carte de 8 Go exactement (seuil 7 680 Mo).
 - Assistant documentaire (ancien plan, anciens lots 1 à 4 faits ; devient l'option IA) : remplace Open WebUI et
   synchro, retirés à l'ancien lot 1.
   Décisions validées : UI, API et ingestion dans le dashboard ; Node 24 pour node:sqlite (FTS5), aucune
