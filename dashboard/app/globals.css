@@ -376,5 +376,3 @@ a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px);
 .choix-visages .visage { width: 2.6rem; height: 2.6rem; padding: 0; border: 1px solid var(--bord); background: none; color: var(--or); cursor: pointer; box-shadow: var(--relief); }
 .choix-visages .visage.choisi { border-color: var(--or); box-shadow: var(--relief), 0 0 0 1px var(--or); }
 .service .chat-avatar, .service-icone .sprite { width: 100%; height: 100%; }
-/* Model trial (temporary): which model answers in this tab */
-.assistant-essai { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--or); border: 1px solid currentColor; padding: 0 .3rem; }

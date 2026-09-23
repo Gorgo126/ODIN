@@ -1,4 +1,4 @@
-import { reglagesAssistant, demander, MODELES_ESSAI } from '../../lib/assistant.mjs';
+import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
 import { DEFAUTS } from '../../assistant/reglages.mjs';
 import Espace from './Espace';
 import Bienvenue from './Bienvenue';
@@ -13,8 +13,7 @@ export async function generateMetadata() {
 // ?debug=1 shows the passages and the scores under each answer. The switch is not in the settings:
 // it belongs to the moment, not to the household.
 export default async function Assistant({ searchParams }) {
-  // ?modele=4b : temporary switch of the model trial
-  const { debug, modele } = await searchParams;
+  const { debug } = await searchParams;
   const { nom, avatar, couleur, accueil, memoire, configure } = reglagesAssistant();
   if (!configure) {
     return (
@@ -39,7 +38,6 @@ export default async function Assistant({ searchParams }) {
       accueil={accueil}
       memoire={memoire}
       debug={debug === '1'}
-      modele={MODELES_ESSAI[modele] ? modele : null}
       conversations={conversations}
     />
   );

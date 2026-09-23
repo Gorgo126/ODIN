@@ -67,7 +67,7 @@ function Reponse({ r, avatar, nom }) {
   );
 }
 
-export default function Espace({ nom, avatar, couleur, accueil, memoire, debug, modele, conversations = [] }) {
+export default function Espace({ nom, avatar, couleur, accueil, memoire, debug, conversations = [] }) {
   const [liste, setListe] = useState(conversations);
   const [courante, setCourante] = useState(null);
   const [echanges, setEchanges] = useState([]);
@@ -136,7 +136,7 @@ export default function Espace({ nom, avatar, couleur, accueil, memoire, debug, 
       const rep = await fetch('/api/assistant/question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, historique, debug, modele, conversation: courante })
+        body: JSON.stringify({ question: q, historique, debug, conversation: courante })
       });
       if (!rep.ok) throw new Error((await rep.json().catch(() => ({}))).erreur || `Erreur ${rep.status}`);
       const lecteur = rep.body.getReader();
@@ -177,7 +177,6 @@ export default function Espace({ nom, avatar, couleur, accueil, memoire, debug, 
         <span className="sep">/</span>
         <span className="chat-avatar petit"><Sprite nom={avatar} /></span>
         <span className="titre">{nom}</span>
-        {modele && <span className="assistant-essai">modèle {modele}</span>}
         <a className="externe" href="/configuration#assistant">Réglages</a>
       </nav>
 
