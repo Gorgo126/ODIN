@@ -1,6 +1,7 @@
 import { demander, reglagesAssistant, reseauAssistant } from '../../../lib/assistant.mjs';
 import { grouper } from '../../../assistant/passages.mjs';
 import { signeDeGravite } from '../../../assistant/securite.mjs';
+import { motsUtiles } from '../../../assistant/contexte.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,11 @@ export async function GET(req) {
   const urgence = signeDeGravite(question);
   const reseau = urgence ? reseauAssistant() : null;
   try {
-    const r = await demander('rechercher', { question, n: EXTRAITS, sources: ['documents', 'wikis', 'livres'], requetes: [question] });
+    // Kiwix looks for all the words of a query together: « comment soigner une brûlure » finds
+    // nothing useful, « brûlure » finds the article. The meaningful words also go alone (the longest
+    // three). No main term is proposed: the index picks the rarest word of the question itself.
+    const seuls = [...new Set(motsUtiles(question))].filter((m) => m.length >= 4).sort((a, b) => b.length - a.length).slice(0, 3);
+    const r = await demander('rechercher', { question, n: EXTRAITS, sources: ['documents', 'wikis', 'livres'], requetes: [question, ...seuls], terme: null });
     const g = grouper(r, question, reglages, { urgence, debug });
     return Response.json({
       question,

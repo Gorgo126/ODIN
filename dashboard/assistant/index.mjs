@@ -471,9 +471,10 @@ export class Index {
   // Search in every source. Documents: the index above. Wikis (Kiwix) and books: their passages are
   // fetched while the question is embedded, sorted by a local BM25 on both queries (keywords and
   // main term), and only the best ones get an embedding (8 wiki, 4 book paragraphs: CPU time).
-  // Common ranking by cosine (same model, same prefixes). garder: the indexing stays paused after the
+  // Common ranking by cosine (same model, same prefixes). terme: main term proposed by the
+  // understanding step (second query by default). garder: the indexing stays paused after the
   // search (until reprendre(jeton), when the answer is written); otherwise it resumes right away.
-  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes } = {}) {
+  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes, terme = requetes?.[1] } = {}) {
     const debut = Date.now();
     const durees = {};
     const mesurer = (nom, promesse) => {
@@ -509,7 +510,7 @@ export class Index {
     // title and section rules do not apply at all.
     const tous = [...wikis, ...livres];
     const frequence = (mot) => tous.filter((p) => normaliser(`${p.titre} ${p.section} ${p.texte}`).includes(mot)).length;
-    const principal = termePrincipal(requetes?.[1], question, frequence);
+    const principal = termePrincipal(terme, question, frequence);
     const externes = [...classer(wikis, req, 8, { terme: principal.terme }), ...classer(livres, req, 4, { terme: principal.terme })];
     if (q && externes.length) {
       const t = Date.now();
