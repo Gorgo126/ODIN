@@ -1,0 +1,23 @@
+# AI option (lot 5 of the advanced search): Ollama and the language model, only on a machine that
+# can run it. Enabled by install.sh through COMPOSE_FILE in .env; without it, neither Ollama nor any
+# language model is downloaded.
+services:
+  dashboard:
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - MODELE_CHAT=${MODELE_CHAT:-}
+      - OLLAMA_KEEP_ALIVE=30m
+
+  ollama:
+    image: ollama/ollama:0.34.2
+    container_name: ollama
+    environment:
+      # No calls to ollama.com (model recommendations, cloud cache); model pulls still work
+      - OLLAMA_NO_CLOUD=true
+      # Two slots: the understanding prompt and the answer prompt each keep their cached start
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_KEEP_ALIVE=30m
+    volumes:
+      - ${DATA_DIR}/ollama:/root/.ollama
+    restart: unless-stopped

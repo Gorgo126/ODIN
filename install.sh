@@ -60,7 +60,7 @@ else
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/ollama" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/cartes" "$CIBLE/data/assistant"
+mkdir -p "$CIBLE/data/zim" "$CIBLE/data/vecteurs" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/cartes" "$CIBLE/data/assistant"
 [ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 
@@ -80,6 +80,28 @@ fi
 systemctl enable avahi-daemon >/dev/null 2>&1 || true
 systemctl restart avahi-daemon >/dev/null 2>&1 || true
 
+msg "Modèle de la recherche avancée"
+# EmbeddingGemma for llama.cpp (service « vecteurs »). Downloaded now and checked: offline, the
+# search never fetches anything. Pinned revision and SHA-256; a file that fails the check is dropped.
+VECTEURS_FICHIER=embeddinggemma-300M-Q8_0.gguf
+VECTEURS_SOURCE="https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF/resolve/0f741b5a6585bd53aeb15cd1372c56f2a0f65e12/$VECTEURS_FICHIER"
+VECTEURS_SHA256=b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63
+modele_vecteurs() {
+  local f="$CIBLE/data/vecteurs/$VECTEURS_FICHIER"
+  if [ -f "$f" ]; then echo "  Déjà présent."; return 0; fi
+  # No total delay (334 MB), but a stalled transfer stops after 60 s; resumed on the next run
+  curl -fL --connect-timeout 15 --speed-limit 1024 --speed-time 60 -C - -o "$f.part" "$VECTEURS_SOURCE" || return 1
+  if ! echo "$VECTEURS_SHA256  $f.part" | sha256sum -c --quiet - >/dev/null 2>&1; then
+    rm -f "$f.part"
+    echo "  Empreinte incorrecte : fichier supprimé."
+    return 1
+  fi
+  mv "$f.part" "$f"
+  [ "$UTILISATEUR" != "root" ] && chown "$UTILISATEUR:$UTILISATEUR" "$f"
+  echo "  Téléchargé et vérifié."
+}
+modele_vecteurs || echo "  Modèle non installé : la recherche marche par mots-clés seulement. Relancez l'installeur avec internet."
+
 msg "Démarrage des services"
 cd "$CIBLE"
 docker compose pull
@@ -94,12 +116,12 @@ migrer_ancien_assistant() {
   if [ -n "$ctn" ]; then docker rm -f $ctn >/dev/null; retire=1; fi
   img=$(docker image ls -q ghcr.io/open-webui/open-webui | sort -u)
   if [ -n "$img" ]; then docker image rm -f $img >/dev/null || true; retire=1; fi
-  # Ollama may still be starting right after up -d
+  # Only where Ollama still runs (AI option); it may still be starting right after up -d
   local modeles=""
-  for _ in $(seq 30); do modeles=$(docker exec ollama ollama list 2>/dev/null) && break; sleep 1; done
-  if [ -z "$modeles" ]; then
-    echo "  Avertissement : Ollama ne répond pas, anciens modèles non retirés (relancez l'installeur plus tard)."
-  else
+  if [ -n "$(docker ps -q --filter 'name=^ollama$')" ]; then
+    for _ in $(seq 30); do modeles=$(docker exec ollama ollama list 2>/dev/null) && break; sleep 1; done
+  fi
+  if [ -n "$modeles" ]; then
     for m in qwen2.5:3b bge-m3:latest; do
       if awk -v m="$m" 'NR > 1 && $1 == m { t = 1 } END { exit !t }' <<<"$modeles"; then
         docker exec ollama ollama rm "$m" >/dev/null || echo "  Avertissement : modèle $m non retiré."
@@ -129,29 +151,26 @@ if [ -n "$AVANT" ]; then
   fi
 fi
 
-msg "Modèles de l'assistant documentaire"
-# Downloaded now: offline, the assistant must never need to fetch anything
-MODELE_EMBEDDING=$(sed -n 's/^MODELE_EMBEDDING=//p' .env | tail -1)
-MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
-# Language model chosen once from the memory, then kept in .env (editable there, and from lot 4
-# in the assistant settings). A nominal 8 GB machine shows about 7.7 GB: the limit is 8.5 GB.
-if ! grep -q '^MODELE_CHAT=' .env; then
-  memoire=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
-  if [ "$memoire" -le 8912896 ]; then MODELE_CHAT=qwen3:1.7b; else MODELE_CHAT=qwen3:4b-instruct-2507-q4_K_M; fi
-  printf '# Modèle de langage de l\x27assistant, choisi selon la mémoire à l\x27installation\nMODELE_CHAT=%s\n' "$MODELE_CHAT" >> .env
-  docker compose up -d dashboard
+# --- Migration: Ollama leaves the default install (advanced search, lot 4). To be removed after v1. ---
+# Without the AI option, up --remove-orphans has already removed its container: its image (9 GB)
+# goes too. data/ollama is left in place (models the AI option may reuse); only a note is printed.
+if ! grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' .env; then
+  img=$(docker image ls -q ollama/ollama | sort -u)
+  if [ -n "$img" ] && [ -z "$(docker ps -aq --filter 'name=^ollama$')" ]; then
+    docker image rm -f $img >/dev/null 2>&1 && echo "  Ollama retiré : l'IA devient une option, la recherche n'en a plus besoin."
+  fi
+  if [ -d data/ollama ] && [ -n "$(ls -A data/ollama 2>/dev/null)" ]; then
+    echo "  data/ollama ($(du -sh data/ollama | cut -f1)) ne sert plus sans l'option IA : il peut être supprimé."
+  fi
 fi
-MODELE_CHAT=$(sed -n 's/^MODELE_CHAT=//p' .env | tail -1)
-echo "  Modèle de langage : $MODELE_CHAT"
-docker exec ollama ollama pull "$MODELE_CHAT" \
-  || echo "  Modèle $MODELE_CHAT non téléchargé : relancez l'installeur avec internet."
-if docker exec ollama ollama pull "$MODELE_EMBEDDING"; then
-  # The dashboard may have started before the model was there: index now instead of at the next scan
-  docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index", { method: "POST", signal: AbortSignal.timeout(30000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' \
-    || echo "  Indexation des documents : elle démarrera d'elle-même dans les 5 minutes."
-else
-  echo "  Modèle $MODELE_EMBEDDING non téléchargé : relancez l'installeur avec internet."
-fi
+# --- End of migration ---
+
+msg "Index des documents"
+# The vector service loads its model in a few seconds; the index starts now instead of at the next scan
+for _ in $(seq 30); do docker exec caddy wget -qO- http://vecteurs:8080/health >/dev/null 2>&1 && break; sleep 1; done
+docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index", { method: "POST", signal: AbortSignal.timeout(30000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' \
+  && echo "  Indexation lancée." \
+  || echo "  Indexation des documents : elle démarrera d'elle-même dans les 5 minutes."
 
 msg "Fond de carte mondial"
 # Installed through the dashboard, which holds the pinned pmtiles tool

@@ -1,4 +1,4 @@
-import { demander, reglagesAssistant, configGeneration, reseauAssistant } from '../../../../lib/assistant.mjs';
+import { demander, reglagesAssistant, configGeneration, reseauAssistant, iaInstallee } from '../../../../lib/assistant.mjs';
 import { repondre } from '../../../../assistant/reponse.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 // A question to the assistant. Body: { question, historique: [{ question, reponse }] } (last exchange,
 // for follow-up questions). Answer: one JSON event per line (NDJSON), sent as soon as it is known.
 export async function POST(req) {
+  // The assistant writes with a language model: none without the AI option
+  if (!iaInstallee()) return Response.json({ erreur: 'L\'assistant IA n\'est pas installé : utilisez la recherche.' }, { status: 503 });
   const corps = await req.json().catch(() => null);
   const question = String(corps?.question ?? '').trim().slice(0, 1000);
   if (!question) return Response.json({ erreur: 'Question vide' }, { status: 400 });

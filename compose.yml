@@ -25,12 +25,11 @@ services:
       # World link probe: TCP 443 targets and a domain to resolve (defaults kept for older .env files)
       - LIAISON_CIBLES=${LIAISON_CIBLES:-1.1.1.1,9.9.9.9,8.8.8.8}
       - LIAISON_DNS=${LIAISON_DNS:-wikipedia.org}
-      # Document assistant: Ollama on the internal network only, embedding model pulled by install.sh
-      - OLLAMA_URL=http://ollama:11434
+      # Advanced search: vectors by the « vecteurs » service (internal network only). The language
+      # model (Ollama) only comes with the AI option, from compose.ia.yml.
+      - VECTEURS_URL=http://vecteurs:8080
       - MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
-      - MODELE_CHAT=${MODELE_CHAT:-qwen3:1.7b}
       - ASSISTANT_DIMENSIONS=${ASSISTANT_DIMENSIONS:-0}
-      - OLLAMA_KEEP_ALIVE=30m
     volumes:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config
@@ -60,20 +59,16 @@ services:
       - ${DATA_DIR}/documents:/srv
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:0.34.2
-    container_name: ollama
-    environment:
-      # No calls to ollama.com (model recommendations, cloud cache); model pulls still work
-      - OLLAMA_NO_CLOUD=true
-      # Embedding and language models stay loaded together: no unload/reload between the search
-      # and the answer. Two slots per model: the understanding prompt and the answer prompt each
-      # keep their cached start (with one slot they evict each other); about 450 MB more.
-      - OLLAMA_MAX_LOADED_MODELS=2
-      - OLLAMA_NUM_PARALLEL=2
-      - OLLAMA_KEEP_ALIVE=30m
+  vecteurs:
+    # Vectors of the advanced search: EmbeddingGemma on the CPU, served by llama.cpp. The model file is
+    # downloaded and checked by install.sh; the server only reads it from disk and never goes online.
+    # Internal network only, no published port. Explicit port: the default will change upstream.
+    image: ghcr.io/ggml-org/llama.cpp:server-v0.4.1
+    container_name: vecteurs
+    command: ["-m", "/modeles/${MODELE_VECTEURS:-embeddinggemma-300M-Q8_0.gguf}", "--embeddings", "--pooling", "mean",
+              "-c", "4096", "-np", "2", "-b", "2048", "-ub", "2048", "--host", "0.0.0.0", "--port", "8080"]
     volumes:
-      - ${DATA_DIR}/ollama:/root/.ollama
+      - ${DATA_DIR}/vecteurs:/modeles:ro
     restart: unless-stopped
 
 volumes:

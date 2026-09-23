@@ -8,10 +8,10 @@ import { vectoriser, reduire, profil } from './embeddings.mjs';
 
 // Measure of the advanced search on the real packs, books and documents, inside the dashboard
 // container, on a COPY of the index (never data/):
-//   docker exec -i [-e LLAMA_URL=http://llama:8080] dashboard node assistant/evaluation-recherche.mjs < tests/recherche.json
-// Configurations: « brute » (raw phrase, hybrid Ollama: the reference of lot 1), « bm25 » (synonyms,
-// keywords only), « ollama » (synonyms, hybrid, vectors by Ollama), « llama » (synonyms, hybrid,
-// vectors by a llama.cpp server, when LLAMA_URL is set). CONFIGS=bm25,ollama picks some.
+//   docker exec -i dashboard node assistant/evaluation-recherche.mjs < tests/recherche.json
+// Configurations: « brute » (raw phrase, hybrid: the reference of lot 1), « bm25 » (synonyms, keywords
+// only), « hybride » (synonyms, vectors by the llama.cpp service), « ollama » (synonyms, vectors by
+// Ollama, only when OLLAMA_URL is set: AI option). CONFIGS=bm25,hybride picks some.
 // Per question: rank of the first accepted document among the groups shown (strong ones, then
 // close ones). Off-topic questions (aucun) must give no strong group.
 // COUVERTURE='{"forte":0.9,"proches":0}' : thresholds of the keyword-only mode (0 shows everything).
@@ -28,7 +28,8 @@ new DatabaseSync('/assistant/index.db', { readOnly: true }).exec(`VACUUM INTO '$
 
 const base = {
   base: `${COPIE}/index.db`, racine: '/documents',
-  ollama: e.OLLAMA_URL || 'http://ollama:11434',
+  ollama: e.OLLAMA_URL || null,
+  urlVecteurs: e.VECTEURS_URL || null,
   modeleEmbedding: e.MODELE_EMBEDDING || 'embeddinggemma:300m',
   dimensions: 0, keepAlive: '30m', inactivite: 120000,
   threads: Number(e.ASSISTANT_THREADS) || os.availableParallelism(),
@@ -37,8 +38,8 @@ const base = {
 const CONFIGS = {
   brute: { synonymes: false, cfg: {} },
   bm25: { synonymes: true, cfg: { sansVecteurs: true } },
-  ollama: { synonymes: true, cfg: {} },
-  ...(e.LLAMA_URL ? { llama: { synonymes: true, cfg: { urlVecteurs: e.LLAMA_URL } } } : {})
+  hybride: { synonymes: true, cfg: {} },
+  ...(e.OLLAMA_URL ? { ollama: { synonymes: true, cfg: { urlVecteurs: null } } } : {})
 };
 const choisies = (e.CONFIGS ? e.CONFIGS.split(',') : Object.keys(CONFIGS)).filter((c) => CONFIGS[c]);
 const reglages = valider({ ...DEFAUTS });
@@ -65,10 +66,10 @@ async function comparerMoteurs() {
       'L\'hypothermie survient quand la température du corps descend sous 35 °C.'].map((t) => prof.document(t, 'none'))
   ];
   const t1 = Date.now();
-  const a = await vectoriser(base, textes);
+  const a = await vectoriser({ ...base, urlVecteurs: null }, textes);
   const dA = Date.now() - t1;
   const t2 = Date.now();
-  const b = await vectoriser({ ...base, urlVecteurs: e.LLAMA_URL }, textes);
+  const b = await vectoriser(base, textes);
   const dB = Date.now() - t2;
   const cos = a.map((v, i) => {
     const x = reduire(v, v.length), y = reduire(b[i], v.length);
@@ -77,7 +78,7 @@ async function comparerMoteurs() {
   });
   console.log(`Vecteurs Ollama / llama.cpp, ${textes.length} textes : dimensions ${a[0].length} / ${b[0].length}, cosinus entre les deux min ${Math.min(...cos).toFixed(4)}, moyenne ${(cos.reduce((s, c) => s + c, 0) / cos.length).toFixed(4)} ; temps ${dA} ms / ${dB} ms\n`);
 }
-if (e.LLAMA_URL) await comparerMoteurs();
+if (e.OLLAMA_URL && e.VECTEURS_URL) await comparerMoteurs();
 
 const bilan = {};
 const rangs = {};

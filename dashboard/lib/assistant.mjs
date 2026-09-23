@@ -45,11 +45,13 @@ export async function reseauAssistant() {
   }
 }
 
-// Options of the language model calls: identical on every call, or Ollama reloads the model
+// Options of the language model calls: identical on every call, or Ollama reloads the model.
+// Without the AI option (no OLLAMA_URL, see compose.ia.yml) there is no language model at all.
+export const iaInstallee = () => !!process.env.OLLAMA_URL;
 export function configGeneration(reglages) {
   return {
-    ollama: process.env.OLLAMA_URL || 'http://ollama:11434',
-    modeleChat: process.env.MODELE_CHAT || reglages.modeleChat,
+    ollama: process.env.OLLAMA_URL || null,
+    modeleChat: iaInstallee() ? process.env.MODELE_CHAT || reglages.modeleChat : null,
     keepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
     // Inactivity delay of Ollama calls: long enough to load a model on CPU
     inactivite: 120000,
@@ -70,6 +72,8 @@ function config() {
     base: '/assistant/index.db',
     racine: '/documents',
     modeleEmbedding: process.env.MODELE_EMBEDDING || reglages.modeleEmbedding,
+    // Vectors by the llama.cpp server of compose.yml (Ollama only when no such service is set)
+    urlVecteurs: process.env.VECTEURS_URL || null,
     // 0 = all the dimensions of the model; EmbeddingGemma can be cut (Matryoshka)
     dimensions: Number(e.ASSISTANT_DIMENSIONS) || 0,
     lot: Number(e.ASSISTANT_LOT) || 8,
@@ -115,7 +119,7 @@ export function demarrerAssistant() {
 }
 
 
-// The search may wait for the embedding model to load on CPU: generous delay
+// The search may wait for the vector service to start: generous delay
 export function demander(type, args = {}, delai = 180000) {
   demarrerAssistant();
   return new Promise((resolve, reject) => {

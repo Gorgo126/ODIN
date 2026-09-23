@@ -327,7 +327,8 @@ export class Index {
   // One-line summaries written by the language model, once the documents are searchable. Without
   // the model (not installed, Ollama down), the first sentence stays and the next scan tries again.
   async resumer() {
-    if (!this.cfg.modeleChat) return;
+    // One-line summaries need the language model: only with the AI option
+    if (!this.cfg.ollama || !this.cfg.modeleChat) return;
     const aFaire = this.db.prepare("SELECT chemin, titre FROM fichiers WHERE statut = 'indexe' AND resume_modele = 0").all();
     const debutTexte = this.db.prepare('SELECT texte FROM morceaux WHERE chemin = ? ORDER BY rang LIMIT 3');
     for (const f of aFaire) {
