@@ -408,7 +408,7 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .ia-verdict { margin: 1rem 0; }
 .ia-verdict-ok { padding: .55rem .8rem; border: 1px solid #16a34a; box-shadow: var(--creux); }
 .ia-modele p { margin: .3rem 0 0; font-size: .85rem; opacity: .8; }
-.ia-modele .badge { margin-left: .5rem; }
+.ia-titre { display: flex; align-items: center; gap: .5rem; }
 .ia-modele-bloque { opacity: .55; }
 .ia-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .ia-raison { font-size: .78rem; opacity: .8; }

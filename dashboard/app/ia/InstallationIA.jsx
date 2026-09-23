@@ -8,13 +8,23 @@ const go = (mo) => `${Math.round(mo / 1024)} Go`;
 const FABRICANTS = { nvidia: 'NVIDIA', amd: 'AMD', intel: 'Intel', autre: 'Autre' };
 
 // Where the model runs, from the loading test (share of the model in video memory)
-function Verification({ v }) {
+function Verification({ v, simule }) {
   if (!v) return null;
-  const vitesse = v.motsParSeconde ? ` · environ ${Math.round(v.motsParSeconde)} jetons par seconde` : '';
-  if (v.gpu == null) return <p className="ia-test">Test de chargement fait, emplacement du modèle inconnu{vitesse}.</p>;
-  if (v.gpu >= 0.99) return <p className="ia-test ia-test-ok">Modèle chargé entièrement sur la carte graphique{vitesse}.</p>;
-  if (v.gpu <= 0.01) return <p className="ia-test erreur">La carte graphique n'est pas utilisée : le modèle tourne sur le processeur, les réponses seront très lentes{vitesse}. Vérifiez le pilote, puis relancez l'installeur d'ODIN.</p>;
-  return <p className="ia-test erreur">Le modèle ne tient pas entièrement dans la carte graphique ({Math.round(v.gpu * 100)} % dessus) : une partie tourne sur le processeur, les réponses seront lentes{vitesse}.</p>;
+  const vitesse = v.motsParSeconde ? <p className="ia-date">Environ {Math.round(v.motsParSeconde)} jetons par seconde au dernier test.</p> : null;
+  let texte;
+  if (v.gpu == null) texte = <p className="ia-test">Test de chargement fait ; emplacement du modèle inconnu.</p>;
+  else if (v.gpu >= 0.99) texte = <p className="ia-test ia-test-ok">Modèle chargé entièrement sur la carte graphique.</p>;
+  else if (simule) texte = <p className="ia-test">Simulation : le modèle tourne sur le processeur, c'est normal ici.</p>;
+  else if (v.gpu <= 0.01) texte = <p className="ia-test erreur">La carte graphique n'est pas utilisée : le modèle tourne sur le processeur et les réponses seront très lentes. Vérifiez le pilote, puis relancez l'installeur d'ODIN.</p>;
+  else texte = <p className="ia-test erreur">Le modèle ne tient pas entièrement dans la carte graphique ({Math.round(v.gpu * 100)} % dessus) : une partie tourne sur le processeur et les réponses seront lentes.</p>;
+  return <>{texte}{vitesse}</>;
+}
+
+// Local date and time: formatted in the browser only (the server's time zone would differ)
+function DateLocale({ iso }) {
+  const [texte, setTexte] = useState(iso.slice(0, 10));
+  useEffect(() => setTexte(new Date(iso).toLocaleString('fr-BE')), [iso]);
+  return texte;
 }
 
 export default function InstallationIA({ initial, liaisonInitiale }) {
@@ -69,7 +79,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
             ))}
           </ul>
         )}
-        {m && <p className="ia-date">Détecté par l'installeur le {new Date(m.detecte_le).toLocaleString('fr-BE')}. Après un changement de carte ou de pilote, relancez l'installeur.</p>}
+        {m && <p className="ia-date">Détecté par l'installeur le <DateLocale iso={m.detecte_le} />. Après un changement de carte ou de pilote, relancez l'installeur.</p>}
       </section>
 
       {!e.possible ? (
@@ -120,8 +130,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
           return (
             <div key={x.id} className={`carte pack ia-modele${x.bloque ? ' ia-modele-bloque' : ''}`}>
               <div>
-                <strong>{x.libelle}</strong>
-                {x.actif && <span className="badge">Actif</span>}
+                <span className="ia-titre"><strong>{x.libelle}</strong>{x.actif && <span className="badge">Actif</span>}</span>
                 <em>{octets(x.taille)}{x.memoire_go ? ` · demande ${x.memoire_go} Go de mémoire graphique` : ''} · licence {x.licence}</em>
                 <p>{x.description}</p>
                 {x.installe && x.empreinteOk === false && <p className="erreur">Version différente de celle vérifiée pour ODIN.</p>}
@@ -136,7 +145,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
       {actif && (
         <section className="carte ia-etat">
           <h3>{actif.libelle} est actif</h3>
-          <Verification v={e.choix.verification} />
+          <Verification v={e.choix.verification} simule={!!m?.simule} />
           <p><a href="/assistant" className="bouton-lire">Ouvrir l'assistant</a></p>
         </section>
       )}
