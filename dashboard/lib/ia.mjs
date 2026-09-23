@@ -85,7 +85,7 @@ export async function etat() {
       const installe = moteur.installes.find((i) => i.tag === m.tag);
       let bloque = null;
       if (!possible) bloque = materiel?.option ? 'Moteur d\'IA injoignable' : 'Pas de carte graphique adaptée';
-      else if (vram < m.vram_min_mo) bloque = `Demande ${go(m.vram_min_mo)} de mémoire graphique (${go(vram)} détectés)`;
+      else if (vram < m.vram_min_mo) bloque = `Demande ${m.memoire_go || Math.ceil(m.vram_min_mo / 1024)} Go de mémoire graphique (${go(vram)} détectés)`;
       return {
         ...m,
         installe: !!installe,
@@ -111,6 +111,10 @@ function message(err, raison) {
   }
   return err.message;
 }
+
+// Steps reported by Ollama (English), as shown on the page
+const ETAPES = [[/^pulling manifest/, 'Lecture du manifeste'], [/^pulling/, 'Téléchargement'], [/^verifying/, 'Vérification de l\'empreinte'], [/^writing/, 'Enregistrement'], [/^success/, 'Terminé']];
+const etape = (s) => ETAPES.find(([r]) => r.test(s))?.[1] || s;
 
 // Download through Ollama (/api/pull, NDJSON progress). Partial layers stay in Ollama: a new try
 // resumes them. Progress: bytes received over every layer.
@@ -142,7 +146,7 @@ async function telecharger(m, t, controle) {
         if (!ligne) continue;
         const o = JSON.parse(ligne);
         if (o.error) throw new Error(o.error);
-        t.statut = o.status || t.statut;
+        if (o.status) t.statut = etape(o.status);
         if (o.digest && o.total) couches.set(o.digest, { total: o.total, recu: o.completed || 0 });
         const l = [...couches.values()];
         t.recu = l.reduce((s, c) => s + c.recu, 0);

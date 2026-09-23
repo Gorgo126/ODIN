@@ -33,6 +33,9 @@ cloné dans /opt/odin. Ne jamais y modifier de fichier directement : il ne fait 
 - Pour tester : commit et push sur dev, puis
   multipass exec nomad -- bash -lc "cd /opt/odin && git pull && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
   (--remove-orphans retire les conteneurs d'un service supprimé de compose.yml ; install.sh fait de même)
+  Si le .env de nomad porte COMPOSE_FILE (option IA, simulée sur nomad depuis le lot 5), les -f l'ignorent
+  et --remove-orphans supprimerait Ollama : ajouter -f compose.ia.yml avant -f compose.dev.yml.
+  Revenir sans IA sur nomad : relancer l'installeur sans ODIN_SIMULER_VRAM (il retire la ligne COMPOSE_FILE).
 - Le propriétaire vérifie dans son navigateur sur http://192.168.129.19
 - Une fois validé : fusionner dev dans main et pousser. C'est main que récupère l'installeur.
 - Image du dashboard : à chaque push sur main ou dev touchant dashboard/, GitHub Actions publie
@@ -98,8 +101,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   Modèle data/vecteurs/embeddinggemma-300M-Q8_0.gguf (MODELE_VECTEURS), téléchargé par install.sh avant le
   démarrage (révision Hugging Face figée, SHA-256 vérifié, transfert bloqué coupé après 60 s). Point d'entrée
   sh : -t $(nproc) (seul, llama.cpp ne prend que la moitié des cœurs). Port 8080 explicite (le défaut va changer).
-- ollama : option IA seulement, dans compose.ia.yml (activé par COMPOSE_FILE dans .env, au lot 5) avec
-  OLLAMA_URL et MODELE_CHAT pour le dashboard. Sans lui : pas de résumés par le modèle, /api/assistant/question
+- ollama : option IA seulement, dans compose.ia.yml (activé par COMPOSE_FILE dans .env) avec OLLAMA_URL pour le
+  dashboard (MODELE_CHAT_FORCE dans .env force un modèle ; l'ancien MODELE_CHAT des .env est ignoré). Sans lui : pas de résumés par le modèle, /api/assistant/question
   répond 503 « L'assistant IA n'est pas installé ». Absent de l'installation par défaut depuis le lot 4 ;
   install.sh (migration) retire son image sans l'option IA et laisse data/ollama avec une note.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
@@ -184,6 +187,28 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   ministral-3:14b-instruct-2512-q4_K_M (9,1 Go, Apache 2.0, encodeur d'images inclus). Écartés : Gemma 3
   (texte seul en 1b et 270m seulement, licence Gemma), Mistral Small 3.x (24B, 15 Go), ministral-3:8b
   (6 Go avec l'encodeur d'images). Replis de 2024 : qwen2.5:7b/14b-instruct, llama3.1:8b, mistral-nemo:12b.
+- Option IA (lot 5). CHEMIN GPU NON VÉRIFIÉ : aucune carte pour tester (nomad est une VM ; seul le parcours
+  en simulation est testé). install.sh (« Matériel pour l'option IA ») liste les cartes par sysfs (classe 03xx ;
+  noms par lspci s'il existe), mémoire des cartes NVIDIA par nvidia-smi, AMD par mem_info_vram_total ; runtime
+  nvidia de Docker (docker info) ; /dev/kfd pour AMD. Écrit data/config/materiel.json (cartes, option, raison :
+  aucune, memoire, pilote, toolkit, rocm) et, si une carte d'au moins 7 680 Mo est utilisable, la ligne
+  COMPOSE_FILE=compose.yml:compose.ia.yml:compose.nvidia.yml (ou compose.amd.yml, image 0.34.2-rocm) dans .env,
+  précédée d'un commentaire ; sinon il retire cette ligne. ODIN_SIMULER_VRAM=<Mo> simule une carte NVIDIA :
+  COMPOSE_FILE=compose.yml:compose.ia.yml, Ollama sur le processeur. Ollama n'est donc téléchargé que sur une
+  machine qui peut s'en servir ; le modèle, seulement quand l'utilisateur le choisit.
+  catalogue/modeles-ia.json : qwen3:8b-q4_K_M (8 Go, empreinte 500a1f067a9f) et qwen3:14b-q4_K_M (16 Go,
+  bdbd181c33f2), texte seul, Apache 2.0, think false ; qwen3:0.6b-q4_K_M (essai) visible seulement en simulation.
+  Choix fait au lot 5 parmi les candidats ci-dessus, modifiable dans ce fichier sans toucher au code.
+  lib/ia.mjs, /api/ia, page /ia : cas (impossible avec la raison et la marche à suivre, 8 ou 16), modèles grisés
+  avec la raison, un seul modèle installé à la fois, espace disque (taille + 1 Go, statfs de /data),
+  téléchargement par /api/pull (progression, 2 min d'inactivité, annulation, reprise des couches par Ollama),
+  empreinte vérifiée (avertissement si le tag a bougé), test de chargement (/api/generate puis /api/ps :
+  part du modèle en mémoire graphique ; avertissement si débordement sur le processeur), activer, désinstaller.
+  data/config/ia.json : modèle, actif, vérification. L'assistant n'existe que si OLLAMA_URL et un modèle actif ;
+  sinon la carte de l'accueil est grisée « Non installé » et mène à /ia.
+  Vérifié en simulation sur nomad (2026-09-23) : 14B refusé (8 Go), essai téléchargé, empreinte bonne, test
+  gpu 0 (processeur, attendu en simulation). Constat : le PC du propriétaire a une RTX 3080 (10 Go) visible
+  par nvidia-smi dans WSL ; le chemin NVIDIA pourrait peut-être s'y tester (Docker et toolkit dans WSL).
 - Assistant documentaire (ancien plan, anciens lots 1 à 4 faits ; devient l'option IA) : remplace Open WebUI et
   synchro, retirés à l'ancien lot 1.
   Décisions validées : UI, API et ingestion dans le dashboard ; Node 24 pour node:sqlite (FTS5), aucune
@@ -354,6 +379,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - fetch de Node 24 (undici) vers kiwix-serve (Connection: close, gros articles) : plantage sur
   assert(!this.paused) dans Parser.finish, qui arrête le fil. L'assistant lit Kiwix avec le module http
   (assistant/http.mjs). lib/recherche.mjs et lib/lecture.mjs utilisent encore fetch vers Kiwix.
+- À vérifier au lot 7 : llama.cpp ne prenait que la moitié des cœurs ; chercher le même piège ailleurs
+  (indexation, extraction pdftotext, recherche, Kiwix, Ollama : num_thread déjà réglé pour lui).
 - multipass exec ne transmet pas l'entrée standard (un « cat > fichier » ou un « docker exec -i … < - » par un
   tube attend sans fin) : passer les fichiers par multipass transfer, puis docker cp ou une redirection sur la VM.
 - llama.cpp server prend par défaut la moitié des cœurs : -t $(nproc) dans le point d'entrée du service vecteurs.

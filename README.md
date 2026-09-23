@@ -229,6 +229,18 @@ les adresses où joindre ODIN.
 
 C'est prêt : vous pouvez débrancher internet.
 
+### Option IA (non vérifiée)
+
+ODIN n'a pas besoin d'IA : la recherche avancée trouve les passages et leurs sources. L'assistant IA, qui
+rédige une réponse à partir de ces passages, est une **option** pour les machines équipées d'une carte
+graphique NVIDIA ou AMD d'au moins 8 Go. L'installeur détecte la carte ; la page **Assistant IA** propose
+alors le modèle adapté (8 milliards de paramètres pour 8 Go, 14 milliards pour 16 Go), vérifie l'espace
+disque, le télécharge et teste son chargement sur la carte.
+
+> **Non vérifié sur du vrai matériel.** Ce chemin a été écrit sans carte graphique pour le tester : seul
+> son parcours a été testé, en simulation. Sans carte adaptée, rien n'est téléchargé et ODIN fonctionne
+> en recherche avancée.
+
 ### Options d'installation
 
 Des variables, placées **après `sudo`**, ajustent l'installation :

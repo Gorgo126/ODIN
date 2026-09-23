@@ -1,5 +1,5 @@
 {
-  "_lisezmoi": "Modèles de l'option IA, installés depuis la page Assistant IA. tag : tag Ollama figé ; empreinte : début de l'identifiant (ollama list), vérifié après téléchargement ; taille : octets (manifeste du registre, 2026-09-23) ; vram_min_mo : mémoire graphique demandée (une carte de 8 Go annonce environ 8 188 Mo, d'où 7 680). Texte seul, sans raisonnement (think false), licence Apache 2.0. simulation : visible seulement quand le matériel est simulé (tests).",
+  "_lisezmoi": "Modèles de l'option IA, installés depuis la page Assistant IA. tag : tag Ollama figé ; empreinte : début de l'identifiant (ollama list), vérifié après téléchargement ; taille : octets (manifeste du registre, 2026-09-23) ; vram_min_mo : seuil de mémoire graphique (une carte de 8 Go annonce environ 8 188 Mo, d'où 7 680) ; memoire_go : la même, telle qu'on l'affiche (taille nominale de la carte). Texte seul, sans raisonnement (think false), licence Apache 2.0. simulation : visible seulement quand le matériel est simulé (tests).",
   "modeles": [
     {
       "id": "8b",
@@ -8,6 +8,7 @@
       "empreinte": "500a1f067a9f",
       "taille": 5225387677,
       "vram_min_mo": 7680,
+      "memoire_go": 8,
       "licence": "Apache 2.0",
       "description": "Pour une carte graphique de 8 Go ou plus. Rédige en français à partir des passages trouvés."
     },
@@ -18,6 +19,7 @@
       "empreinte": "bdbd181c33f2",
       "taille": 9276198077,
       "vram_min_mo": 15360,
+      "memoire_go": 16,
       "licence": "Apache 2.0",
       "description": "Pour une carte graphique de 16 Go ou plus. Plus précis, surtout sur les réponses longues."
     },
@@ -28,6 +30,7 @@
       "empreinte": "7df6b6e09427",
       "taille": 522653277,
       "vram_min_mo": 0,
+      "memoire_go": 0,
       "licence": "Apache 2.0",
       "simulation": true,
       "description": "Seulement en matériel simulé : vérifie le parcours d'installation sans télécharger 5 Go."

@@ -122,7 +122,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
               <div>
                 <strong>{x.libelle}</strong>
                 {x.actif && <span className="badge">Actif</span>}
-                <em>{octets(x.taille)} · demande {go(x.vram_min_mo || 0)} de mémoire graphique · licence {x.licence}</em>
+                <em>{octets(x.taille)}{x.memoire_go ? ` · demande ${x.memoire_go} Go de mémoire graphique` : ''} · licence {x.licence}</em>
                 <p>{x.description}</p>
                 {x.installe && x.empreinteOk === false && <p className="erreur">Version différente de celle vérifiée pour ODIN.</p>}
                 {t?.avertissement && <p className="erreur">{t.avertissement}</p>}
