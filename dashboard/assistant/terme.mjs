@@ -4,7 +4,8 @@ import { normaliser } from '../lib/normalisation.mjs';
 // The « main term » of a question: the word or group of words the ranking rules lean on. It comes
 // from the understanding step (field « terme »), and is only kept when every one of its words comes
 // from the question itself — a term invented by the model is noise. Otherwise a deterministic
-// fallback takes over: the rarest word of the question among the passages found. When neither gives
+// fallback takes over: a title of the articles found that the question contains, then the rarest
+// word of the question among the passages found. When none gives
 // a sure answer, there is no main term at all, and no rule applies.
 
 const FORME = /^[\p{L}][\p{L}\p{N}\s'’-]{1,39}$/u;
@@ -27,9 +28,21 @@ export function termeDeSecours(question, frequence) {
   return comptes[0][0];
 }
 
-export function termePrincipal(terme, question, frequence) {
+// Title of a wiki article found that the question contains word for word (« brûlure » in « comment
+// soigner une brûlure », « perte de connaissance »): the longest one. Parentheses are ignored
+// (« Syncope (médecine) »). Titles of one short word are too vague to count.
+const forme = (s) => ` ${normaliser(String(s)).replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
+export function termeDuTitre(question, titres) {
+  const q = forme(question);
+  const trouves = [...new Set(titres.map(forme))].filter((t) => t.trim().length >= 4 && q.includes(t));
+  return trouves.sort((a, b) => b.length - a.length)[0]?.trim() || null;
+}
+
+export function termePrincipal(terme, question, frequence, titres = []) {
   const duModele = termeDuModele(terme, question);
   if (duModele) return { terme: normaliser(duModele), source: 'modèle' };
+  const titre = termeDuTitre(question, titres);
+  if (titre) return { terme: titre, source: 'titre' };
   const secours = termeDeSecours(question, frequence);
   return secours ? { terme: secours, source: 'repli' } : { terme: null, source: 'aucun' };
 }

@@ -510,7 +510,7 @@ export class Index {
     // title and section rules do not apply at all.
     const tous = [...wikis, ...livres];
     const frequence = (mot) => tous.filter((p) => normaliser(`${p.titre} ${p.section} ${p.texte}`).includes(mot)).length;
-    const principal = termePrincipal(terme, question, frequence);
+    const principal = termePrincipal(terme, question, frequence, wikis.map((p) => p.titre));
     const externes = [...classer(wikis, req, 8, { terme: principal.terme }), ...classer(livres, req, 4, { terme: principal.terme })];
     if (q && externes.length) {
       const t = Date.now();

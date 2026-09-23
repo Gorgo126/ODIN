@@ -252,8 +252,9 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   d'après la date de pages.json.
   Classement commun par cosinus ; le meilleur résultat par mots-clés des documents garde sa place.
   Terme principal (assistant/terme.mjs) : celui de la compréhension s'il ne contient que des mots venus
-  de la question (comparaison par racine), sinon le mot le plus rare de la question parmi les passages
-  trouvés, sinon aucun. Sans terme sûr, les règles de titre ne s'appliquent pas. Elles pèsent sur le
+  de la question (comparaison par racine), sinon le plus long titre d'article trouvé que la question contient
+  mot pour mot (termeDuTitre, 4 lettres au moins, parenthèses ignorées), sinon le mot le plus rare de la
+  question parmi les passages trouvés, sinon aucun. Sans terme sûr, les règles de titre ne s'appliquent pas. Elles pèsent sur le
   BM25 local (assistant/bm25.mjs) : titre exact ×3, titre commençant par le terme avec un mot de plus
   au maximum ×1,8, cas particulier (le terme plus deux mots ou plus, absents de la question) ×2/3 mais
   seulement si un article général figure parmi les candidats, section de la liste fermée
