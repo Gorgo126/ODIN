@@ -142,7 +142,7 @@ flowchart TB
     CA -->|"/kiwix"| K["Kiwix<br/><sub>moteur ZIM</sub>"]
     CA -->|"/documents"| F["FileBrowser<br/><sub>fichiers</sub>"]
     CA -->|"/tuiles"| T[("Cartes PMTiles<br/><sub>data/cartes</sub>")]
-    D -->|"assistant"| O["Ollama<br/><sub>qwen3 · EmbeddingGemma</sub>"]
+    D -->|"recherche avancée"| V["Vecteurs<br/><sub>llama.cpp · EmbeddingGemma</sub>"]
     D -.->|"recherche · lecture"| K
     D -.->|"extraction pmtiles"| T
     D -.->|"index des documents"| I[("SQLite<br/><sub>data/assistant</sub>")]
@@ -154,7 +154,8 @@ flowchart TB
 | `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche, lecteur d'articles, carte (MapLibre GL), ajout de packs, et l'assistant : son index (SQLite) et ses réponses. Contient l'outil `pmtiles` qui extrait les régions. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
-| `ollama` | `ollama/ollama:0.34.2` | Moteur des modèles, joignable seulement à l'intérieur d'ODIN : EmbeddingGemma pour l'index, qwen3 pour la rédaction des réponses. |
+| `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
+| `ollama` | `ollama/ollama:0.34.2` | **Option IA seulement** (`compose.ia.yml`), sur une machine équipée d'une carte graphique : modèle de langage de l'assistant. Absent de l'installation par défaut. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
 ne lit que les tuiles affichées.
@@ -167,7 +168,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 
 ```
 /opt/odin
-├── compose.yml          # l'unique fichier de déploiement
+├── compose.yml          # le fichier de déploiement (compose.ia.yml : option IA)
 ├── Caddyfile            # routage et authentification
 ├── .env                 # ports et dossier des données (modèle : .env.exemple)
 ├── catalogue/           # contenus (packs.txt) et cartes (cartes.txt) proposés
@@ -178,7 +179,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── zim/             #   archives ZIM + library.xml
     ├── cartes/          #   packs de cartes (.pmtiles)
     ├── documents/       #   fichiers partagés
-    ├── ollama/          #   modèles d'IA
+    ├── vecteurs/        #   modèle de la recherche avancée (EmbeddingGemma, 334 Mo)
     ├── assistant/       #   index des documents de l'assistant (SQLite)
     └── config/          #   mot de passe (haché avec scrypt)
 ```
@@ -188,8 +189,8 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 - **Aucune ressource externe** : pas de CDN, pas de police téléchargée, pas d'analytique.
 - **La carte embarque tout** : style, polices des étiquettes et icônes sont dans l'image. Aucune tuile
   ni police n'est demandée à un serveur extérieur.
-- **Aucun service ne vérifie ses mises à jour** : Ollama tourne avec `OLLAMA_NO_CLOUD=true`, FileBrowser
-  sans vérification de version.
+- **Aucun service ne vérifie ses mises à jour** : le service de vecteurs lit son modèle sur le disque,
+  FileBrowser tourne sans vérification de version, et Ollama (option IA) avec `OLLAMA_NO_CLOUD=true`.
 - **Chaque appel réseau d'ODIN a un délai.** Hors ligne, le catalogue répond « injoignable » en
   2 secondes, et un téléchargement interrompu s'arrête après 30 secondes sans données. On peut
   aussi l'annuler, ou le reprendre plus tard là où il s'était arrêté. Les tailles des packs restent
@@ -205,7 +206,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 |---|---|
 | Système | Ubuntu 24.04 LTS ou Debian 12, architecture x86_64 |
 | Processeur | 4 cœurs |
-| Mémoire | 8 Go (l'assistant en utilise environ 2,5 Go quand il répond) |
+| Mémoire | 8 Go (la recherche avancée en utilise environ 0,5 Go) |
 | Disque | 40 Go, plus la taille des contenus (de 80 Mo à plusieurs dizaines de Go par pack) |
 | Réseau | Une connexion internet **pendant l'installation seulement** |
 
@@ -216,7 +217,7 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 ```
 
 Le script installe Docker si besoin, récupère ODIN dans `/opt/odin`, démarre les services et
-télécharge les modèles de l'assistant (EmbeddingGemma, 620 Mo, et qwen3, 1,4 Go, choisi selon la mémoire de la machine) et le fond de carte mondial (45 Mo). À la fin, il affiche
+télécharge le modèle de la recherche avancée (EmbeddingGemma, 334 Mo, empreinte vérifiée) et le fond de carte mondial (45 Mo). Aucun modèle de langage n'est installé par défaut. À la fin, il affiche
 les adresses où joindre ODIN.
 
 ### Première visite

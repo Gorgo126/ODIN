@@ -93,8 +93,15 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
 - dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Dépendances : Next, React, et pour
   la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
 - kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
-- ollama : moteur des modèles de l'assistant, joignable seulement sur le réseau Docker interne
-  (http://ollama:11434), aucun port publié.
+- vecteurs : llama.cpp (ghcr.io/ggml-org/llama.cpp:server-v0.4.1) sert EmbeddingGemma sur le processeur pour
+  la recherche avancée et l'index (VECTEURS_URL=http://vecteurs:8080, /v1/embeddings), réseau interne seulement.
+  Modèle data/vecteurs/embeddinggemma-300M-Q8_0.gguf (MODELE_VECTEURS), téléchargé par install.sh avant le
+  démarrage (révision Hugging Face figée, SHA-256 vérifié, transfert bloqué coupé après 60 s). Point d'entrée
+  sh : -t $(nproc) (seul, llama.cpp ne prend que la moitié des cœurs). Port 8080 explicite (le défaut va changer).
+- ollama : option IA seulement, dans compose.ia.yml (activé par COMPOSE_FILE dans .env, au lot 5) avec
+  OLLAMA_URL et MODELE_CHAT pour le dashboard. Sans lui : pas de résumés par le modèle, /api/assistant/question
+  répond 503 « L'assistant IA n'est pas installé ». Absent de l'installation par défaut depuis le lot 4 ;
+  install.sh (migration) retire son image sans l'option IA et laisse data/ollama avec une note.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
 - Cartes : packs PMTiles (fonds Protomaps, données OSM) dans data/cartes/<id>.pmtiles, servis par
   Caddy sur /tuiles/* (file_server, requêtes Range, derrière l'authentification). Catalogue :
@@ -166,8 +173,10 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   MRR 0,97, 3/3 hors sujet écartés, 1,9 s (Ollama) comme 2,0 s (llama.cpp). llama.cpp server-v0.4.1 avec
   ggml-org/embeddinggemma-300M-Q8_0.gguf (334 Mo, sha256 b5ce9d77…0d63) : vecteurs à 0,9997 de ceux
   d'Ollama (mêmes classements), image 1,2 Go contre 9,2 Go, 554 Mo de RAM en charge contre 943 Mo.
-  Les expressions ajoutées après la première mesure viennent de ses échecs : la table reste à éprouver sur
-  d'autres questions.
+  Le 31/33 est OPTIMISTE : 6 expressions de la table ont été corrigées d'après les échecs de la première
+  mesure (27/33 avant). Le propriétaire écrira lui-même une série de questions pour l'éprouver.
+  Lot 4 (vecteurs par llama.cpp, installé par install.sh sur nomad) : même score 31/33, 2,2 s par question,
+  indexation 4,4 morceaux/s (3,05 avec Ollama), 450 Mo de RAM ; un index construit par Ollama reste valide.
   Candidats de l'option IA (relevés le 2026-09-23, à refaire au lot 5 avec ce qui existera alors) :
   tranche 8 Go : qwen3:8b-q4_K_M (5,2 Go, texte, Apache 2.0, hybride : think false, respecté par qwen3:1.7b
   de la même famille, à revérifier) ; granite4:tiny-h (4,2 Go, texte, Apache 2.0, MoE 7B dont 1B actif,
@@ -345,5 +354,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - fetch de Node 24 (undici) vers kiwix-serve (Connection: close, gros articles) : plantage sur
   assert(!this.paused) dans Parser.finish, qui arrête le fil. L'assistant lit Kiwix avec le module http
   (assistant/http.mjs). lib/recherche.mjs et lib/lecture.mjs utilisent encore fetch vers Kiwix.
+- multipass exec ne transmet pas l'entrée standard (un « cat > fichier » ou un « docker exec -i … < - » par un
+  tube attend sans fin) : passer les fichiers par multipass transfer, puis docker cp ou une redirection sur la VM.
+- llama.cpp server prend par défaut la moitié des cœurs : -t $(nproc) dans le point d'entrée du service vecteurs.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
