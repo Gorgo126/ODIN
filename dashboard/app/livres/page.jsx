@@ -62,7 +62,7 @@ export default async function Livres() {
             <dt>Fichier</dt>
             <dd>
               {l.pages ? `${l.pages} pages  ` : ''}{octets(l.taille)}  non modifié, empreinte vérifiée
-              {l.verifie && ` le ${date(l.verifie.date)} (${l.verifie.source === 'miroir' ? 'miroir ODIN' : 'source officielle'})`}
+              {l.verifie && ` le ${date(l.verifie.date)} (${l.verifie.source === 'miroir' ? 'miroir ODIN' : hote(l.verifie.url || '')})`}
               <br /><code title="SHA-256">{l.sha256}</code>
             </dd>
           </dl>
