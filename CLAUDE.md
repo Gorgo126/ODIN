@@ -59,8 +59,7 @@ multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Go
 NOM_HOTE=test est obligatoire sur une VM vierge : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
 joint plus (il la cherche sous test.mshome.net). Arrêter/démarrer la VM : multipass stop test / start test.
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
-Recherche avancée et option IA : le test sur VM vierge (et le test hors ligne) est reporté à la fin du lot 7
-(installeur final) ; les lots 0 à 6 se testent sur nomad.
+Recherche avancée et option IA : VM vierge et test hors ligne faits au lot 7 (2026-09-23), voir « Disques ».
 La VM vierge installe l'image publiée pour la branche : après un push touchant le dashboard,
 attendre le commit automatique de GitHub Actions et installer depuis ce commit.
 Mémoire : nomad et test (8 Go chacune) ne tiennent pas ensemble ; arrêter nomad pendant le test.
@@ -360,6 +359,19 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - Images : après chaque installation, install.sh garde par service l'image en service et la plus récente des
   autres (retour arrière possible), et retire le reste (seulement les dépôts d'ODIN).
 - /var/lib/docker n'est pas déplacé par ODIN : marche à suivre dans le README (data-root).
+- VM vierge (lot 7, 2026-09-23 ; test, 60 Go, fichier-disque ext4 de 40 Go monté sur /mnt/donnees par fstab,
+  installation avec DONNEES=/mnt/donnees/odin) : aucun /opt/odin/data, modèle de vecteurs, fond de carte,
+  materiel.json, library.xml et pack climat sur le disque de données ; Kiwix et vecteurs montés dessus ; recherche
+  « effet de serre » → Effet de serre ; changement de DONNEES refusé avec la marche à suivre. Test hors ligne :
+  redémarrage à froid, montage présent avant Docker, 5 conteneurs ; connexion, accueil, recherche avancée et par
+  mots-clés, lecteur, /kiwix, /livres, /carte, /ia, /assistant → /ia, dépôt dans FileBrowser : OK ; Configuration
+  « hors ligne » en 164 ms, boutons désactivés ; aucune requête vers un autre hôte (Chromium). Journal : seulement
+  la sonde de connectivité (TCP 443 vers 1.1.1.1, 8.8.8.8, 9.9.9.9 et DNS de wikipedia.org, voulu) et le NTP
+  d'Ubuntu. Coupure pendant un pack : erreur en 27 s, .part gardé, reprise après rétablissement.
+  Trouvé et corrigé : download.kiwix.org renvoie vers un miroir au hasard, parfois injoignable (« fetch failed »
+  d'emblée, 2 fois sur 4 premiers lancements) → 3 essais avant tout octet, cause dans les journaux ; erreurs
+  d'hydratation React 418 (extrait Kiwix coupé dans un <b>, date formatée côté serveur) → balises équilibrées,
+  app/DateLocale.jsx.
 
 ## Règles
 

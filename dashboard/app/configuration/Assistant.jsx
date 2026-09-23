@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Sprite, { VISAGES } from '../assistant/Sprite';
+import DateLocale from '../DateLocale';
 
 const LONGUEURS = [['courte', 'Courte', 'une ou deux phrases'], ['adaptee', 'Adaptée', 'selon la question'], ['detaillee', 'Détaillée', 'développe quand il le faut']];
 const COULEURS = ['#d4a04a', '#4ba3c7', '#6fbf73', '#c76b6b', '#a98bd4', '#c9c9c9'];
 
-const dateFr = (t) => (t ? new Date(t).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : 'jamais');
+const COURT = { dateStyle: 'short', timeStyle: 'short' };
 
 // Settings of the assistant and state of its index. One password, one profile: what is set here is
 // shared by everyone. Everything else (sentences, thresholds, models…) lives in assistant/constantes.mjs.
@@ -69,7 +70,7 @@ export default function Assistant({ initiaux, defauts, etat: etatInitial }) {
         <legend>Index des documents</legend>
         <p className="assistant-index">
           <strong>{etat?.documents ?? '–'}</strong> documents · <strong>{etat?.morceaux ?? '–'}</strong> morceaux ·
-          dernière indexation {dateFr(etat?.derniereIndexation)}
+          dernière indexation <DateLocale t={etat?.derniereIndexation} options={COURT} />
           {etat?.enCours && <> · en cours : {etat.enCours.fait}/{etat.enCours.total} {etat.enCours.fichier ? `(${etat.enCours.fichier})` : ''}</>}
           {etat?.erreurOllama && <><br /><span className="erreur">{etat.erreurOllama}</span></>}
         </p>

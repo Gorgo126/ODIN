@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../../lib/format.mjs';
 import { useLiaison, HORS_LIAISON } from '../useLiaison';
+import DateLocale from '../DateLocale';
 
 const go = (mo) => `${Math.round(mo / 1024)} Go`;
 const FABRICANTS = { nvidia: 'NVIDIA', amd: 'AMD', intel: 'Intel', autre: 'Autre' };
@@ -18,13 +19,6 @@ function Verification({ v, simule }) {
   else if (v.gpu <= 0.01) texte = <p className="ia-test erreur">La carte graphique n'est pas utilisée : le modèle tourne sur le processeur et les réponses seront très lentes. Vérifiez le pilote, puis relancez l'installeur d'ODIN.</p>;
   else texte = <p className="ia-test erreur">Le modèle ne tient pas entièrement dans la carte graphique ({Math.round(v.gpu * 100)} % dessus) : une partie tourne sur le processeur et les réponses seront lentes.</p>;
   return <>{texte}{vitesse}</>;
-}
-
-// Local date and time: formatted in the browser only (the server's time zone would differ)
-function DateLocale({ iso }) {
-  const [texte, setTexte] = useState(iso.slice(0, 10));
-  useEffect(() => setTexte(new Date(iso).toLocaleString('fr-BE')), [iso]);
-  return texte;
 }
 
 export default function InstallationIA({ initial, liaisonInitiale }) {
@@ -79,7 +73,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
             ))}
           </ul>
         )}
-        {m && <p className="ia-date">Détecté par l'installeur le <DateLocale iso={m.detecte_le} />. Après un changement de carte ou de pilote, relancez l'installeur.</p>}
+        {m && <p className="ia-date">Détecté par l'installeur le <DateLocale t={m.detecte_le} />. Après un changement de carte ou de pilote, relancez l'installeur.</p>}
       </section>
 
       {!e.possible ? (

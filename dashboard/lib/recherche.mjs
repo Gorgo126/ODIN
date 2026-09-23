@@ -7,11 +7,20 @@ const decoder = (s) => s
 const echapper = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const balise = (bloc, nom) => bloc.match(new RegExp(`<${nom}>([\\s\\S]*?)</${nom}>`))?.[1]?.trim() || '';
 
-// Garde uniquement les mots en gras de Kiwix, échappe tout le reste
+// Garde uniquement les mots en gras de Kiwix, échappe tout le reste. Les balises sont équilibrées :
+// un extrait coupé au milieu d'un mot en gras serait refermé par le navigateur, et le HTML ne
+// correspondrait plus à celui du serveur (erreur d'hydratation 418).
 function extrait(brut) {
   let texte = decoder(brut);
   if (texte.length > 300) texte = texte.slice(0, 300).replace(/<\/?b?$/, '') + '';
-  return echapper(texte).replace(/&lt;(\/?)b&gt;/g, '<$1b>');
+  let ouverts = 0;
+  const html = echapper(texte).replace(/&lt;(\/?)b&gt;/g, (m, fin) => {
+    if (!fin) { ouverts++; return '<b>'; }
+    if (!ouverts) return '';
+    ouverts--;
+    return '</b>';
+  });
+  return html + '</b>'.repeat(ouverts);
 }
 
 export async function rechercher(q, debut = 0) {
