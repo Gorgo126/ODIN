@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { normaliser } from '../../lib/normalisation.mjs';
+import Chargement from './Chargement';
 
 // Advanced search, above the keyword results: the best passages of every source, grouped by
-// document. Fetched after the page is shown (the embedding model may take a few seconds on CPU).
+// document. Fetched after the page is shown (the embedding model may take a few seconds on CPU);
+// onEtat(true | false) tells the page when it runs, so the keyword results wait for it.
 
 // Query words highlighted: same matching as the search (accents and case ignored, prefixes)
 function Surligne({ texte, mots }) {
@@ -49,23 +51,25 @@ function Groupe({ g, mots }) {
   );
 }
 
-export default function Passages({ question, debug = false }) {
+export default function Passages({ question, debug = false, onEtat }) {
   const [etat, setEtat] = useState({ chargement: true });
 
   useEffect(() => {
     const ctrl = new AbortController();
     const debut = Date.now();
     setEtat({ chargement: true });
+    onEtat?.(true);
     fetch(`/api/recherche?q=${encodeURIComponent(question)}${debug ? '&debug=1' : ''}`, { signal: ctrl.signal, cache: 'no-store' })
       .then(async (r) => {
         const j = await r.json().catch(() => ({ erreur: r.status === 401 ? 'Session expirée : reconnectez-vous.' : `Réponse inattendue (${r.status})` }));
         setEtat(r.ok && !j.erreur ? { r: j, duree: Date.now() - debut } : { erreur: j.erreur || `Erreur ${r.status}` });
       })
-      .catch((e) => { if (!ctrl.signal.aborted) setEtat({ erreur: `Recherche impossible : ${e.message}` }); });
+      .catch((e) => { if (!ctrl.signal.aborted) setEtat({ erreur: `Recherche impossible : ${e.message}` }); })
+      .finally(() => { if (!ctrl.signal.aborted) onEtat?.(false); });
     return () => ctrl.abort();
-  }, [question, debug]);
+  }, [question, debug, onEtat]);
 
-  if (etat.chargement) return <p className="passages-etat">Recherche des meilleurs passages…</p>;
+  if (etat.chargement) return <Chargement />;
   if (etat.erreur) return <section className="bloc-resultats"><p className="erreur">{etat.erreur}</p></section>;
 
   const { r, duree } = etat;

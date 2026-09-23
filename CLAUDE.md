@@ -56,8 +56,8 @@ multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Go
 NOM_HOTE=test est obligatoire sur une VM vierge : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
 joint plus (il la cherche sous test.mshome.net). Arrêter/démarrer la VM : multipass stop test / start test.
 Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
-Assistant documentaire : le test sur VM vierge (et le test hors ligne) est reporté à la fin du lot 5
-(installeur final) ; les lots 1 à 4 se testent sur nomad.
+Recherche avancée et option IA : le test sur VM vierge (et le test hors ligne) est reporté à la fin du lot 7
+(installeur final) ; les lots 0 à 6 se testent sur nomad.
 La VM vierge installe l'image publiée pour la branche : après un push touchant le dashboard,
 attendre le commit automatique de GitHub Actions et installer depuis ce commit.
 Mémoire : nomad et test (8 Go chacune) ne tiennent pas ensemble ; arrêter nomad pendant le test.
@@ -141,7 +141,12 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   le lien ouvre /livres/<id>?page=N&q=…, où la visionneuse surligne les mots sur cette page seulement
   (la recherche de pdf.js, #search=, téléchargerait tout le livre).
 
-- Recherche avancée (produit principal depuis le 2026-09-23, plan en lots 0 à 7 : l'IA devient une option GPU).
+- Recherche avancée (produit principal depuis le 2026-09-23 ; l'IA devient une option GPU). Plan en lots :
+  0 remise à plat (fait), 1 moteur et 2 page (faits ensemble), 3 table de synonymes et mesure des trois
+  configurations (BM25 + synonymes, hybride Ollama, hybride llama-server : le propriétaire tranche les
+  embeddings), 4 service de vecteurs léger, 5 matériel et page d'installation de l'IA, 6 assistant branché
+  sur la recherche, 7 installeur final (VM vierge, test hors ligne). Les « lot N » plus bas dans la section
+  Assistant documentaire renvoient à l'ancien plan (ancien lot N).
   /recherche : au-dessus des résultats par mots-clés (inchangés), app/recherche/Passages.jsx appelle
   /api/recherche (index.rechercher sur les trois sources, puis assistant/passages.mjs : un groupe par document,
   3 passages au plus, fenêtre de 420 caractères autour du premier mot, mots surlignés). Aucun modèle de langage.
@@ -149,7 +154,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   vecteurs, par la couverture (part de la requête trouvée, pondérée par l'idf, mots absents de tous les passages
   ignorés : CONSTANTES.couverture, provisoire). Bandeau d'urgence en tête (securite.mjs, textes
   CONSTANTES.bandeauUrgence, au vouvoiement). ?debug=1 : scores et règles de chaque passage.
-  Compréhension : phrase brute pour l'instant (base de comparaison) ; table de synonymes au lot suivant.
+  Compréhension : phrase brute pour l'instant (base de comparaison) ; table de synonymes au lot 3.
   Candidats de l'option IA (relevés le 2026-09-23, à refaire au lot 5 avec ce qui existera alors) :
   tranche 8 Go : qwen3:8b-q4_K_M (5,2 Go, texte, Apache 2.0, hybride : think false, respecté par qwen3:1.7b
   de la même famille, à revérifier) ; granite4:tiny-h (4,2 Go, texte, Apache 2.0, MoE 7B dont 1B actif,
@@ -157,14 +162,15 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   ministral-3:14b-instruct-2512-q4_K_M (9,1 Go, Apache 2.0, encodeur d'images inclus). Écartés : Gemma 3
   (texte seul en 1b et 270m seulement, licence Gemma), Mistral Small 3.x (24B, 15 Go), ministral-3:8b
   (6 Go avec l'encodeur d'images). Replis de 2024 : qwen2.5:7b/14b-instruct, llama3.1:8b, mistral-nemo:12b.
-- Assistant documentaire (en construction, lots 1 à 5) : remplace Open WebUI et synchro, retirés au lot 1.
+- Assistant documentaire (ancien plan, anciens lots 1 à 4 faits ; devient l'option IA) : remplace Open WebUI et
+  synchro, retirés à l'ancien lot 1.
   Décisions validées : UI, API et ingestion dans le dashboard ; Node 24 pour node:sqlite (FTS5), aucune
   dépendance npm ajoutée ; pas de sqlite-vec ; OLLAMA_MAX_LOADED_MODELS=2 et keep_alive (30m) sur les deux
   modèles ; /assistant et son API derrière l'authentification, flux non tamponné par Caddy.
   qwen3:4b désigne la version « thinking » : figer qwen3:4b-instruct-2507-q4_K_M. install.sh contient un bloc
   de migration (retrait d'Open WebUI, synchro, qwen2.5:3b, bge-m3, data/openwebui, data/synchro), à retirer
   après la v1.
-  Index (lot 2) : dashboard/assistant/*.mjs tourne dans un worker_thread (jamais sur la boucle d'événements
+  Index (ancien lot 2) : dashboard/assistant/*.mjs tourne dans un worker_thread (jamais sur la boucle d'événements
   de Next), lancé par lib/assistant.mjs depuis instrumentation.js (état dans globalThis). Ces fichiers et lib/
   sont copiés tels quels dans l'image (hors bundle Next) : le worker ne doit importer que des modules Node
   et des fichiers de lib/ sans dépendance. Base data/assistant/index.db : fichiers (statut indexe, ignore
@@ -178,13 +184,13 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   fs.watch récursif (3 s de délai), scan toutes les 5 min, POST /api/assistant/index ({"complet": true}
   pour tout refaire). Préfixes d'EmbeddingGemma toujours appliqués (assistant/embeddings.mjs).
   Recherche : BM25 (mots de 4 lettres et plus en préfixe) + cosinus, 20 candidats chacun, fusion RRF (k=60),
-  4 extraits ; le meilleur cosinus brut est rendu à part (seuils du lot 3). Sans Ollama, mots-clés seuls.
+  4 extraits ; le meilleur cosinus brut est rendu à part (seuils de l'ancien lot 3). Sans Ollama, mots-clés seuls.
   Appels Ollama : délai d'inactivité (120 s, en-têtes ou données), jamais de délai total.
   Priorité aux questions : une recherche coupe l'appel d'indexation en cours (refait ensuite) et suspend
   l'indexation jusqu'à la fin de la réponse (jeton rendu par rechercher({ garder: true }), reprendre(jeton),
   reprise forcée après 5 min). Les résumés d'une ligne (modèle de langage, après l'indexation) cèdent aussi.
   PDF dont le texte fait moins de 30 lettres par page : statut probleme, « PDF sans texte (probablement scanné) ».
-  Réponse (lot 3) : assistant/reponse.mjs (générateur d'événements etat/texte/fin/erreur, sans dépendance à
+  Réponse (ancien lot 3) : assistant/reponse.mjs (générateur d'événements etat/texte/fin/erreur, sans dépendance à
   Next, partagé par la route et l'évaluation), prompt.mjs (noyau verrouillé + personnalité, exemples en tours
   de dialogue, rappel du tutoiement dans le dernier message : les petits modèles suivent le dernier message),
   reglages.mjs. Réglables dans Configuration, et seuls enregistrés dans data/config/assistant.json :
@@ -270,10 +276,10 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Résultat du banc (nomad, 2026-09-22, livre de 639 pages, 1453 morceaux, 5 questions) : embeddinggemma:300m
   en 768 dimensions retenu (MRR vecteurs 0,90 ; 256 d : 0,85 ; bge-m3 : 0,75), 1,7 morceau/s contre 0,7 pour
   bge-m3, 650 Mo chargé contre 1,2 Go ; vecteurs 768 d : 29 Mo pour 10 000 morceaux. Ollama n'occupe que
-  2 cœurs sur 4 par défaut : num_thread = nombre de cœurs (lot 3) donne 3,05 morceaux/s (livre en 8 min) ;
+  2 cœurs sur 4 par défaut : num_thread = nombre de cœurs (ancien lot 3) donne 3,05 morceaux/s (livre en 8 min) ;
   lots de 16 sans gain, gardés à 8. Poids des mots-clés 0,5 dans la fusion (bonne page en tête 2 fois sur 5
   au lieu de 1 ; 0 ferait mieux sur le livre mais perdrait les termes exacts). Question pendant une
-  indexation : 50 à 370 ms. Modèles comparés (lot 3, tests/documents) : qwen3:1.7b retenu (1er mot 5 s,
+  indexation : 50 à 370 ms. Modèles comparés (ancien lot 3, tests/documents) : qwen3:1.7b retenu (1er mot 5 s,
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 

@@ -283,7 +283,12 @@ a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px);
 .tout-voir { margin: .6rem 0 0; font-family: var(--mono); font-size: .8rem; }
 .tout-voir a { color: var(--or); }
 /* Advanced search: passages grouped by document, above the keyword results */
-.passages-etat { margin: 1.2rem 0 0; font-family: var(--mono); font-size: .8rem; letter-spacing: .08em; color: var(--or); }
+.chargement { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; font-family: var(--mono); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--or); }
+.chargement-barre { flex: 0 1 14rem; height: .9rem; overflow: hidden; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--creux); }
+.chargement-barre span { display: block; width: 40%; height: 100%; background: var(--or); -webkit-mask: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px); mask: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px); animation: chargement 1.4s steps(12) infinite; }
+@keyframes chargement { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@media (prefers-reduced-motion: reduce) { .chargement-barre span { animation: none; width: 100%; opacity: .5; } }
+.recherche button:disabled { opacity: .55; cursor: wait; }
 .passages-note { margin: .3rem 0; font-family: var(--mono); font-size: .75rem; opacity: .7; }
 .bandeau-urgence { margin: 0 0 1rem; font-size: .95rem; border-width: 2px; }
 .passage-groupe { display: flex; flex-direction: column; gap: .15rem; }
