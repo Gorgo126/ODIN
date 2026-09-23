@@ -88,6 +88,16 @@ export default function Passages({ question, debug = false }) {
         </details>
       )}
       {!r.forts.length && r.proches.map((g) => <Groupe key={g.cle} g={g} mots={r.mots} />)}
+      {r.ecartes?.length > 0 && (
+        <details className="passages-proches">
+          <summary>Écartés, sous les seuils ({r.ecartes.length})</summary>
+          <ul className="passages-debug">
+            {r.ecartes.map((e, i) => (
+              <li key={i}>{e.origine} · {e.titre}{e.page ? `, p. ${e.page}` : ''}{e.section ? ` · ${e.section}` : ''} — cos {chiffre(e.cosinus, 3)} · couverture {chiffre(e.couverture)} · bm25 {chiffre(e.bm25)}{e.regles?.length ? ` · ${e.regles.join(', ')}` : ''}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       {r.debug && (
         <pre className="passages-debug">
           {`terme : ${r.debug.terme?.terme ?? 'aucun'} (${r.debug.terme?.source})\nmeilleurs : ${JSON.stringify(r.debug.meilleurs)}\nseuils : ${JSON.stringify(r.debug.seuils)}\ndurées : ${JSON.stringify(r.durees)}`}

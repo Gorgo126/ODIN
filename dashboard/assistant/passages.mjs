@@ -55,9 +55,13 @@ export function grouper(r, question, reglages, { urgence = false, debug = false 
   const utiles = motsUtiles(question);
   const mots = utiles.length ? [...new Set(utiles)] : motsRequete(question);
   const groupes = new Map();
+  const ecartes = [];
   for (const e of r.extraits) {
     const nv = niveau(e, reglages, r.vecteurs);
-    if (!nv) continue;
+    if (!nv) {
+      if (debug) ecartes.push({ origine: e.origine, titre: e.titre, section: e.section || '', page: e.page || null, cosinus: e.cosinus, couverture: e.couverture, bm25: e.bm25, regles: e.regles });
+      continue;
+    }
     const cle = cleSource(e);
     let g = groupes.get(cle);
     if (!g) {
@@ -79,6 +83,8 @@ export function grouper(r, question, reglages, { urgence = false, debug = false 
   return {
     mots,
     forts: ordre(tous.filter((g) => g.niveau === 'fort')),
-    proches: ordre(tous.filter((g) => g.niveau === 'proche'))
+    proches: ordre(tous.filter((g) => g.niveau === 'proche')),
+    // Debug: the passages below the thresholds, to see what the search found and why it was left out
+    ...(debug ? { ecartes } : {})
   };
 }
