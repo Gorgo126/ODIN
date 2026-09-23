@@ -24,12 +24,34 @@ const SIGNES = [
   /\b(suicide|me suicider|me tuer|en finir avec la vie)\b/
 ];
 
+// Signs found by the words present, in any order (« a avalé de l'eau de javel », « tombé du toit, mal
+// au dos »): every group must hold one word of the question. Plurals and feminines match.
+const GROUPES = [
+  // A dangerous product swallowed
+  [['avale', 'avalee', 'bu', 'bue', 'ingere', 'ingeree', 'gobe', 'gobee'],
+    ['javel', 'chlore', 'produit', 'medicament', 'pilule', 'comprime', 'cachet', 'essence', 'petrole', 'soude', 'detergent',
+      'lessive', 'poison', 'pesticide', 'insecticide', 'raticide', 'acide', 'ammoniaque', 'antigel', 'solvant', 'debouche', 'pile']],
+  // A fall from a height
+  [['tombe', 'tombee', 'chute', 'chuter', 'glisse', 'glissee'],
+    ['toit', 'echelle', 'arbre', 'hauteur', 'etage', 'balcon', 'falaise', 'echafaudage', 'fenetre', 'mur', 'grenier', 'rocher']],
+  // Back or neck hurt by a fall, a blow or an accident
+  [['tombe', 'tombee', 'chute', 'choc', 'coup', 'accident', 'renverse', 'renversee', 'percute', 'percutee', 'ecrase', 'ecrasee'],
+    ['dos', 'nuque', 'cou', 'colonne', 'vertebre', 'rachis']],
+  // Legs or arms no longer felt or moved
+  [['sent', 'sens', 'bouge', 'bouger', 'remue', 'remuer'], ['plus'], ['jambe', 'bras', 'pied', 'main']]
+];
+const racine = (m) => m.replace(/(es|s|e|x)$/, '');
+function groupes(n) {
+  const presents = new Set(n.split(/[^\p{L}\p{N}]+/u).filter(Boolean).flatMap((m) => [m, racine(m)]));
+  return GROUPES.some((g) => g.every((mots) => mots.some((m) => presents.has(m) || presents.has(racine(m)))));
+}
+
 // Everyday injuries: the model's own flag is not trusted on them
 const COURANT = /\b(coupe|coupure|egratignure|ecorchure|griffure|bleu|bosse|ampoule|echarde|piqure de moustique|petite brulure|mal de (tete|dos|ventre|gorge)|rhume|courbature|entorse legere)\b/;
 
 export function signeDeGravite(question, drapeauModele = false) {
   const n = normaliser(String(question)).replace(/['’]/g, ' ').replace(/\s+/g, ' ');
-  if (SIGNES.some((r) => r.test(n))) return true;
+  if (SIGNES.some((r) => r.test(n)) || groupes(n)) return true;
   return drapeauModele && !COURANT.test(n);
 }
 

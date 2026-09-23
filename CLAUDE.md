@@ -176,7 +176,27 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   ggml-org/embeddinggemma-300M-Q8_0.gguf (334 Mo, sha256 b5ce9d77…0d63) : vecteurs à 0,9997 de ceux
   d'Ollama (mêmes classements), image 1,2 Go contre 9,2 Go, 554 Mo de RAM en charge contre 943 Mo.
   Le 31/33 est OPTIMISTE : 6 expressions de la table ont été corrigées d'après les échecs de la première
-  mesure (27/33 avant). Le propriétaire écrira lui-même une série de questions pour l'éprouver.
+  mesure (27/33 avant). Série écrite par le propriétaire (tests/serie-proprietaire.json, 20 questions ; réponses
+  attendues fixées par Claude d'après son jugement, 3 sans contenu dans les packs) : 7 bons, 3 acceptables,
+  7 mauvais au départ ; après les corrections ci-dessous, 9 bons, 4 acceptables, 4 mauvais ; première série
+  inchangée (31/33, 33/33, 3/3). Rapport : docker exec -i dashboard node assistant/rapport-recherche.mjs < fichier.
+  Corrections (2026-09-23) : terme principal = nom ou groupe nominal seulement (assistant/lexique.mjs : listes
+  fermées de mots outils, verbes courants, nombres, adverbes, temps, personnes ; un titre ne commence pas par
+  un pronom ou un auxiliaire ; le mot le plus rare doit figurer dans un titre ou intertitre des passages
+  trouvés, sinon aucun terme). Table : expression reconnue par ses mots présents, dans n'importe quel ordre
+  (petits mots ignorés, négations comptées, la plus précise d'abord, une expression incluse dans une autre déjà
+  reconnue n'ajoute rien) ; ajouts demandés : jaunisse/ictère, clou/tétanos, mal au dos, faire pousser/potager,
+  froid (formulations générales), infection de plaie. Urgence (securite.mjs) : aussi par groupes de mots
+  présents (produit avalé, chute de hauteur, dos ou nuque après chute/choc/accident, jambes ou bras qu'on ne
+  sent plus). Livres : pages de glossaire (6 définitions « Mot, m » ou plus) hors de la recherche avancée.
+  Wikis : l'article au titre exact du terme de la table est lu directement dans chaque pack.
+  Restent (non corrigés, à décider) : l'ordre final suit le cosinus, les règles de titre et de section n'agissent
+  que sur la présélection BM25 (Fièvre récurrente 0,516 devant Fièvre 0,397 ; section « Économies d'eau
+  potable » devant « Traitement de l'eau non potable ») ; formulations non couvertes par la table (« moins dix »,
+  « plaie devient verte », « avalé de l'eau de javel ») laissées telles quelles pour ne pas ajuster la table
+  sur la série.
+  Catalogue (point 5 du propriétaire) : aucun pack de nomad ne traite du chauffage sans électricité, des
+  puits ni du potager ; ce sont des manques de contenu, pas du moteur. À couvrir par le catalogue de packs.
   Lot 4 (vecteurs par llama.cpp, installé par install.sh sur nomad) : même score 31/33, 2,2 s par question,
   indexation 4,4 morceaux/s (3,05 avec Ollama), 450 Mo de RAM ; un index construit par Ollama reste valide.
   Candidats de l'option IA (relevés le 2026-09-23, à refaire au lot 5 avec ce qui existera alors) :

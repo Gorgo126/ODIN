@@ -12,6 +12,7 @@ import { DEFAUTS, valider } from './reglages.mjs';
 // tests/recherche.json ({ questions: [{ q, attendu: [...] } | { q, aucun: true }] }).
 // Per question: main term and its origin, what the table understood, the first three documents.
 // With « attendu »: bon (first), acceptable (2nd or 3rd), mauvais. Without it: « à juger ».
+// sans_contenu: nothing suitable in the installed packs, kept out of the score.
 
 const e = process.env;
 let brut = '';
@@ -52,14 +53,15 @@ const nomGroupe = (g) => {
 };
 
 await chercher({ question: 'eau', rechercher, reglages }).catch(() => {}); // loads the model
-const comptes = { bon: 0, acceptable: 0, mauvais: 0, 'à juger': 0 };
+const comptes = { bon: 0, acceptable: 0, mauvais: 0, 'à juger': 0, 'sans contenu': 0 };
 let n = 0;
 for (const q of questions) {
   n++;
   const r = await chercher({ question: q.q, rechercher, reglages, debug: true });
   const groupes = [...r.forts, ...r.proches];
   let verdict = 'à juger';
-  if (q.aucun) verdict = r.forts.length ? 'mauvais' : 'bon';
+  if (q.sans_contenu) verdict = 'sans contenu';
+  else if (q.aucun) verdict = r.forts.length ? 'mauvais' : 'bon';
   else if (q.attendu?.length) {
     const rang = groupes.findIndex((g) => accepte(g, q.attendu)) + 1;
     verdict = rang === 1 ? 'bon' : rang >= 2 && rang <= 3 ? 'acceptable' : 'mauvais';
@@ -70,7 +72,7 @@ for (const q of questions) {
   console.log(`   terme : ${t.terme || 'aucun'} (${t.source || '–'}) · table : ${r.debug.comprehension.entrees.join(' ; ') || 'rien'}`);
   console.log(`   en tête : ${groupes[0] ? `${nomGroupe(groupes[0])}${r.forts.length ? '' : ' [proche seulement]'}` : 'rien au-dessus des seuils'}`);
   if (groupes.length > 1) console.log(`   ensuite : ${groupes.slice(1, 3).map(nomGroupe).join(' | ')}`);
-  if (r.bandeau) console.log('   bandeau d\'urgence');
+  console.log(`   bandeau d'urgence : ${r.bandeau ? 'oui' : 'non'}`);
   console.log(`   verdict : ${verdict}`);
 }
 console.log(`\nBilan sur ${n} questions : ${Object.entries(comptes).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(', ')}`);

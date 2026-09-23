@@ -10,6 +10,12 @@ const DOSSIER = '/livres';
 const MIN_PARAGRAPHE = 60;
 const cache = new Map(); // id → { cle, titre, pages }
 
+// A glossary page (« Coma, m État d'inconscience… Délire, m … »): definitions of many words, so it
+// matches almost any question without answering it. Kept out of the advanced search; the keyword
+// search of /recherche still lists it (a definition can help there).
+const DEFINITION = /[\p{L}'’-]+, (?:adj|adv|f|m|n|v|nf|nm|pl)\b/gu;
+const glossaire = (texte) => (texte.match(DEFINITION) || []).length >= 6;
+
 async function charger() {
   const noms = (await fs.readdir(DOSSIER).catch(() => [])).filter((n) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(n));
   for (const id of cache.keys()) if (!noms.includes(id)) cache.delete(id);
@@ -23,7 +29,7 @@ async function charger() {
         const fiche = JSON.parse(await fs.readFile(path.join(DOSSIER, id, 'fiche.json'), 'utf8'));
         const pages = JSON.parse(await fs.readFile(fichier, 'utf8'));
         // A health book (« Là où il n'y a pas de docteur ») is a guide: it can help when no one else can
-        l = { cle, id, titre: fiche.titre || id, guide: fiche.avertissement === 'sante', pages: pages.map((p) => ({ ...p, norm: normaliser(p.texte) })) };
+        l = { cle, id, titre: fiche.titre || id, guide: fiche.avertissement === 'sante', pages: pages.map((p) => ({ ...p, norm: normaliser(p.texte), glossaire: glossaire(p.texte) })) };
         cache.set(id, l);
       }
       return l;
@@ -40,6 +46,7 @@ export async function passagesLivres(requetes, { pages = 5 } = {}) {
   const candidates = [];
   for (const l of await charger()) {
     for (const p of l.pages) {
+      if (p.glossaire) continue;
       // Distinct words found count most, then their occurrences
       let distincts = 0;
       let total = 0;

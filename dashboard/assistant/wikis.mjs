@@ -66,10 +66,20 @@ function paragraphes(html) {
 }
 
 // Both queries (full keywords and main term) in parallel, results interleaved without duplicates,
-// then the paragraphs of the first `articles` articles
-export async function passagesWikis(requetes, { articles = 15 } = {}) {
+// then the paragraphs of the first `articles` articles. titre: the main term given by the synonym
+// table (« fièvre »): the article of that exact title is read first in every pack, when it exists.
+// Kiwix's own search can rank it far behind the particular cases (Fièvre jaune, Fièvre récurrente),
+// and the rules on titles can only prefer an article that is among the candidates.
+export async function passagesWikis(requetes, { articles = 15, titre = null } = {}) {
   let livres = await livresIndexes();
   if (!livres.length) return [];
+  const exact = [];
+  if (titre) {
+    const t = titre.trim().charAt(0).toUpperCase() + titre.trim().slice(1);
+    const chemins = livres.map((l) => `/kiwix/content/${l.contenu}/${encodeURIComponent(t.replace(/ /g, '_'))}`);
+    const trouves = await Promise.all(chemins.map((c) => lire(KIWIX + c, DELAI).then((r) => (r.ok && r.type.includes('text/html') ? c : null), () => null)));
+    for (const c of trouves) if (c) exact.push({ titre: t, chemin: c });
+  }
   const toutes = () => Promise.all([...new Set(requetes.filter(Boolean))].map((q) => chercher(q, livres, articles).catch(() => null)));
   let listes = await toutes();
   // Kiwix refuses the whole search when a pack of the list was removed meanwhile: catalogue read
@@ -79,8 +89,8 @@ export async function passagesWikis(requetes, { articles = 15 } = {}) {
     listes = livres.length ? await toutes() : [];
   }
   listes = listes.map((l) => l || []);
-  const vus = new Set();
-  const retenus = [];
+  const vus = new Set(exact.map((a) => a.chemin));
+  const retenus = [...exact];
   for (let i = 0; retenus.length < articles && listes.some((l) => i < l.length); i++) {
     for (const l of listes) {
       const a = l[i];

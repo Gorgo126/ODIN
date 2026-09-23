@@ -491,7 +491,7 @@ export class Index {
       });
     };
     const req = (requetes?.length ? requetes : [question]).filter(Boolean);
-    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15 })) : Promise.resolve([]);
+    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15, titre: termeSur ? terme : null })) : Promise.resolve([]);
     const pLivres = sources.includes('livres') ? mesurer('livres', passagesLivres(req)) : Promise.resolve([]);
 
     const jeton = this.suspendre();
@@ -516,9 +516,12 @@ export class Index {
     // title and section rules do not apply at all.
     const tous = [...wikis, ...livres];
     const frequence = (mot) => tous.filter((p) => normaliser(`${p.titre} ${p.section} ${p.texte}`).includes(mot)).length;
+    // Words of the headings (titles and sections) of the passages found, singular and plural alike
+    const entetes = new Set(tous.flatMap((p) => normaliser(`${p.titre} ${p.section}`).split(/[^\p{L}\p{N}]+/u)).filter(Boolean).map((m) => m.replace(/[sx]$/, '')));
+    const enTete = (mot) => entetes.has(mot.replace(/[sx]$/, ''));
     const principal = termeSur && terme
       ? { terme: normaliser(terme), source: 'synonymes' }
-      : termePrincipal(terme, question, frequence, wikis.map((p) => p.titre));
+      : termePrincipal(terme, question, frequence, wikis.map((p) => p.titre), enTete);
     const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires })];
     if (q && externes.length) {
       const t = Date.now();
