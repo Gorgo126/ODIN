@@ -14,6 +14,7 @@ import { vectoriser, reduire, profil } from './embeddings.mjs';
 // vectors by a llama.cpp server, when LLAMA_URL is set). CONFIGS=bm25,ollama picks some.
 // Per question: rank of the first accepted document among the groups shown (strong ones, then
 // close ones). Off-topic questions (aucun) must give no strong group.
+// COUVERTURE='{"forte":0.9,"proches":0}' : thresholds of the keyword-only mode (0 shows everything).
 
 const e = process.env;
 const lire = async () => { let s = ''; for await (const b of process.stdin) s += b; return JSON.parse(s); };
@@ -41,6 +42,8 @@ const CONFIGS = {
 };
 const choisies = (e.CONFIGS ? e.CONFIGS.split(',') : Object.keys(CONFIGS)).filter((c) => CONFIGS[c]);
 const reglages = valider({ ...DEFAUTS });
+// COUVERTURE='{"forte":0.9,"proches":0}' : thresholds of the keyword-only mode (0 shows everything)
+if (e.COUVERTURE) reglages.couverture = { ...reglages.couverture, ...JSON.parse(e.COUVERTURE) };
 
 const forme = (s) => String(s).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 function accepte(g, attendus) {
