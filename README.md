@@ -5,7 +5,7 @@
 ### Le savoir du monde, même quand internet s'arrête.
 
 Un serveur de connaissances **100 % hors ligne**, installable en une commande sur Ubuntu ou Debian.<br>
-Wikipédia, des milliers de livres, des cartes, vos documents et un assistant qui les lit pour vous,<br>
+Wikipédia, des livres, des cartes et vos documents, avec une recherche qui comprend vos questions,<br>
 pour tous les appareils du réseau local.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-c8963e?style=flat-square)](#licence)
@@ -42,7 +42,9 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 | 📚 | **Bibliothèque** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
 | 📁 | **Documents** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Carte** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
-| 🤖 | **Assistant** | Il cherche dans vos documents, la bibliothèque et vos livres, puis répond avec ses propres mots, uniquement à partir de ce qu'il a trouvé, en citant ses sources. Quand il ne sait pas, il le dit. |
+| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de la bibliothèque et de vos livres, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
+| 📖 | **Livres** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. |
+| 🤖 | **Assistant IA** (option) | Sur une machine avec une carte graphique d'au moins 8 Go : il rédige une réponse à partir des passages trouvés, en citant ses sources. |
 | 🖥️ | **Tableau de bord** | L'état des services, une recherche dans toute la bibliothèque, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
 
 L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite.
@@ -68,45 +70,42 @@ Chaque pack est extrait à la demande du fichier mondial [Protomaps](https://pro
 OpenStreetMap), pour ne télécharger que la région voulue. La liste se modifie dans
 [`catalogue/cartes.txt`](catalogue/cartes.txt).
 
-### L'assistant
+### La recherche avancée
 
-Il ne répond **que** à partir de ce qui est installé sur la machine : vos documents personnels, les
-wikis de la bibliothèque et vos livres PDF. Il n'utilise jamais ses connaissances générales, et il
-n'invente pas de source.
+C'est le cœur d'ODIN. Elle ne demande ni carte graphique ni modèle de langage.
 
-1. **Il comprend d'abord la demande.** « je me suis brûlé ! » devient une recherche sur « brûlure,
-   premiers soins, traitement ». Une salutation reçoit une réponse polie, sans aucune recherche.
-2. **Il cherche dans les trois sources en même temps**, par le sens et par les mots.
-3. **Il répond avec ses mots**, en citant ses sources : « Livre · Là où il n'y a pas de docteur,
-   p. 164 », « WikiMed · Brûlure », « Mes documents · Contrat de bail ». Les renvois [1] [2] dans le
-   texte ouvrent la bonne page.
-4. **S'il ne trouve pas la réponse exacte**, il dit en une phrase quels documents s'en approchent.
-   S'il ne trouve rien du tout, il le dit simplement.
-5. **Santé et sécurité** : si la question décrit un signe grave (difficulté à respirer, saignement
-   important, perte de connaissance…), la réponse se termine toujours par un rappel d'appeler les
-   secours, adapté à ce qu'ODIN sait du réseau, et renvoie vers les guides médicaux installés.
+1. **Elle comprend la demande** grâce à une table de synonymes en français, écrite à la main
+   ([`catalogue/synonymes.json`](catalogue/synonymes.json)) : « je me suis brûlé » cherche
+   « brûlure », « mal à la tête » cherche « céphalée, migraine », « l'eau de la rivière » cherche
+   « eau potable ». Santé, eau, feu, froid et nourriture sont couverts ; la table s'enrichit sans
+   toucher au code.
+2. **Elle cherche dans trois sources à la fois**, par le sens et par les mots : vos documents, les
+   packs de la bibliothèque et vos livres PDF.
+3. **Elle montre les meilleurs passages**, groupés par document, les mots cherchés surlignés, avec
+   un lien vers l'article, la page du livre ou le document. Les résultats plus éloignés restent
+   accessibles, repliés ; quand rien ne répond vraiment, elle le dit.
+4. **Santé et sécurité** : si la question décrit un signe grave (difficulté à respirer, saignement
+   important, perte de connaissance…), un bandeau en tête rappelle d'appeler les secours, adapté à ce
+   qu'ODIN sait du réseau.
 
 Vos documents sont indexés tout seuls, dès que vous en déposez dans **Documents** : PDF, Word, texte,
 Markdown et HTML. Rien ne sort de la machine, et tout fonctionne sans internet.
 
-Dans **Configuration**, l'assistant reçoit un nom, un visage (dix dessins en pixel art), une couleur,
-un ton, le tutoiement ou le vouvoiement, et la longueur de ses réponses. La même page affiche l'état
-de son index et permet de le reconstruire.
+### L'assistant IA (option)
 
-#### Voir comment il a répondu (`?debug=1`)
+Sur une machine qui a la carte graphique pour cela, la page **Assistant IA** installe un modèle de
+langage (voir l'option IA ci-dessous). L'assistant cherche alors avec la recherche avancée, puis
+rédige une réponse **uniquement** à partir des passages trouvés, avec des renvois [1] [2] vers les
+sources. S'il échoue, s'il tarde à répondre ou s'il cite un chiffre absent des passages, sa réponse
+est écartée et les passages s'affichent à la place. Dans **Configuration**, il reçoit un nom, un
+visage (dix dessins en pixel art), une couleur, un ton, le tutoiement ou le vouvoiement.
 
-Ouvrez **`http://odin.local/assistant?debug=1`** pour afficher, sous chaque réponse, un bloc
-« Debug » dépliable :
+#### Voir comment la recherche a travaillé (`?debug=1`)
 
-- la **question reformulée** et les mots-clés de recherche qu'il a choisis ;
-- les **passages** trouvés dans chaque source, avec leur **score de proximité** (le cosinus), et ceux
-  qui ont réellement été envoyés au modèle ;
-- le **temps de chaque étape** : compréhension, recherche, rédaction.
-
-C'est utile pour comprendre une réponse décevante : soit la recherche n'a pas trouvé le bon passage,
-soit le modèle l'a mal utilisé. L'option ne vaut que pour l'onglet ouvert, ne change rien aux
-réponses et n'est enregistrée nulle part : rechargez la page sans `?debug=1` pour revenir à
-l'affichage normal.
+Ajoutez **`?debug=1`** à l'adresse de la recherche (`/recherche?q=…&debug=1`) ou de l'assistant
+(`/assistant?debug=1`) pour afficher ce que la table a compris, les requêtes envoyées, le score de
+chaque passage (proximité de sens, mots-clés, règles de classement) et les passages écartés. L'option
+ne vaut que pour la page ouverte et n'est enregistrée nulle part.
 
 ## Comment ça marche
 
