@@ -49,8 +49,11 @@ if [ -d "$CIBLE/.git" ]; then
   # Explicit refspec: a --depth 1 clone only tracks its original branch
   depot fetch origin "+refs/heads/$BRANCHE:refs/remotes/origin/$BRANCHE" \
     || err "Branche $BRANCHE introuvable sur $DEPOT."
+  # No --track: a clone made with --depth 1 -b main only knows main in its fetch refspec, and git
+  # refuses to track another branch (« starting point is not a branch »). The fetch and merge above
+  # and below name origin/$BRANCHE explicitly anyway.
   depot checkout "$BRANCHE" 2>/dev/null \
-    || depot checkout -b "$BRANCHE" --track "origin/$BRANCHE"
+    || depot checkout -b "$BRANCHE" "origin/$BRANCHE"
   depot merge --ff-only "origin/$BRANCHE" \
     || err "Mise à jour impossible : des fichiers d'ODIN ont été modifiés sur ce serveur (voir git -C $CIBLE status). Les réglages personnels vont dans .env."
 else
