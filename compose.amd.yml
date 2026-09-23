@@ -1,0 +1,9 @@
+# AI option on an AMD card: ROCm image of the same Ollama version, with the kernel devices.
+# NOT VERIFIED: written without an AMD card to test on (see CLAUDE.md, lot 5). Enabled by
+# install.sh (COMPOSE_FILE) only when /dev/kfd exists (amdgpu driver with ROCm support).
+services:
+  ollama:
+    image: ollama/ollama:0.34.2-rocm
+    devices:
+      - /dev/kfd
+      - /dev/dri

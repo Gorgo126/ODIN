@@ -5,6 +5,7 @@ import path from 'path';
 import { lirePacks, infos } from './catalogue.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { ecrireTexte } from './fichiers.mjs';
+import { reserver, liberer, disquePlein } from './espace.mjs';
 
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
@@ -56,11 +57,11 @@ export async function demarrer(id) {
         return;
       }
       t.etat = 'erreur';
-      t.erreur = c.signal.reason === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
+      t.erreur = disquePlein(err) || (c.signal.reason === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
         : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?'
-        : err.message;
+        : err.message);
     })
-    .finally(() => controles.delete(id));
+    .finally(() => { controles.delete(id); liberer(`zim:${id}`); });
   return t;
 }
 
@@ -78,9 +79,22 @@ async function telecharger(pack, e, t, controle) {
 
   if (!(await existe(dest))) {
     const deja = (await fs.stat(part).catch(() => null))?.size || 0;
-    const { bavail, bsize } = await fs.statfs(DATA);
-    if (bavail * bsize < e.taille - deja) throw new Error('Espace disque insuffisant');
-    await telechargerFlux(e.url.replace(/\.meta4$/, ''), part, t, controle);
+    // 2 % margin; the part already received is on the disk
+    await reserver(`zim:${pack.id}`, DATA, Math.ceil((e.taille - deja) * 1.02), () => e.taille - t.recu);
+    // download.kiwix.org sends each request to a mirror picked at random; one may be unreachable for
+    // a moment (seen on the test VM: « fetch failed » at once, fine on the next try). A connection that
+    // fails before any byte is tried again, twice, 3 s apart; the cause goes to the logs.
+    for (let essai = 1; ; essai++) {
+      const avant = t.recu;
+      try {
+        await telechargerFlux(e.url.replace(/\.meta4$/, ''), part, t, controle);
+        break;
+      } catch (err) {
+        if (controle.signal.aborted || err.message !== 'fetch failed' || t.recu !== avant || essai >= 3) throw err;
+        console.error(`Pack ${pack.id} : connexion impossible (${err.cause?.code || err.cause?.message || 'cause inconnue'}), nouvel essai ${essai + 1}/3`);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
     await fs.rename(part, dest);
   }
 
@@ -120,8 +134,10 @@ async function inscrireMaintenant(e, fichier, debut) {
 }
 
 // Streams url into part, resuming it if present. inactivite: ms without data before
-// aborting (headers included), or null to wait for as long as needed.
-export async function telechargerFlux(url, part, t, controle, { inactivite = INACTIVITE } = {}) {
+// aborting (headers included), or null to wait for as long as needed. connexion: ms to get
+// the response headers, even without inactivity timeout. maximum: bytes beyond which the
+// download is aborted (a replaced file must not fill the disk).
+export async function telechargerFlux(url, part, t, controle, { inactivite = INACTIVITE, connexion = null, maximum = null } = {}) {
   let deja = (await fs.stat(part).catch(() => null))?.size || 0;
   const { signal } = controle;
   let minuterie;
@@ -130,16 +146,26 @@ export async function telechargerFlux(url, part, t, controle, { inactivite = INA
     clearTimeout(minuterie);
     minuterie = setTimeout(() => controle.abort('inactif'), inactivite);
   };
+  const attente = connexion && setTimeout(() => controle.abort('connexion'), connexion);
   try {
     veiller();
     const r = await fetch(url, { headers: deja ? { Range: `bytes=${deja}-` } : {}, signal });
+    clearTimeout(attente);
     if (r.status === 200) deja = 0;
     else if (r.status !== 206) throw new Error(`Téléchargement refusé (${r.status})`);
     t.recu = deja;
 
-    const compteur = new Transform({ transform(c, _, cb) { veiller(); t.recu += c.length; cb(null, c); } });
+    const compteur = new Transform({
+      transform(c, _, cb) {
+        veiller();
+        t.recu += c.length;
+        if (maximum && t.recu > maximum) controle.abort('trop-gros');
+        cb(null, c);
+      }
+    });
     await pipeline(Readable.fromWeb(r.body), compteur, createWriteStream(part, { flags: deja ? 'a' : 'w' }), { signal });
   } finally {
+    clearTimeout(attente);
     clearTimeout(minuterie);
   }
 }

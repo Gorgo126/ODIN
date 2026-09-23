@@ -65,6 +65,7 @@ export default function PacksCartes({ liaisonInitiale }) {
 
   return (
     <>
+      <p className="compte">Données © contributeurs d'OpenStreetMap, licence ODbL 1.0 ; tuiles Protomaps.</p>
       {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Les cartes installées restent consultables.</p>}
       {enLigne && !liste.joignable && <p>Catalogue des cartes injoignable pour le moment.</p>}
       {liste.packs.map((p) => {

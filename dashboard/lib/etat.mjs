@@ -1,17 +1,23 @@
 import { promises as fs } from 'fs';
 import { installees } from './cartes.mjs';
+import { livresInstalles } from './livres.mjs';
+import { iaInstallee } from './assistant.mjs';
 
 export const SERVICES = [
   { id: 'bibliotheque', nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
   { id: 'documents', nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
-  { id: 'ia', nom: 'Assistant IA', url: 'http://ia:8080/health', lien: '/', port: '8081' },
-  // Page of the dashboard itself: available as soon as one map pack is installed
+  // Pages of the dashboard itself: available as soon as one pack of their kind is installed.
+  // The assistant is an option: without a model installed and enabled, its card leads to /ia
+  { id: 'assistant', nom: 'Assistant IA', lien: '/assistant', interne: true },
+  { id: 'livres', nom: 'Livres', lien: '/livres', interne: true },
   { id: 'carte', nom: 'Carte', lien: '/carte', interne: true }
 ];
 
+const PRESENTS = { livres: livresInstalles, carte: installees, assistant: async () => (iaInstallee() ? [1] : []) };
+
 export async function etatServices() {
   return Promise.all(SERVICES.map(async (s) => {
-    if (s.interne) return { ...s, ok: (await installees()).length > 0 };
+    if (s.interne) return { ...s, ok: s.toujours || (await PRESENTS[s.id]().catch(() => [])).length > 0 };
     try {
       const r = await fetch(s.url, { signal: AbortSignal.timeout(2000), cache: 'no-store' });
       return { ...s, ok: r.ok || r.status === 302 };

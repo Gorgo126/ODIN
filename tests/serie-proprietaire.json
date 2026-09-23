@@ -1,0 +1,25 @@
+{
+  "_lisezmoi": "Série écrite par le propriétaire (2026-09-23), réponses attendues fixées par Claude d'après son jugement du premier rapport : documents qui répondent vraiment. sans_contenu : rien d'adapté dans les packs de nomad (hors bilan). Même format que tests/recherche.json. Ne pas ajuster la table de synonymes sur cette série.",
+  "questions": [
+    { "q": "le bébé ne respire plus", "attendu": ["Réanimation cardiopulmonaire", "Compression thoracique", "livre:133-134"] },
+    { "q": "on n'a plus d'eau potable", "attendu": ["Eau potable", "Désinfection", "Chloration", "livre:220-224"] },
+    { "q": "il fait moins dix dans la maison", "attendu": ["Hypothermie", "Gelure", "Engelure", "livre:133-134"] },
+    { "q": "j'ai marché sur un clou", "attendu": ["Tétanos", "livre:295-298"] },
+    { "q": "ma femme va accoucher", "attendu": ["Accouchement", "livre:384-429"] },
+    { "q": "le chien m'a mordu", "attendu": ["Morsure", "Rage", "livre:294-294", "livre:141-141"] },
+    { "q": "comment conserver la viande sans frigo", "attendu": ["Altération des aliments", "Conservation des aliments", "Salaison", "Fumage"] },
+    { "q": "la plaie devient verte", "attendu": ["Gangrène", "Infection", "Pus", "Abcès"] },
+    { "q": "mon fils a avalé de l'eau de javel", "attendu": ["Intoxication", "Hypochlorite de sodium", "Poison", "livre:168-172"] },
+    { "q": "je suis tombé du toit, j'ai très mal au dos", "attendu": ["Lombalgie", "Traumatisme médullaire", "Traumatisme du rachis", "livre:146-148"] },
+    { "q": "plus d'électricité depuis trois jours, comment je me chauffe", "sans_contenu": true },
+    { "q": "elle fait de la fièvre depuis deux jours et elle vomit", "attendu": ["Fièvre", "Vomissement", "Déshydratation", "livre:254-265"] },
+    { "q": "comment savoir si un champignon est comestible", "attendu": ["Intoxication par les champignons", "Liste de champignons toxiques"] },
+    { "q": "le puits est à sec", "sans_contenu": true },
+    { "q": "j'ai une grosse coupure qui saigne beaucoup", "attendu": ["Hémorragie", "Plaie", "livre:135-137", "livre:148-150"] },
+    { "q": "comment faire pousser des légumes", "sans_contenu": true },
+    { "q": "il est tout jaune, les yeux aussi", "attendu": ["Ictère", "Hépatite", "livre:279-280"] },
+    { "q": "on est six, on n'a presque plus à manger", "attendu": ["Malnutrition", "livre:186-195"] },
+    { "q": "ma mère ne se réveille pas", "attendu": ["Perte de connaissance", "Syncope", "Coma", "livre:128-131"] },
+    { "q": "comment purifier l'eau de pluie", "attendu": ["Eau potable", "Désinfection", "Chloration", "Collecte des eaux pluviales", "livre:220-224"] }
+  ]
+}

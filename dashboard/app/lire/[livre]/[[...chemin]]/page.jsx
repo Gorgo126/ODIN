@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { lireArticle } from '../../../../lib/lecture.mjs';
 import Lecteur from './Lecteur';
 import { liaison } from '../../../../lib/liaison.mjs';
+import { licenceZim } from '../../../../lib/licences.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,7 @@ export default async function Lire({ params }) {
       titre={a.titre}
       html={a.html}
       kiwix={a.kiwix}
+      licence={licenceZim(livre)}
       liaisonInitiale={etatLiaison}
     />
   );

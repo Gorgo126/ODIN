@@ -1,0 +1,38 @@
+[
+  {
+    "id": "pas-de-docteur",
+    "type": "pdf",
+    "titre": "Là où il n'y a pas de docteur",
+    "sousTitre": "Un guide de santé villageois",
+    "auteurs": [
+      "David Werner",
+      "Carol Thuman",
+      "Jane Maxwell"
+    ],
+    "editeur": "Hesperian Health Guides",
+    "edition": "Édition française 2019",
+    "annee": 2019,
+    "isbn": "978-1-942919-55-1",
+    "langue": "fra",
+    "categorie": "sante",
+    "pages": 639,
+    "licence": {
+      "nom": "Licence ouverte Hesperian (Open Copyright)",
+      "url": "https://hesperian.org/open-copyright-policy/",
+      "conditions": "Usage non lucratif, attribution obligatoire, fichier non modifié"
+    },
+    "attribution": "David Werner, Carol Thuman, Jane Maxwell, Hesperian Health Guides.",
+    "credit": "Édition française adaptée avec Dokotoro et ENDA-Tiers Monde.",
+    "sources": [
+      "https://dokotoro.org/wp-content/uploads/2020/07/French-Edition.pdf"
+    ],
+    "sha256": "6f27a90a8e6fb134a624b477a822cd135a1a18e2bad7cc8118e7d5aba6e4c404",
+    "taille": 13178244,
+    "dons": "https://donate.hesperian.org/",
+    "site": "https://hesperian.org",
+    "avertissement": "sante",
+    "parDefaut": true,
+    "description": "Guide de santé de référence pour les soins de base, là où les services médicaux manquent.",
+    "publie": false
+  }
+]

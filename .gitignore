@@ -1,3 +1,4 @@
 data/
 .env
 dashboard/public/ressources-carte/
+dashboard/public/pdfjs/

@@ -2,11 +2,16 @@ import { contenu, octets } from '../../lib/etat.mjs';
 import Stockage from '../Stockage';
 import Packs from '../Packs';
 import PacksCartes from '../PacksCartes';
+import Livres from '../Livres';
+import { listeLivres } from '../../lib/livres.mjs';
 import { installees } from '../../lib/cartes.mjs';
 import { liaison } from '../../lib/liaison.mjs';
 import { lireReglages } from '../../lib/reglages.mjs';
 import ReglagesLiaison from '../ReglagesLiaison';
 import Panneau from '../Panneau';
+import Assistant from './Assistant';
+import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
+import { DEFAUTS } from '../../assistant/reglages.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +24,29 @@ const iconeLivre = (
   </svg>
 );
 
+// Closed book with a bookmark: PDF books, distinct from the open book of the ZIM library
+const iconeLivreFerme = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z" />
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M14 2v7l2-1.5L18 9V2" />
+  </svg>
+);
+
 const iconeCarte = (
   <svg viewBox="0 0 24 24" {...trait}>
     <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z" />
     <path d="M8 2v16" />
     <path d="M16 6v16" />
+  </svg>
+);
+
+// Speech bubble: the assistant
+const iconeAssistant = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    <path d="M8 9h8" />
+    <path d="M8 13h5" />
   </svg>
 );
 
@@ -38,7 +61,10 @@ const iconeLiaison = (
 const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e}${n > 1 ? 's' : ''}`;
 
 export default async function Configuration() {
-  const [livres, cartes, etatLiaison, reglages] = await Promise.all([contenu(), installees(), liaison(), lireReglages()]);
+  const [livres, cartes, etatLiaison, reglages, pdf] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres()]);
+  const assistant = reglagesAssistant();
+  // The index answers at once; a worker still starting must not hold the page
+  const etatIndex = await demander('etat', {}, 3000).catch(() => null);
   const resume = pluriel(livres.length, 'contenu');
 
   return (
@@ -68,6 +94,15 @@ export default async function Configuration() {
       </Panneau>
 
       <Panneau
+        icone={iconeAssistant}
+        titre={assistant.configure ? assistant.nom : 'Assistant'}
+        sousTitre="Identité, personnalité, index des documents, réglages avancés"
+        resume={`${etatIndex?.documents ?? '–'} documents indexés`}
+      >
+        <Assistant initiaux={assistant} defauts={DEFAUTS} etat={etatIndex} />
+      </Panneau>
+
+      <Panneau
         icone={iconeLivre}
         titre="Bibliothèque"
         sousTitre="Encyclopédies et ouvrages de référence au format ZIM"
@@ -88,6 +123,17 @@ export default async function Configuration() {
         <h3>Ajouter du contenu</h3>
         <div className="grille">
           <Packs liaisonInitiale={etatLiaison} />
+        </div>
+      </Panneau>
+
+      <Panneau
+        icone={iconeLivreFerme}
+        titre="Livres"
+        sousTitre="Livres de référence au format PDF, lisibles hors ligne"
+        resume={pluriel(pdf.filter((l) => l.installe).length, 'livre')}
+      >
+        <div className="grille">
+          <Livres liaisonInitiale={etatLiaison} />
         </div>
       </Panneau>
 

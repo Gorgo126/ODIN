@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import { spawn } from 'child_process';
 import path from 'path';
 import { telechargerFlux } from './telechargements.mjs';
-import { octets } from './format.mjs';
+import { reserver, liberer, disquePlein } from './espace.mjs';
 import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 
@@ -174,14 +174,11 @@ export async function demarrer(id) {
   await fs.mkdir(DOSSIER, { recursive: true });
   const part = fichier(id) + '.part';
   const deja = direct(pack) ? (await fs.stat(part).catch(() => null))?.size || 0 : 0;
-  const { bavail, bsize } = await fs.statfs(DOSSIER);
-  const libre = bavail * bsize;
-  // 5 % margin: dry-run sizes are rounded
-  if (libre < (total - deja) * 1.05) {
-    throw new Error(`Espace disque insuffisant : il faut ${octets(total - deja)}, il reste ${octets(libre)}.`);
-  }
-
   const t = { etat: 'en cours', recu: deja, total, erreur: null, preparation: !direct(pack) };
+  // 5 % margin: dry-run sizes are rounded. An extract reserves its whole file on disk as soon as it
+  // starts writing: from then on, nothing more is owed.
+  await reserver(`carte:${id}`, DOSSIER, Math.ceil((total - deja) * 1.05),
+    () => (direct(pack) ? total - t.recu : t.preparation ? total : 0));
   const c = new AbortController();
   etat.taches.set(id, t);
   etat.controles.set(id, c);
@@ -215,9 +212,9 @@ export async function demarrer(id) {
         return;
       }
       t.etat = 'erreur';
-      t.erreur = err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?' : err.message;
+      t.erreur = disquePlein(err) || (err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?' : err.message);
     })
-    .finally(() => etat.controles.delete(id));
+    .finally(() => { etat.controles.delete(id); liberer(`carte:${id}`); });
   return t;
 }
 

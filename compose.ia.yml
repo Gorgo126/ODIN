@@ -1,0 +1,25 @@
+# AI option: Ollama, only on a machine with a graphics card that can run a language model. Enabled
+# by install.sh through COMPOSE_FILE in .env, with compose.nvidia.yml or compose.amd.yml for the card
+# (alone, on the CPU, only for tests: ODIN_SIMULER_VRAM). Without it, no Ollama at all. The model is
+# chosen and downloaded from the « Assistant IA » page (catalogue/modeles-ia.json, data/config/ia.json).
+services:
+  dashboard:
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      # Empty: the model installed from the page; set in .env only to force another one
+      - MODELE_CHAT=${MODELE_CHAT_FORCE:-}
+      - OLLAMA_KEEP_ALIVE=30m
+
+  ollama:
+    image: ollama/ollama:0.34.2
+    container_name: ollama
+    environment:
+      # No calls to ollama.com (model recommendations, cloud cache); model pulls still work
+      - OLLAMA_NO_CLOUD=true
+      # Two slots: the understanding prompt and the answer prompt each keep their cached start
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_KEEP_ALIVE=30m
+    volumes:
+      - ${DATA_DIR}/ollama:/root/.ollama
+    restart: unless-stopped

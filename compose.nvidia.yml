@@ -1,0 +1,12 @@
+# AI option on an NVIDIA card: Ollama sees the GPU through the NVIDIA Container Toolkit.
+# NOT VERIFIED: written without an NVIDIA card to test on (see CLAUDE.md, lot 5). Enabled by
+# install.sh (COMPOSE_FILE) only when nvidia-smi answers and Docker has the nvidia runtime.
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

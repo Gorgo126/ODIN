@@ -1,0 +1,47 @@
+{
+  "_lisezmoi": "Recherche avancée, sur les packs de nomad (WikiMed, Wikipédia chimie et maths, Wikivoyage), le livre « Là où il n'y a pas de docteur » et les documents personnels. attendu : titres acceptés (sans la parenthèse finale), « livre:debut-fin » (une page du livre dans cet intervalle), « doc:début du titre » (document personnel). aucun : rien ne doit sortir en « Meilleurs passages ». Commande en tête de dashboard/assistant/evaluation-recherche.mjs.",
+  "questions": [
+    { "q": "je me suis brûlé la main avec de l'eau bouillante", "attendu": ["Brûlure", "livre:162-167"] },
+    { "q": "comment soigner une brûlure", "attendu": ["Brûlure", "livre:162-167"] },
+    { "q": "j'ai mal à la tête depuis ce matin", "attendu": ["Céphalée", "Migraine", "Céphalée de tension", "livre:266-268"] },
+    { "q": "mon fils a du mal à respirer", "attendu": ["Dyspnée", "Détresse respiratoire", "Asthme", "livre:130-135", "livre:271-275", "livre:455-458"] },
+    { "q": "il est tombé dans les pommes", "attendu": ["Perte de connaissance", "Perte de connaissance brève", "Syncope", "Lipothymie", "livre:128-131"] },
+    { "q": "il saigne beaucoup de la jambe", "attendu": ["Hémorragie", "Garrot", "livre:134-137", "livre:148-150"] },
+    { "q": "je crois qu'il a la jambe cassée", "attendu": ["Fracture", "livre:154-158"] },
+    { "q": "je me suis tordu la cheville en marchant", "attendu": ["Entorse", "Entorse de la cheville", "livre:160-162"] },
+    { "q": "mon bébé a de la fièvre", "attendu": ["Fièvre", "Convulsion hyperthermique", "livre:74-76", "livre:452-453"] },
+    { "q": "j'ai la courante depuis deux jours", "attendu": ["Diarrhée", "Déshydratation", "Soluté de réhydratation orale", "livre:254-265"] },
+    { "q": "il vomit tout ce qu'il mange", "attendu": ["Vomissement", "livre:266-267"] },
+    { "q": "j'ai une douleur qui serre dans la poitrine", "attendu": ["Douleur thoracique", "Infarctus du myocarde", "Angine de poitrine"] },
+    { "q": "il a été mordu par une vipère", "attendu": ["Morsure de serpent", "Envenimation", "livre:179-180"] },
+    { "q": "l'enfant a bu de la javel", "attendu": ["Intoxication", "Poison", "livre:168-172"] },
+    { "q": "il a pris le courant en réparant une prise", "attendu": ["Électrisation", "Électrocution"] },
+    { "q": "elle fait des convulsions", "attendu": ["Convulsion", "Épilepsie", "Convulsion hyperthermique", "livre:178-178", "livre:287-287", "livre:454-454"] },
+    { "q": "piqué par une guêpe et sa gorge gonfle", "attendu": ["Choc anaphylactique", "Piqûre d'insecte", "livre:181-181"] },
+    { "q": "j'ai une tique accrochée à la jambe", "attendu": ["Tique", "Maladie de Lyme"] },
+    { "q": "j'ai une rage de dents", "attendu": ["Abcès dentaire", "livre:359-363"] },
+    { "q": "elle va accoucher, que faire", "attendu": ["Accouchement", "livre:384-429"] },
+    { "q": "il a la bouche de travers et parle mal", "attendu": ["Accident vasculaire cérébral", "Accident ischémique transitoire"] },
+
+    { "q": "comment rendre l'eau de la rivière buvable", "attendu": ["Eau potable", "Désinfection", "Chloration", "Bushcraft", "livre:220-224"] },
+    { "q": "combien de temps faire bouillir l'eau pour la boire", "attendu": ["Eau potable", "Ébullition", "Bushcraft", "livre:220-224"] },
+    { "q": "mettre de la javel dans l'eau pour la boire", "attendu": ["Chloration", "Eau potable", "Désinfection"] },
+
+    { "q": "comment allumer un feu sans allumettes", "attendu": ["Pierre à feu", "Pierre à briquet", "Allumette", "Bushcraft", "Techniques de survie"] },
+    { "q": "faire du feu avec du bois mouillé", "attendu": ["Bushcraft", "Pierre à feu", "Techniques de survie"] },
+    { "q": "le poêle fume et on a tous mal à la tête", "attendu": ["Intoxication au monoxyde de carbone", "Monoxyde de carbone"] },
+
+    { "q": "il grelotte et ses lèvres sont bleues", "attendu": ["Hypothermie", "livre:133-134"] },
+    { "q": "mes orteils sont devenus noirs à cause du froid", "attendu": ["Gelure", "Engelure"] },
+
+    { "q": "les bocaux faits maison peuvent-ils rendre malade", "attendu": ["Botulisme", "Toxine botulique", "Clostridium botulinum"] },
+    { "q": "mon enfant ne mange pas assez et maigrit", "attendu": ["Malnutrition", "livre:186-195"] },
+    { "q": "cueillir des champignons sans s'empoisonner", "attendu": ["Intoxication par les champignons", "Liste de champignons toxiques"] },
+
+    { "q": "prix de l'entretien d'une chaudière à Bruxelles", "attendu": ["doc:DPS-Chauffagiste"] },
+
+    { "q": "résultat du match de football d'hier soir", "aucun": true },
+    { "q": "comment réparer le carburateur de ma moto", "aucun": true },
+    { "q": "cours de la bourse aujourd'hui", "aucun": true }
+  ]
+}

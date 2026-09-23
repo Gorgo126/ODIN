@@ -3,7 +3,10 @@ set -euo pipefail
 
 ODIN="$(cd "$(dirname "$0")/.." && pwd)"
 CATALOGUE="$ODIN/catalogue/packs.txt"
-ZIM_DIR="$ODIN/data/zim"
+# Data folder: DATA_DIR of .env (relative to ODIN unless absolute), as install.sh and compose.yml
+DATA=$(sed -n 's/^DATA_DIR=//p' "$ODIN/.env" 2>/dev/null | tail -1); DATA=${DATA:-./data}
+case "$DATA" in /*) ;; *) DATA="$ODIN/${DATA#./}" ;; esac
+ZIM_DIR="$DATA/zim"
 OPDS="https://library.kiwix.org/catalog/v2/entries"
 
 # Une ligne par variante disponible : variante<TAB>url<TAB>octets

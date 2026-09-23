@@ -7,6 +7,10 @@ export async function GET(req) {
     return new Response(null, { status: 200 });
   }
   const h = req.headers;
+  // The assistant, search and AI option APIs are called by scripts and fetch(): a JSON 401 rather than the login page
+  if (/^\/api\/(assistant|recherche|ia)(\/|\?|$)/.test(h.get('x-forwarded-uri') || '')) {
+    return Response.json({ erreur: 'Connexion requise' }, { status: 401 });
+  }
   const hoteComplet = h.get('x-forwarded-host') || h.get('host') || '';
   const hote = hoteComplet.split(':')[0];
   const port = process.env.HTTP_PORT || '80';

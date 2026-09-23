@@ -1,6 +1,7 @@
 import { lirePacks, infos, dernieresTailles } from '../../../lib/catalogue.mjs';
 import { enLigne } from '../../../lib/liaison.mjs';
 import { tache, etatInstallation } from '../../../lib/telechargements.mjs';
+import { licenceZim } from '../../../lib/licences.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export async function GET() {
     return {
       id: p.id,
       libelle: p.libelle,
+      licence: licenceZim(p.nom).licence,
       taille: e?.taille || 0,
       // Offline, the last size read while online
       derniereMesure: dernieres[p.id] || 0,
