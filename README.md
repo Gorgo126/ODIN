@@ -39,13 +39,13 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 
 | | Service | Ce qu'il fait |
 |---|---|---|
+| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de la bibliothèque et de vos livres, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
 | 📚 | **Bibliothèque** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
+| 📖 | **Livres** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. Aucun n'est encore proposé : le premier attend l'accord de son éditeur (voir Licences). |
 | 📁 | **Documents** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Carte** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
-| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de la bibliothèque et de vos livres, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
-| 📖 | **Livres** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. |
+| 🖥️ | **Tableau de bord** | L'état des services, la recherche, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
 | 🤖 | **Assistant IA** (option) | Sur une machine avec une carte graphique d'au moins 8 Go : il rédige une réponse à partir des passages trouvés, en citant ses sources. |
-| 🖥️ | **Tableau de bord** | L'état des services, une recherche dans toute la bibliothèque, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
 
 L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite.
 
@@ -150,7 +150,7 @@ flowchart TB
 | Service | Image (version figée) | Rôle |
 |---|---|---|
 | `caddy` | `caddy:2.11.4-alpine` | Porte d'entrée, routage, authentification déléguée au tableau de bord. |
-| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche, lecteur d'articles, carte (MapLibre GL), ajout de packs, et l'assistant : son index (SQLite) et ses réponses. Contient l'outil `pmtiles` qui extrait les régions. |
+| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche avancée (index SQLite de vos documents), lecteur d'articles, carte (MapLibre GL), ajout de packs et, en option, l'assistant IA. Contient l'outil `pmtiles` qui extrait les régions. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
 | `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
@@ -179,7 +179,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── cartes/          #   packs de cartes (.pmtiles)
     ├── documents/       #   fichiers partagés
     ├── vecteurs/        #   modèle de la recherche avancée (EmbeddingGemma, 334 Mo)
-    ├── assistant/       #   index des documents de l'assistant (SQLite)
+    ├── assistant/       #   index de vos documents pour la recherche avancée (SQLite)
     └── config/          #   mot de passe (haché avec scrypt)
 ```
 
@@ -224,7 +224,7 @@ les adresses où joindre ODIN.
 1. Depuis n'importe quel appareil du réseau, ouvrez **http://odin.local**, ou l'adresse IP affichée à la fin de l'installation.
 2. Choisissez le mot de passe qui protégera ODIN.
 3. Dans **Configuration**, installez les contenus et les cartes voulus tant que la connexion est disponible.
-4. Ouvrez **l'assistant** : donnez-lui un nom, un visage et une couleur, puis posez-lui une question.
+4. Posez une question dans la barre de recherche, en langage courant : « comment rendre l'eau potable ? ».
 
 C'est prêt : vous pouvez débrancher internet.
 
