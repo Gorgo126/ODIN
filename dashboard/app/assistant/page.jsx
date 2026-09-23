@@ -1,4 +1,5 @@
-import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
+import { redirect } from 'next/navigation';
+import { reglagesAssistant, demander, iaInstallee } from '../../lib/assistant.mjs';
 import { DEFAUTS } from '../../assistant/reglages.mjs';
 import Espace from './Espace';
 import Bienvenue from './Bienvenue';
@@ -13,6 +14,8 @@ export async function generateMetadata() {
 // ?debug=1 shows the passages and the scores under each answer. The switch is not in the settings:
 // it belongs to the moment, not to the household.
 export default async function Assistant({ searchParams }) {
+  // The assistant is an option: without a model installed and enabled, its installation page
+  if (!iaInstallee()) redirect('/ia');
   const { debug } = await searchParams;
   const { nom, avatar, couleur, accueil, memoire, configure } = reglagesAssistant();
   if (!configure) {

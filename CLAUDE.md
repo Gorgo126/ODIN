@@ -252,13 +252,19 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   clés inconnues ignorées. Mode debug : par l'adresse /assistant?debug=1 seulement, jamais enregistré.
   Avatars : 10 sprites en pixel art dessinés dans app/assistant/Sprite.jsx (grille 16 × 16, un rect SVG
   par pixel, couleur de l'utilisateur sur fond sombre) ; aucune image à téléverser, aucun fichier.
-  Issue décidée par le meilleur cosinus avant tout appel : ≥ seuilReponse (0,40) réponse, ≥ seuilProches
-  (0,18) documents proches, sinon phrase « je ne sais pas » sans appel. Seuls les extraits à moins de 0,1 du
-  meilleur cosinus (ou 2 premiers par mots-clés) vont au modèle : un extrait hors sujet l'égare et coûte ~4 s.
-  [NON_TROUVE] détecté sur le début du flux → issue 2. Issue 2 retenue en entier et vérifiée : un nombre
-  inventé, une tournure de réponse (cause, remède, conseil, impératif) ou une phrase qui ne parle pas des
-  documents remplacent le texte par une phrase fixe. Les cartes sont dédoublonnées par document (un livre
-  = une carte, avec sa page) et ne montrent jamais le texte des passages.
+  Réponse sur la recherche avancée (lot 6, assistant/reponse.mjs) : même recherche que /recherche (preparer de
+  recherche-avancee.mjs : table de synonymes, trois sources) ; le modèle ne reformule qu'une question de suite
+  (contexte.mjs). Issue décidée par le meilleur cosinus avant tout appel : 1 = une source ≥ son seuil de réponse
+  → réponse rédigée ; 2 = sous ce seuil (ou [NON_TROUVE] en début de flux, ou vecteurs absents) → phrase fixe et
+  passages, aucune rédaction ; 3 = rien → « je ne sais pas » ; 4 = repli : le modèle échoue, ne donne pas son
+  premier mot en 60 s (cfg.delaiPremierMot), ou cite un chiffre absent des passages envoyés (sansInvention) →
+  son texte est jeté, la raison et les passages s'affichent. Les passages (groupes de passages.mjs, champ
+  resultats de l'événement fin) accompagnent toute réponse : repliés sous une réponse rédigée, ouverts sinon
+  (composant partagé app/recherche/Groupe.jsx). Au plus reglages.extraits (4) passages vont au modèle, à moins
+  de 0,1 du meilleur cosinus (ou 1er par mots-clés), le guide médical gardé en cas d'urgence. Après un appel,
+  /api/ps (1,5 s au plus) : modèle en partie ou entièrement hors de la carte graphique → avertissement sous la
+  réponse. Sans modèle actif, /assistant redirige vers /ia. Replis testés contre un faux Ollama (scratchpad) ;
+  pas de test de bout en bout avec un vrai modèle depuis le retour de nomad hors simulation.
   Renvois : le modèle numérote les extraits, l'affichage numérote les sources. Les passages d'un même
   document deviennent une source, numérotée dans l'ordre de citation, et le texte final (champ texte de
   l'événement fin) porte ces numéros. La ligne des sources ne liste que les sources citées :
@@ -268,15 +274,14 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   401 JSON (verifier/route.js) ; les pages restent en redirection. Sources : PDF dans la visionneuse
   (/assistant/document?chemin=&page=), autres fichiers par Caddy sur /fichiers-documents/* (lecture seule,
   CSP sandbox). Ce préfixe ne doit pas commencer par /documents, déjà pris par FileBrowser (handle /documents*).
-  Modèle de langage : qwen3:1.7b (≤ 8,5 Go de RAM détectée, écrit dans .env par install.sh) ou
-  qwen3:4b-instruct-2507-q4_K_M. Options identiques à chaque appel (num_ctx 4096, num_thread = cœurs,
+  Modèle de langage : celui de l'option IA (lot 5, page /ia). Options identiques à chaque appel (num_ctx 4096, num_thread = cœurs,
   think false) : une valeur différente recharge le modèle. Ollama garde en cache le début commun du prompt
   (noyau + exemples) : ne rien y mettre qui change à chaque question.
   Conversation (assistant/conversation.mjs) : règles fixes, jamais le modèle. Message de 6 mots au plus
   dont tous les mots sont du vocabulaire de politesse (salutation, remerciement, acquiescement, au
   revoir) : réponse toute faite, aucun appel. Tout le reste part en recherche (« comment faire du feu ? »).
-  Compréhension (assistant/comprehension.mjs) : JSON strict (format = schéma Ollama) pour reformuler
-  seulement : question autonome, requête (mots-clés + termes médicaux et synonymes), terme principal,
+  Compréhension par le modèle (assistant/comprehension.mjs), seulement pour une question de suite depuis le
+  lot 6 : JSON strict (format = schéma Ollama) pour reformuler seulement : question autonome, requête (mots-clés + termes médicaux et synonymes), terme principal,
   drapeaux sante et gravite. JSON invalide : la phrase brute.
   Contexte (assistant/contexte.mjs) : l'échange précédent n'est joint à la compréhension que si la
   question ne tient pas debout seule (moins de 5 mots, début et/donc/alors/pourquoi/comment ça/et si,

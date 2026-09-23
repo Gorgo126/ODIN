@@ -69,7 +69,7 @@ for (const q of questions) {
   if (erreur) echecs.push(`erreur : ${erreur}`);
   if (fin && fin.issue !== q.issue) echecs.push(`issue ${fin.issue} au lieu de ${q.issue}`);
   if (q.issue === 0 && fin?.durees.recherche !== undefined) echecs.push('recherche lancée pour une conversation');
-  const origines = new Set([...(fin?.sources || []), ...(fin?.documents || [])].map((x) => x.origine));
+  const origines = new Set([...(fin?.sources || []), ...(fin?.resultats?.forts || []), ...(fin?.resultats?.proches || [])].map((x) => x.origine));
   const manquantes = (q.sources || []).filter((o) => !origines.has(o));
   if (manquantes.length) echecs.push(`sources absentes : ${manquantes.join(', ')}`);
   if (q.urgence && !/secours/i.test(texte.split('\n').filter(Boolean).at(-1) || '')) echecs.push('avertissement d\'urgence absent en fin de réponse');
@@ -86,10 +86,12 @@ for (const q of questions) {
   console.log(`   Temps : compréhension ${d.comprehension ?? '–'} ms, recherche ${d.recherche ?? '–'} ms (${Object.entries(d.sources || {}).map(([k, v]) => `${k} ${v}`).join(', ')}), 1er mot ${d.premierMot ?? '–'} ms, total ${d.total ?? '–'} ms`);
   console.log(`   Q : ${q.question}`);
   if (fin?.categorie) console.log(`   Conversation : ${fin.categorie}`);
-  if (fin?.comprehension) console.log(`   Compris${fin.comprehension.valide ? '' : ' (repli)'} : « ${fin.comprehension.question} », requête « ${fin.comprehension.requete} », terme « ${fin.comprehension.terme} »${fin.comprehension.sante ? ', santé' : ''}${fin.urgence ? ', GRAVITÉ' : ''}`);
+  if (fin?.comprehension) console.log(`   Compris : ${fin.comprehension.table?.join(' ; ') || 'rien dans la table'}${fin.comprehension.reformulee ? ` ; reformulée « ${fin.comprehension.reformulee} »` : ''}${fin.urgence ? ', GRAVITÉ' : ''}`);
   console.log(`   R : ${texte.replace(/\s+/g, ' ').trim()}`);
   if (fin?.sources?.length) console.log(`   Sources : ${fin.sources.map((s) => `${s.etiquette} ${s.titre}${s.pages.length ? ` p. ${s.pages}` : ''}`).join(' · ')}`);
-  if (fin?.documents?.length) console.log(`   Proches : ${fin.documents.map((x) => `${x.etiquette} ${x.titre}`).join(' · ')}`);
+  const groupes = [...(fin?.resultats?.forts || []), ...(fin?.resultats?.proches || [])];
+  if (groupes.length) console.log(`   Passages : ${groupes.slice(0, 4).map((x) => `${x.etiquette} ${x.titre}`).join(' · ')}`);
+  if (fin?.repli || fin?.avertissement) console.log(`   Repli : ${fin.repli || '–'} ; avertissement : ${fin.avertissement || '–'}`);
   if (fin?.issue === 1) console.log(`   Extraits envoyés : ${fin.debug.extraits.filter((x) => x.envoye).length}/${fin.debug.extraits.length}`);
   if (echecs.length) console.log(`   ⚠ ${echecs.join(' ; ')}`);
 }

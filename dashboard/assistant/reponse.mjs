@@ -1,29 +1,36 @@
 import { discuter } from './generation.mjs';
 import { comprendre } from './comprehension.mjs';
-import { messagesReponse, messagesProches, remplacer, etiquette, titreSource } from './prompt.mjs';
+import { messagesReponse, remplacer, etiquette, titreSource } from './prompt.mjs';
 import { conversation, reponseConversation } from './conversation.mjs';
 import { besoinDeContexte, reformulationFiable } from './contexte.mjs';
 import { signeDeGravite, messageUrgence, estGuide } from './securite.mjs';
-import { lien, cleSource } from './passages.mjs';
+import { lien, cleSource, grouper } from './passages.mjs';
+import { preparer, EXTRAITS } from './recherche-avancee.mjs';
 
 export { lienDocument } from './passages.mjs';
 
-// Answer pipeline of the assistant, as a stream of events:
+// Answer pipeline of the assistant (AI option), built on the advanced search, as a stream of events:
 //   { type: 'etat', etat: 'comprehension' | 'recherche' | 'redaction' }
 //   { type: 'texte', texte }              pieces of the answer, in order
-//   { type: 'fin', issue: 0 | 1 | 2 | 3, ... } sources, documents, timings, debug
+//   { type: 'fin', issue, texte, resultats, avertissement, ... } the final text replaces the pieces
 //   { type: 'erreur', message }
 // 0. A conversation (« salut », « merci ») is recognised by fixed rules: short reply, no call at all.
-// 1. Understanding (short call, strict JSON): standalone question, search queries, health flags.
-// 2. Search in the personal documents, the wikis (Kiwix) and the books, with the rewritten queries.
-// 3. The outcome is decided from the best raw cosine of each source, BEFORE any other model call:
-//    1 one source ≥ its answer threshold: answer written from the passages ([NON_TROUVE] → 2)
-//    2 one source ≥ its « close » threshold: 1 or 2 sentences on the closest items, never an answer
+// 1. Understanding: the synonym table, as in the search page. The model only rewrites a follow-up
+//    question that cannot stand on its own (« et pour un enfant ? »).
+// 2. Search: exactly the advanced search (same queries, same sources, same passages).
+// 3. Outcome, decided from the best raw cosine of each source BEFORE any other model call:
+//    1 one source ≥ its answer threshold: an answer written from the passages
+//    2 one source ≥ its « close » threshold: no writing, the closest passages are shown
 //    3 below: a « don't know » sentence from the settings, no model call.
-// rechercher(question, { n, garder, requetes, sources }) and reprendre(jeton) come from the index.
+//    4 fallback: the model failed (error, no first word in time, a figure absent from the passages):
+//      its text is dropped, the passages are shown with the reason.
+// The passages of the search always come with the answer (resultats), whatever the outcome.
+// rechercher(question, options) and reprendre(jeton) come from the index.
 
 const SEUILS = { documents: 'documents', wiki: 'wikis', livre: 'livres' };
 const seuil = (reglages, e) => reglages.seuils[SEUILS[e.origine] || 'documents'];
+const DELAI_PREMIER_MOT = 60000; // no first word after that: the passages are shown instead
+const DELAI_EMPLACEMENT = 1500;  // /api/ps, read after the answer: never delays it much
 
 // Could the start of the answer still be the [NON_TROUVE] marker? (with or without brackets)
 function marqueur(debut) {
@@ -32,18 +39,23 @@ function marqueur(debut) {
   return n.length < 10 && ('NON_TROUVE'.startsWith(n) || 'NON TROUVE'.startsWith(n)) ? 'peut-etre' : 'non';
 }
 
-// Outcome 2 must never answer: a number that is neither in the question nor in the titles and
-// summaries was invented. The text is then replaced by a plain sentence listing the items.
-function sansInvention(texte, documents, question) {
-  const permis = new Set(`${question} ${documents.map((d) => `${d.titre} ${d.resume || ''}`).join(' ')}`.match(/\d+/g) || []);
-  return (texte.match(/\d+/g) || []).every((n) => permis.has(n)) && !/\[/.test(texte);
+// Nothing may be invented: a figure of the answer that is neither in the question nor in the
+// passages sent (text, titles, sections, pages) makes the answer fall back to the passages.
+// References [n] are not figures of the answer.
+export function sansInvention(texte, extraits, question) {
+  const permis = new Set(`${question} ${extraits.map((e) => `${e.titre || ''} ${e.section || ''} ${e.page || ''} ${e.texte}`).join(' ')}`.match(/\d+/g) || []);
+  return (texte.replace(/\[\d+\]/g, ' ').match(/\d+/g) || []).every((n) => permis.has(n));
 }
 
-function repliProches(reglages, documents) {
-  const tu = reglages.personnalite.tutoiement;
-  const liste = documents.map((d) => titreSource({ ...d, pages: d.page ? [d.page] : [] })).join(' ; ');
-  const cherche = tu ? 'Tu y trouveras peut-être de quoi avancer.' : 'Vous y trouverez peut-être de quoi avancer.';
-  return `Je n'ai pas trouvé de réponse précise. ${documents.length > 1 ? 'Ces sources s\'en rapprochent' : 'Cette source s\'en rapproche'} : ${liste}. ${cherche}`;
+// Where the model runs (Ollama /api/ps): share in video memory, or null when unknown
+async function emplacement(cfg) {
+  try {
+    const ps = await fetch(`${cfg.ollama}/api/ps`, { signal: AbortSignal.timeout(DELAI_EMPLACEMENT) }).then((r) => r.json());
+    const p = (ps.models || []).find((m) => m.name === cfg.modeleChat || m.model === cfg.modeleChat);
+    return p?.size ? p.size_vram / p.size : null;
+  } catch {
+    return null;
+  }
 }
 
 // Only the passages close to the best one reach the model: an off-topic passage misleads a small
@@ -120,8 +132,8 @@ function ressembleAUneReponse(texte, documents) {
 export async function* repondre({ question, historique = [], reglages, cfg, rechercher, reprendre, reseau, signal, sources: parmi = ['documents', 'wikis', 'livres'] }) {
   const debut = Date.now();
   const durees = {};
-  const options = { temperature: reglages.temperature, signal };
   const premier = () => { durees.premierMot ??= Date.now() - debut; };
+  let modeleAppele = false;
 
   // « salut », « merci » : fixed rules, no call at all (« comment faire du feu ? » is a question)
   const categorie = conversation(question);
@@ -130,25 +142,25 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
     premier();
     yield { type: 'texte', texte };
     durees.total = Date.now() - debut;
-    yield { type: 'fin', issue: 0, categorie, texte, renvois: {}, sources: [], documents: [], durees };
+    yield { type: 'fin', issue: 0, categorie, texte, renvois: {}, sources: [], resultats: null, durees };
     return;
   }
 
-  yield { type: 'etat', etat: 'comprehension' };
-  // The previous exchange is joined only when the question cannot stand on its own: a complete
-  // question is never read through the one before it.
-  const contexte = reglages.memoire && besoinDeContexte(question) ? historique : [];
-  const c = await comprendre(cfg, reglages, question, contexte, signal);
-  // A rewritten query that shares nothing with the question has drifted: the raw question is used
-  if (!reformulationFiable(question, `${c.requete} ${c.question}`)) {
-    Object.assign(c, { question, requete: question, terme: '', valide: false, derive: true });
+  // A follow-up question is rewritten by the model into a standalone one; any other question is
+  // read by the synonym table only. A rewrite that drifts from the question is dropped.
+  let autonome = question;
+  let c = null;
+  if (reglages.memoire && historique.length && besoinDeContexte(question)) {
+    yield { type: 'etat', etat: 'comprehension' };
+    modeleAppele = true;
+    c = await comprendre(cfg, reglages, question, historique, signal);
+    if (c.valide && reformulationFiable(question, `${c.requete} ${c.question}`)) autonome = c.question;
+    durees.comprehension = Date.now() - debut;
   }
-  c.contexte = contexte.length > 0;
-  durees.comprehension = Date.now() - debut;
-  // A sign of gravity found in the question itself, or by the model: the warning closes the answer
+  const p = preparer(autonome);
   // Signs of gravity: the warning closes the answer (the gestures are read first). The state of the
   // network is asked for now, in the background: it is read only at the end.
-  const urgence = signeDeGravite(question, c.gravite);
+  const urgence = signeDeGravite(question, c?.gravite);
   const etatReseau = urgence && reseau
     ? Promise.race([
       Promise.resolve().then(reseau).catch(() => 'inconnu'),
@@ -159,7 +171,10 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   yield { type: 'etat', etat: 'recherche' };
   let r;
   try {
-    r = await rechercher(c.question, { n: reglages.extraits, garder: true, requetes: [c.requete, c.terme], sources: parmi });
+    r = await rechercher(autonome, {
+      n: EXTRAITS, garder: true, sources: parmi,
+      requetes: p.requetes, terme: p.terme, termeSur: p.termeSur, secondaires: p.secondaires, texteVecteur: p.texteVecteur
+    });
   } catch (e) {
     yield { type: 'erreur', message: `Recherche impossible : ${e.message}` };
     return;
@@ -168,85 +183,103 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
   durees.sources = r.durees;
 
   try {
-    if (!r.vecteurs) {
-      yield { type: 'erreur', message: 'Le moteur d\'IA ne répond pas pour le moment : réessaie dans un instant.' };
-      return;
-    }
+    // The passages of the advanced search, shown under every answer
+    const resultats = grouper(r, autonome, reglages, { urgence, termes: p.comprehension.cherche });
+    // At most reglages.extraits passages reach the model (reading time on the card, and focus); in an
+    // emergency the medical guide keeps its place among them
+    const retenus = r.vecteurs ? utiles(r.extraits, reglages, urgence) : [];
+    const extraits = retenus.slice(0, reglages.extraits);
+    const guide = urgence && retenus.find((e) => estGuide(e));
+    if (guide && !extraits.includes(guide)) extraits.splice(extraits.length - 1, 1, guide);
     const niveaux = Object.entries(r.meilleurs).filter(([, m]) => m != null);
-    let issue = niveaux.some(([s, m]) => m >= reglages.seuils[s].reponse) ? 1 : niveaux.some(([s, m]) => m >= reglages.seuils[s].proches) ? 2 : 3;
-    let texte = '';
-    const ajouter = (t) => { texte += t; return { type: 'texte', texte: t }; };
-    const extraits = utiles(r.extraits, reglages, urgence);
-    if (issue === 1 && !extraits.length) issue = 2;
-    // Emergency: never stop at the warning when a guide has something on the subject
-    const guides = r.documents.filter((d) => estGuide(d) && (d.cosinus ?? -1) >= seuil(reglages, d).proches);
+    let issue = !r.vecteurs ? (resultats.forts.length || resultats.proches.length ? 2 : 3)
+      : niveaux.some(([s, m]) => m >= reglages.seuils[s].reponse) && extraits.length ? 1
+        : resultats.forts.length || resultats.proches.length ? 2 : 3;
+    // Emergency: never stop at « don't know » when a medical guide has something on the subject
+    const guides = [...resultats.forts, ...resultats.proches].filter((g) => g.guide);
     if (urgence && issue === 3 && guides.length) issue = 2;
 
+    let texte = '';
+    let repli = null;
     if (issue === 1) {
       yield { type: 'etat', etat: 'redaction' };
+      modeleAppele = true;
+      // No first word in time: the call is stopped and the passages are shown instead
+      const arret = new AbortController();
+      const delai = cfg.delaiPremierMot || DELAI_PREMIER_MOT;
+      const lent = setTimeout(() => arret.abort('lent'), delai);
+      const options = { temperature: reglages.temperature, signal: signal ? AbortSignal.any([signal, arret.signal]) : arret.signal };
       let tampon = '';
       let decide = false;
-      for await (const t of discuter(cfg, messagesReponse(reglages, extraits, c.question), options)) {
-        if (decide) { yield ajouter(t); continue; }
-        tampon += t;
-        const m = marqueur(tampon);
-        if (m === 'peut-etre') continue;
-        if (m === 'oui') { issue = 2; break; } // leaving the loop closes the stream: Ollama stops
-        decide = true;
-        premier();
-        yield ajouter(tampon.trimStart());
+      try {
+        for await (const t of discuter(cfg, messagesReponse(reglages, extraits, autonome), options)) {
+          clearTimeout(lent);
+          if (decide) { texte += t; yield { type: 'texte', texte: t }; continue; }
+          tampon += t;
+          const m = marqueur(tampon);
+          if (m === 'peut-etre') continue;
+          if (m === 'oui') { issue = 2; break; } // leaving the loop closes the stream: Ollama stops
+          decide = true;
+          premier();
+          texte = tampon.trimStart();
+          yield { type: 'texte', texte };
+        }
+        if (!decide && issue === 1) {
+          if (tampon.trim()) { premier(); texte = tampon.trim(); yield { type: 'texte', texte }; } else issue = 2;
+        }
+        if (issue === 1 && !sansInvention(texte, extraits, autonome)) {
+          repli = 'La réponse citait un chiffre absent des passages : elle a été écartée.';
+        }
+      } catch (e) {
+        if (signal?.aborted) return;
+        repli = arret.signal.reason === 'lent'
+          ? `Le modèle n'a pas commencé à répondre en ${Math.round(delai / 1000)} s.`
+          : `Le modèle n'a pas pu répondre (${e.message}).`;
+      } finally {
+        clearTimeout(lent);
       }
-      if (!decide && issue === 1) {
-        if (!tampon.trim()) issue = 2;
-        else { premier(); yield ajouter(tampon.trim()); }
-      }
+      if (repli) issue = 4;
     }
 
-    // Closest items: those of a source above its « close » threshold, the best one at least
-    let documents = [];
-    if (issue === 2) {
-      documents = r.documents.filter((d, i) => i === 0 || (d.cosinus ?? -1) >= seuil(reglages, d).proches);
-      // Emergency: the guides first, so the answer points to them
-      if (urgence && guides.length) documents = [...guides, ...documents.filter((d) => !guides.includes(d))].slice(0, 3);
-      if (!documents.length) issue = 3;
-    }
-    if (issue === 2) {
-      // Short text, checked as a whole before it is shown: it must say what the documents are
-      // about, never begin to answer
-      yield { type: 'etat', etat: 'redaction' };
-      let brut = '';
-      for await (const t of discuter(cfg, messagesProches(reglages, documents, c.question), options)) brut += t;
-      brut = brut.trim();
-      if (!brut || !sansInvention(brut, documents, c.question) || ressembleAUneReponse(brut, documents)) {
-        brut = repliProches(reglages, documents);
-      }
-      premier();
-      yield ajouter(brut);
-    }
-
-    if (issue === 3) {
-      const phrases = reglages.jeNeSaisPas;
-      premier();
-      yield ajouter(remplacer(phrases[Math.floor(Math.random() * phrases.length)], reglages));
-    }
-
+    const tu = reglages.personnalite.tutoiement;
+    if (issue === 2) texte = r.vecteurs
+      ? `Je n'ai pas trouvé de réponse précise. ${tu ? 'Voici les passages les plus proches : tu y trouveras peut-être de quoi avancer.' : 'Voici les passages les plus proches : vous y trouverez peut-être de quoi avancer.'}`
+      : 'Le service de vecteurs ne répond pas : voici les passages trouvés par mots-clés.';
+    if (issue === 3) texte = remplacer(reglages.jeNeSaisPas[Math.floor(Math.random() * reglages.jeNeSaisPas.length)], reglages);
+    if (issue === 4) texte = `${repli} Voici les passages trouvés.`;
+    if (issue !== 1) { premier(); yield { type: 'texte', texte }; }
 
     let reseauUtilise = null;
     if (urgence) {
       reseauUtilise = etatReseau ? await etatReseau : 'inconnu';
-      yield ajouter(`\n\n${messageUrgence(reglages, reseauUtilise)}`);
+      const avert = `\n\n${messageUrgence(reglages, reseauUtilise)}`;
+      texte += avert;
+      yield { type: 'texte', texte: avert };
+    }
+
+    // The model partly or wholly on the CPU: slow answers, said once under the answer
+    let avertissement = null;
+    if (modeleAppele && cfg.ollama) {
+      const gpu = await emplacement(cfg);
+      if (gpu != null && gpu < 0.99) {
+        avertissement = gpu <= 0.01
+          ? 'Le modèle tourne sur le processeur, pas sur la carte graphique : les réponses sont lentes.'
+          : `Le modèle ne tient pas entièrement dans la carte graphique (${Math.round(gpu * 100)} % dessus) : les réponses sont lentes.`;
+      }
     }
 
     durees.total = Date.now() - debut;
     yield {
       type: 'fin',
       issue,
-      comprehension: c,
+      comprehension: { table: p.comprehension.entrees, reformulee: autonome !== question ? autonome : null },
       urgence,
       reseau: reseauUtilise,
+      repli,
+      avertissement,
       // texte: the whole answer, with its references renumbered by source
       ...(issue === 1 ? sources(texte, extraits) : { texte, renvois: {}, sources: [] }),
-      documents: documents.map((d) => ({ origine: d.origine, etiquette: etiquette(d), titre: d.titre, libelle: titreSource({ ...d, pages: d.page ? [d.page] : [] }), type: d.type, chemin: d.chemin, lien: lien(d) })),
+      resultats,
       meilleurs: r.meilleurs,
       meilleurCosinus: r.meilleurCosinus,
       durees,
@@ -254,8 +287,8 @@ export async function* repondre({ question, historique = [], reglages, cfg, rech
         debug: {
           seuils: reglages.seuils,
           terme: r.terme,
-          extraits: r.extraits.map((e) => ({ origine: e.origine, source: e.source, titre: e.titre, chemin: e.chemin, page: e.page, section: e.section, texte: e.texte, cosinus: e.cosinus, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots, bm25: e.bm25, bm25Brut: e.bm25Brut, regles: e.regles, envoye: extraits.includes(e) })),
-          documentsProches: r.documents
+          requetes: p.requetes,
+          extraits: r.extraits.map((e) => ({ origine: e.origine, source: e.source, titre: e.titre, chemin: e.chemin, page: e.page, section: e.section, texte: e.texte, cosinus: e.cosinus, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots, bm25: e.bm25, bm25Brut: e.bm25Brut, regles: e.regles, envoye: extraits.includes(e) }))
         }
       } : {})
     };

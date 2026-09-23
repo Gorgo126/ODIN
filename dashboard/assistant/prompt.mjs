@@ -115,26 +115,7 @@ export function messagesReponse(reglages, extraits, question) {
   ];
 }
 
-// Outcome 2: short call with only the title and one-line summary of the closest documents
-export function messagesProches(reglages, documents, question) {
-  const p = reglages.personnalite;
-  const systeme = `Tu es {nom}, l'assistant documentaire d'ODIN.
-On t'a posé une question, et aucun document ne contient la réponse exacte. Voici les documents qui s'en rapprochent le plus, avec leur titre et un résumé.
-Écris 1 ou 2 phrases courtes : commence par dire que tu n'as pas trouvé de réponse précise, puis dis seulement de quoi parlent les documents ci-dessous, avec leurs mots.
-Interdit, sans exception : répondre à la question, donner ne serait-ce qu'un début de réponse, nommer une maladie, une cause, un remède ou un geste, supposer, déduire, conseiller, donner un chiffre, une date ou un nom qui n'est pas dans la liste, parler d'un document absent de la liste, faire une liste, utiliser des crochets.
-${p.tutoiement ? 'Tu tutoies la personne.' : 'Tu vouvoies la personne.'} Ton : ${p.ton}. Réponds dans la langue de la question.
 
-Exemples :
-Question « Combien je paie de charges ? » → « Je n'ai pas trouvé de réponse précise. Le contrat de bail parle des charges, et le relevé de mars détaille les prélèvements du mois. »
-Question « J'ai mal à la tête, que faire ? » → « Je n'ai pas trouvé de réponse précise. L'article « Céphalée » du wiki traite des maux de tête, et le livre a un chapitre sur la douleur. »`;
-  const liste = documents.map((d) => `- « ${d.titre} » (${etiquette(d)})${d.resume ? ` : ${d.resume}` : ''}`).join('\n');
-  return [
-    { role: 'system', content: remplacer(systeme, reglages) },
-    { role: 'user', content: `Question : ${question}\n\nDocuments proches :\n${liste}` }
-  ];
-}
-
-// One-line summary of a document, written at indexing time (used by outcome 2)
 export function messagesResume(titre, debut) {
   return [
     { role: 'system', content: 'Tu résumes des documents personnels. Écris une seule phrase de 25 mots au plus, qui commence par le type de document (« Contrat de… », « Relevé… », « Notice… ») et dit quels sujets il aborde, sans aucun chiffre ni détail précis. Réponds uniquement par cette phrase, en français, sans répéter le titre.' },

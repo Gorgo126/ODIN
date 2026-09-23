@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Sprite from './Sprite';
+import Groupe from '../recherche/Groupe';
 
 // Whole assistant page: fixed layout (only the thread scrolls), history panel on the left, and the
 // conversation itself. The panel slides over the thread on a narrow screen.
@@ -29,6 +30,23 @@ function Texte({ texte, renvois }) {
   );
 }
 
+// Passages of the advanced search under the answer: folded after a written answer, open when they
+// stand in for it (nothing precise found, or the model failed)
+function Resultats({ fin }) {
+  const g = fin?.resultats;
+  if (!g) return null;
+  const tous = [...g.forts, ...g.proches];
+  if (!tous.length) return null;
+  const liste = <div className="chat-passages">{tous.map((x) => <Groupe key={x.cle} g={x} mots={g.mots} />)}</div>;
+  if (fin.issue !== 1) return liste;
+  return (
+    <details className="chat-passages-plies">
+      <summary>Passages trouvés ({tous.length})</summary>
+      {liste}
+    </details>
+  );
+}
+
 function Reponse({ r, avatar, nom }) {
   const renvois = r.fin?.renvois || Object.fromEntries((r.fin?.sources || []).map((s) => [s.n, s]));
   return (
@@ -46,13 +64,8 @@ function Reponse({ r, avatar, nom }) {
             ))}
           </p>
         )}
-        {r.fin?.documents?.length > 0 && (
-          <div className="grille chat-documents">
-            {r.fin.documents.map((d) => (
-              <a key={d.lien} href={d.lien} className="carte"><strong>{d.titre}</strong><em>{d.libelle}</em></a>
-            ))}
-          </div>
-        )}
+        {r.fin?.avertissement && <p className="chat-avertissement">{r.fin.avertissement}</p>}
+        <Resultats fin={r.fin} />
         {r.fin?.debug && (
           <details className="chat-debug">
             <summary>

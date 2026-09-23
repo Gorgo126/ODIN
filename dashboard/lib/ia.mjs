@@ -68,6 +68,12 @@ export async function etat() {
     lireJson(MATERIEL, null), lireJson(ETAT, {}), catalogue(), espaceDisque(), sonder()
   ]);
   const vram = Math.max(0, ...(materiel?.cartes || []).map((c) => c.vram_mo || 0));
+  // A model recorded here but gone from Ollama (removed by hand, data/ollama deleted): forgotten
+  const choisi = modeles.find((m) => m.id === choix.modele);
+  if (choix.modele && moteur.joignable && !moteur.installes.some((i) => i.tag === choisi?.tag)) {
+    await ecrireJson(ETAT, {}, 1).catch(() => {});
+    Object.keys(choix).forEach((k) => delete choix[k]);
+  }
   let raison = null;
   if (!materiel) raison = RAISONS.inconnu;
   else if (!materiel.option) raison = materiel.raison === 'memoire' ? RAISONS.memoire(vram) : RAISONS[materiel.raison] || RAISONS.aucune;

@@ -316,7 +316,6 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .chat-sources { margin: .5rem 0 0; font-size: .8rem; opacity: .8; }
 .chat-sources a { color: var(--or); }
 .chat-origine { font-family: var(--mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
-.chat-documents { margin-top: .6rem; }
 .chat-debug { margin-top: .6rem; font-size: .75rem; }
 .chat-debug pre { max-height: 20rem; overflow: auto; font-family: var(--mono); white-space: pre-wrap; }
 /* Assistant: fixed layout (only the thread scrolls), history panel, welcome screen */
@@ -364,7 +363,6 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .chat-reponse { display: flex; gap: .6rem; padding: 0; border: 0; }
 .chat-bulle { flex: 1; min-width: 0; padding: .1rem 0 .2rem .9rem; border-left: 3px solid var(--or); }
 .chat-accueil { margin: 1rem 0 2rem; opacity: .85; }
-.chat-documents .carte em { font-family: var(--mono); font-size: .7rem; }
 .bienvenue { max-width: 32rem; }
 .bienvenue-intro { font-size: .95rem; opacity: .85; }
 .bienvenue-apercu { display: flex; align-items: center; gap: .8rem; margin: 1.2rem 0; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; }
@@ -416,3 +414,9 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .ia-test-ok { color: #16a34a; }
 .service-option { opacity: .6; filter: grayscale(1); }
 .service-option:hover { opacity: .85; }
+/* Assistant on the advanced search: passages under the answer, CPU warning */
+.chat-avertissement { margin: .4rem 0; font-size: .8rem; color: var(--or); }
+.chat-avertissement::before { content: '⚠ '; }
+.chat-passages { margin-top: .4rem; }
+.chat-passages .passage-groupe { margin: .4rem 0; }
+.chat-passages-plies summary { cursor: pointer; font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; color: var(--or); margin-top: .4rem; }
