@@ -90,7 +90,7 @@ modele_vecteurs() {
   local f="$CIBLE/data/vecteurs/$VECTEURS_FICHIER"
   if [ -f "$f" ]; then echo "  Déjà présent."; return 0; fi
   # No total delay (334 MB), but a stalled transfer stops after 60 s; resumed on the next run
-  curl -fL --connect-timeout 15 --speed-limit 1024 --speed-time 60 -C - -o "$f.part" "$VECTEURS_SOURCE" || return 1
+  curl -fL --progress-bar --connect-timeout 15 --speed-limit 1024 --speed-time 60 -C - -o "$f.part" "$VECTEURS_SOURCE" || return 1
   if ! echo "$VECTEURS_SHA256  $f.part" | sha256sum -c --quiet - >/dev/null 2>&1; then
     rm -f "$f.part"
     echo "  Empreinte incorrecte : fichier supprimé."

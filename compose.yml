@@ -63,8 +63,10 @@ services:
     # Vectors of the advanced search: EmbeddingGemma on the CPU, served by llama.cpp. The model file is
     # downloaded and checked by install.sh; the server only reads it from disk and never goes online.
     # Internal network only, no published port. Explicit port: the default will change upstream.
+    # All the cores, counted at start (llama.cpp alone takes half: 2.9 s per question instead of 2.0).
     image: ghcr.io/ggml-org/llama.cpp:server-v0.4.1
     container_name: vecteurs
+    entrypoint: ["sh", "-c", "exec /app/llama-server -t $$(nproc) \"$$@\"", "llama-server"]
     command: ["-m", "/modeles/${MODELE_VECTEURS:-embeddinggemma-300M-Q8_0.gguf}", "--embeddings", "--pooling", "mean",
               "-c", "4096", "-np", "2", "-b", "2048", "-ub", "2048", "--host", "0.0.0.0", "--port", "8080"]
     volumes:
