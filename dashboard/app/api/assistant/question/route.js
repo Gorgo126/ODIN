@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // for follow-up questions). Answer: one JSON event per line (NDJSON), sent as soon as it is known.
 export async function POST(req) {
   // The assistant writes with a language model: none without the AI option
-  if (!iaInstallee()) return Response.json({ erreur: 'L\'assistant IA n\'est pas installé : utilisez la recherche.' }, { status: 503 });
+  if (!iaInstallee()) return Response.json({ erreur: 'L\'assistant IA n\'est pas installé ou pas activé (page Assistant IA) : utilisez la recherche.' }, { status: 503 });
   const corps = await req.json().catch(() => null);
   const question = String(corps?.question ?? '').trim().slice(0, 1000);
   if (!question) return Response.json({ erreur: 'Question vide' }, { status: 400 });
@@ -23,7 +23,7 @@ export async function POST(req) {
     question,
     historique,
     reglages,
-    cfg: configGeneration(reglages),
+    cfg: configGeneration(),
     rechercher: (q, options) => demander('rechercher', { question: q, ...options }),
     reprendre: (jeton) => demander('reprendre', { jeton }, 10000).catch(() => {}),
     // Network state for the emergency warning: the home page probe, never a second one

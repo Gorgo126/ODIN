@@ -1,17 +1,19 @@
 import { promises as fs } from 'fs';
 import { installees } from './cartes.mjs';
 import { livresInstalles } from './livres.mjs';
+import { iaInstallee } from './assistant.mjs';
 
 export const SERVICES = [
   { id: 'bibliotheque', nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
   { id: 'documents', nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
-  // Pages of the dashboard itself: available as soon as one pack of their kind is installed
-  { id: 'assistant', nom: 'Assistant', lien: '/assistant', interne: true, toujours: true },
+  // Pages of the dashboard itself: available as soon as one pack of their kind is installed.
+  // The assistant is an option: without a model installed and enabled, its card leads to /ia
+  { id: 'assistant', nom: 'Assistant IA', lien: '/assistant', interne: true },
   { id: 'livres', nom: 'Livres', lien: '/livres', interne: true },
   { id: 'carte', nom: 'Carte', lien: '/carte', interne: true }
 ];
 
-const PRESENTS = { livres: livresInstalles, carte: installees };
+const PRESENTS = { livres: livresInstalles, carte: installees, assistant: async () => (iaInstallee() ? [1] : []) };
 
 export async function etatServices() {
   return Promise.all(SERVICES.map(async (s) => {

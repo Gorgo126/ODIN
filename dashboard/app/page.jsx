@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
 
 const DESCRIPTIONS = {
   assistant: "Il cherche dans vos documents, la bibliothèque et vos livres, et répond avec ce qu'il y trouve, en citant ses sources.",
+  // Card of the assistant while the AI option is not installed: it leads to the installation page
+  assistantAbsent: "Option : un modèle de langage qui rédige les réponses à partir des passages trouvés. Demande une carte graphique de 8 Go au moins.",
   bibliotheque: "Encyclopédies et ouvrages de référence au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
   livres: "Livres de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
@@ -77,18 +79,21 @@ export default async function Page() {
       <section>
         <h2>Services</h2>
         <div className="services">
-          {services.map((s) => (
-            <a key={s.id} href={s.interne ? s.lien : '/ouvrir/' + s.id} className="service" style={s.id === 'assistant' ? { '--or': assistant.couleur } : undefined}>
-              <div className="service-tete">
-                <span className="service-icone">
-                  {s.id === 'assistant' && assistant.configure ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}
-                </span>
-                <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : 'Offline'}</span>
-              </div>
-              <strong>{s.id === 'assistant' && assistant.configure ? assistant.nom : s.nom}</strong>
-              <p>{DESCRIPTIONS[s.id]}</p>
-            </a>
-          ))}
+          {services.map((s) => {
+            // The assistant without the AI option: greyed, « Non installé », leads to /ia
+            const option = s.id === 'assistant' && !s.ok;
+            const perso = s.id === 'assistant' && s.ok && assistant.configure;
+            return (
+              <a key={s.id} href={option ? '/ia' : s.interne ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
+                <div className="service-tete">
+                  <span className="service-icone">{perso ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}</span>
+                  <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : option ? 'Non installé' : 'Offline'}</span>
+                </div>
+                <strong>{perso ? assistant.nom : s.nom}</strong>
+                <p>{option ? DESCRIPTIONS.assistantAbsent : DESCRIPTIONS[s.id]}</p>
+              </a>
+            );
+          })}
         </div>
       </section>
 

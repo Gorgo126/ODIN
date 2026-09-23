@@ -400,3 +400,19 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .choix-visages .visage { width: 2.6rem; height: 2.6rem; padding: 0; border: 1px solid var(--bord); background: none; color: var(--or); cursor: pointer; box-shadow: var(--relief); }
 .choix-visages .visage.choisi { border-color: var(--or); box-shadow: var(--relief), 0 0 0 1px var(--or); }
 .service .chat-avatar, .service-icone .sprite { width: 100%; height: 100%; }
+/* AI option page (/ia) */
+.ia-intro { opacity: .8; }
+.ia-materiel ul { margin: .4rem 0; padding-left: 1.2rem; font-family: var(--mono); font-size: .85rem; }
+.ia-materiel h3 .badge { margin-left: .6rem; }
+.ia-date { font-size: .78rem; opacity: .65; }
+.ia-verdict { margin: 1rem 0; }
+.ia-verdict-ok { padding: .55rem .8rem; border: 1px solid #16a34a; box-shadow: var(--creux); }
+.ia-modele p { margin: .3rem 0 0; font-size: .85rem; opacity: .8; }
+.ia-modele .badge { margin-left: .5rem; }
+.ia-modele-bloque { opacity: .55; }
+.ia-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.ia-raison { font-size: .78rem; opacity: .8; }
+.ia-test { font-size: .88rem; }
+.ia-test-ok { color: #16a34a; }
+.service-option { opacity: .6; filter: grayscale(1); }
+.service-option:hover { opacity: .85; }

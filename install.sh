@@ -80,6 +80,92 @@ fi
 systemctl enable avahi-daemon >/dev/null 2>&1 || true
 systemctl restart avahi-daemon >/dev/null 2>&1 || true
 
+msg "Matériel pour l'option IA"
+# Graphics cards seen by the system, written to data/config/materiel.json for the « Assistant IA »
+# page. The AI option (Ollama) is enabled only when a card can run a language model: 8 GB of video
+# memory at least (an 8 GB card shows about 8,188 MB, hence 7,680), and the driver that lets Docker
+# use it. NOT VERIFIED on real hardware (no GPU to test on): every step falls back to « no AI ».
+# ODIN_SIMULER_VRAM=<MB> simulates an NVIDIA card of that size, Ollama then runs on the CPU (tests).
+SEUIL_VRAM=7680
+# JSON string, or null when empty
+chaine() { if [ -n "$1" ]; then printf '"%s"' "$1"; else printf null; fi; }
+detecter_materiel() {
+  local cartes="" nv_pilote=false nv_toolkit=false kfd=false option="" raison="" vram_max=0 simule=false
+  local d classe vendeur nom vram adresse
+  if [ -n "${ODIN_SIMULER_VRAM:-}" ]; then
+    simule=true; nv_pilote=true; nv_toolkit=true
+    vram_max=$(( ${ODIN_SIMULER_VRAM//[^0-9]/} + 0 ))
+    cartes="{\"fabricant\":\"nvidia\",\"nom\":\"Carte simulée\",\"vram_mo\":$vram_max}"
+  else
+    # NVIDIA with its driver: names and video memory (MiB) from nvidia-smi
+    if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
+      nv_pilote=true
+      while IFS=, read -r nom vram; do
+        nom=$(printf '%s' "$nom" | tr -d '"\\' | sed 's/^ *//;s/ *$//'); vram=${vram//[^0-9]/}
+        [ -n "$vram" ] && [ "$vram" -gt "$vram_max" ] && vram_max=$vram
+        cartes+="${cartes:+,}{\"fabricant\":\"nvidia\",\"nom\":\"$nom\",\"vram_mo\":${vram:-null}}"
+      done < <(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>/dev/null)
+      docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q nvidia && nv_toolkit=true
+    fi
+    # Every display controller of the PCI bus (class 03xx), listed from sysfs; lspci, when present,
+    # only gives the names
+    for d in /sys/bus/pci/devices/*; do
+      classe=$(cat "$d/class" 2>/dev/null) || continue
+      [ "${classe:0:4}" = "0x03" ] || continue
+      vendeur=$(cat "$d/vendor" 2>/dev/null)
+      adresse=${d##*/}
+      # « 01:00.0 VGA compatible controller: Name » → « Name » (slot, then class removed)
+      nom=$(lspci -s "$adresse" 2>/dev/null | cut -d' ' -f2- | sed 's/^[^:]*: //' | tr -d '"\\')
+      case "$vendeur" in
+        0x10de) $nv_pilote && continue  # already listed by nvidia-smi
+                cartes+="${cartes:+,}{\"fabricant\":\"nvidia\",\"nom\":\"${nom:-Carte NVIDIA}\",\"vram_mo\":null}" ;;
+        0x1002) vram=$(cat "$d/mem_info_vram_total" 2>/dev/null); vram=${vram:+$(( vram / 1048576 ))}
+                [ -n "$vram" ] && [ "$vram" -gt "$vram_max" ] && vram_max=$vram
+                cartes+="${cartes:+,}{\"fabricant\":\"amd\",\"nom\":\"${nom:-Carte AMD}\",\"vram_mo\":${vram:-null}}" ;;
+        0x8086) cartes+="${cartes:+,}{\"fabricant\":\"intel\",\"nom\":\"${nom:-Carte Intel}\",\"vram_mo\":null}" ;;
+        *)      cartes+="${cartes:+,}{\"fabricant\":\"autre\",\"nom\":\"${nom:-Carte graphique}\",\"vram_mo\":null}" ;;
+      esac
+    done
+    [ -e /dev/kfd ] && kfd=true
+  fi
+  # Which option, if any: the first card family that can really run the model
+  if $simule; then
+    if [ "$vram_max" -ge "$SEUIL_VRAM" ]; then option=simulation; else raison="memoire"; fi
+  elif $nv_pilote && [ "$vram_max" -ge "$SEUIL_VRAM" ] && grep -q '"nvidia"' <<<"$cartes"; then
+    if $nv_toolkit; then option=nvidia; else raison="toolkit"; fi
+  elif grep -q '"amd"' <<<"$cartes" && [ "$vram_max" -ge "$SEUIL_VRAM" ]; then
+    if $kfd; then option=amd; else raison="rocm"; fi
+  elif grep -q '"nvidia"' <<<"$cartes" && ! $nv_pilote; then raison="pilote"
+  elif grep -q '"nvidia"\|"amd"' <<<"$cartes"; then raison="memoire"
+  else raison="aucune"
+  fi
+  printf '{"detecte_le":"%s","simule":%s,"cartes":[%s],"nvidia":{"pilote":%s,"toolkit":%s},"amd":{"kfd":%s},"option":%s,"raison":%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$simule" "$cartes" "$nv_pilote" "$nv_toolkit" "$kfd" \
+    "$(chaine "$option")" "$(chaine "$raison")" > "$CIBLE/data/config/materiel.json"
+  [ "$UTILISATEUR" != "root" ] && chown "$UTILISATEUR:$UTILISATEUR" "$CIBLE/data/config/materiel.json"
+  # COMPOSE_FILE in .env: the line written here only (a line set by hand without compose.ia.yml stays)
+  sed -i '/^# Option IA, écrit par install.sh/d; /^COMPOSE_FILE=.*compose\.ia\.yml/d' "$CIBLE/.env"
+  case "$option" in
+    nvidia) fichiers="compose.yml:compose.ia.yml:compose.nvidia.yml" ;;
+    amd) fichiers="compose.yml:compose.ia.yml:compose.amd.yml" ;;
+    simulation) fichiers="compose.yml:compose.ia.yml" ;;
+    *) fichiers="" ;;
+  esac
+  if [ -n "$fichiers" ]; then
+    printf '# Option IA, écrit par install.sh selon la carte graphique détectée\nCOMPOSE_FILE=%s\n' "$fichiers" >> "$CIBLE/.env"
+    echo "  Option IA possible ($option, $vram_max Mo de mémoire graphique) : Ollama sera installé, le modèle se choisit dans ODIN."
+  else
+    case "$raison" in
+      pilote) echo "  Carte NVIDIA détectée sans son pilote : option IA indisponible (voir la page Assistant IA)." ;;
+      toolkit) echo "  Carte NVIDIA détectée, mais Docker ne peut pas l'utiliser (NVIDIA Container Toolkit absent) : option IA indisponible." ;;
+      rocm) echo "  Carte AMD détectée sans ROCm (/dev/kfd absent) : option IA indisponible." ;;
+      memoire) echo "  Carte graphique trop petite ($vram_max Mo, il en faut 8 Go) : ODIN fonctionne en recherche avancée." ;;
+      *) echo "  Aucune carte graphique compatible : ODIN fonctionne en recherche avancée, sans IA." ;;
+    esac
+  fi
+}
+detecter_materiel || echo "  Avertissement : détection du matériel impossible, option IA désactivée."
+
 msg "Modèle de la recherche avancée"
 # EmbeddingGemma for llama.cpp (service « vecteurs »). Downloaded now and checked: offline, the
 # search never fetches anything. Pinned revision and SHA-256; a file that fails the check is dropped.
@@ -153,14 +239,16 @@ fi
 
 # --- Migration: Ollama leaves the default install (advanced search, lot 4). To be removed after v1. ---
 # Without the AI option, up --remove-orphans has already removed its container: its image (9 GB)
-# goes too. data/ollama is left in place (models the AI option may reuse); only a note is printed.
+# goes too. data/ollama is left in place (models the AI option may reuse): the end of the installation
+# says how to delete it.
 if ! grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' .env; then
   img=$(docker image ls -q ollama/ollama | sort -u)
   if [ -n "$img" ] && [ -z "$(docker ps -aq --filter 'name=^ollama$')" ]; then
     docker image rm -f $img >/dev/null 2>&1 && echo "  Ollama retiré : l'IA devient une option, la recherche n'en a plus besoin."
   fi
+  # Shown at the very end, with the command: never deleted by the installer
   if [ -d data/ollama ] && [ -n "$(ls -A data/ollama 2>/dev/null)" ]; then
-    echo "  data/ollama ($(du -sh data/ollama | cut -f1)) ne sert plus sans l'option IA : il peut être supprimé."
+    NOTE_OLLAMA="$(du -sh data/ollama | cut -f1)"
   fi
 fi
 # --- End of migration ---
@@ -220,3 +308,9 @@ echo
 echo "  À la première visite, choisissez le mot de passe qui protégera ODIN."
 echo "  Le contenu (Wikipédia, livres, médecine...) s'installe depuis le tableau de bord."
 echo
+if [ -n "${NOTE_OLLAMA:-}" ]; then
+  echo "  Place à récupérer : $CIBLE/data/ollama ($NOTE_OLLAMA) contient des modèles d'IA qui ne servent"
+  echo "  pas sans carte graphique compatible. Pour le supprimer :"
+  echo "    sudo rm -rf $CIBLE/data/ollama"
+  echo
+fi

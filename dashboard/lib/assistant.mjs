@@ -6,6 +6,7 @@ import { promises as fsp } from 'fs';
 import { DEFAUTS, valider } from '../assistant/reglages.mjs';
 import { liaison } from './liaison.mjs';
 import { ecrireJson } from './fichiers.mjs';
+import { modeleActif } from './ia.mjs';
 
 const FICHIER_REGLAGES = '/config/assistant.json';
 
@@ -46,12 +47,15 @@ export async function reseauAssistant() {
 }
 
 // Options of the language model calls: identical on every call, or Ollama reloads the model.
-// Without the AI option (no OLLAMA_URL, see compose.ia.yml) there is no language model at all.
-export const iaInstallee = () => !!process.env.OLLAMA_URL;
-export function configGeneration(reglages) {
+// Without the AI option (no OLLAMA_URL, see compose.ia.yml) there is no language model at all; with
+// it, the model is the one installed and enabled on the « Assistant IA » page (lib/ia.mjs), unless
+// MODELE_CHAT_FORCE in .env imposes another one.
+const modeleChat = () => process.env.MODELE_CHAT || modeleActif();
+export const iaInstallee = () => !!process.env.OLLAMA_URL && !!modeleChat();
+export function configGeneration() {
   return {
     ollama: process.env.OLLAMA_URL || null,
-    modeleChat: iaInstallee() ? process.env.MODELE_CHAT || reglages.modeleChat : null,
+    modeleChat: iaInstallee() ? modeleChat() : null,
     keepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
     // Inactivity delay of Ollama calls: long enough to load a model on CPU
     inactivite: 120000,
@@ -68,7 +72,7 @@ function config() {
   const e = process.env;
   const reglages = reglagesAssistant();
   return {
-    ...configGeneration(reglages),
+    ...configGeneration(),
     base: '/assistant/index.db',
     racine: '/documents',
     modeleEmbedding: process.env.MODELE_EMBEDDING || reglages.modeleEmbedding,
