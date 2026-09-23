@@ -550,7 +550,8 @@ export class Index {
     // Share of the query found in each passage: shown in debug, and the ranking itself when the
     // question could not be embedded (Ollama down): keywords only, on a common scale
     noterCouverture([...docs.extraits, ...externes], req);
-    const note = (p) => (q ? p.cosinus ?? -1 : p.couverture ?? 0);
+    // With vectors: cosine plus the small additions of the title and section rules (bm25.mjs)
+    const note = (p) => (q ? (p.cosinus ?? -1) + (p.ajustement || 0) : p.couverture ?? 0);
     const extraits = [...docs.extraits, ...externes.filter((p) => !q || p.cosinus != null)]
       .sort((a, b) => note(b) - note(a))
       .slice(0, n);

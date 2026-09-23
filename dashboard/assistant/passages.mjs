@@ -27,7 +27,8 @@ export const cleSource = (e) => (e.origine === 'documents' ? e.chemin : e.origin
 function niveau(e, reglages, vecteurs) {
   if (vecteurs) {
     const s = reglages.seuils[SEUILS[e.origine] || 'documents'];
-    const c = e.cosinus ?? -1;
+    // The title and section rules count here too: an article titled exactly by the term is about it
+    const c = (e.cosinus ?? -1) + (e.ajustement || 0);
     return c >= s.reponse ? 'fort' : c >= s.proches ? 'proche' : null;
   }
   const c = e.couverture ?? 0;
@@ -75,7 +76,7 @@ export function grouper(r, question, reglages, { urgence = false, debug = false,
       section: e.section || '',
       page: e.page || null,
       lien: lien(e),
-      ...(debug ? { debug: { cosinus: e.cosinus, couverture: e.couverture, bm25: e.bm25, bm25Brut: e.bm25Brut, regles: e.regles, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots } } : {})
+      ...(debug ? { debug: { cosinus: e.cosinus, ajustement: e.ajustement, couverture: e.couverture, bm25: e.bm25, bm25Brut: e.bm25Brut, regles: e.regles, rrf: e.rrf, rangVecteur: e.rangVecteur, rangMots: e.rangMots } } : {})
     });
   }
   const tous = [...groupes.values()];

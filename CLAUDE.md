@@ -190,11 +190,21 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   présents (produit avalé, chute de hauteur, dos ou nuque après chute/choc/accident, jambes ou bras qu'on ne
   sent plus). Livres : pages de glossaire (6 définitions « Mot, m » ou plus) hors de la recherche avancée.
   Wikis : l'article au titre exact du terme de la table est lu directement dans chaque pack.
-  Restent (non corrigés, à décider) : l'ordre final suit le cosinus, les règles de titre et de section n'agissent
-  que sur la présélection BM25 (Fièvre récurrente 0,516 devant Fièvre 0,397 ; section « Économies d'eau
-  potable » devant « Traitement de l'eau non potable ») ; formulations non couvertes par la table (« moins dix »,
-  « plaie devient verte », « avalé de l'eau de javel ») laissées telles quelles pour ne pas ajuster la table
-  sur la série.
+  Ordre final : cosinus + ajustements des règles (bm25.mjs, AJUSTEMENTS : titre exact +0,15, cas particulier
+  -0,05, section générale +0,03), aussi pour le niveau d'affichage (passages.mjs) ; le cosinus brut reste pour
+  les seuils de l'assistant. Mesuré : série du propriétaire 9/4/4 → 11 bons, 2 acceptables, 4 mauvais
+  (Fièvre devant Fièvre récurrente, Ictère en tête) ; première série inchangée (31/33, 33/33, 3/3).
+  CE QUI COMPTE : dans ce tableau, les étapes terme principal, bandeau, table par mots et glossaire n'ont rien
+  changé au bilan ; tout le gain est venu des ENTRÉES ajoutées à la table (puis des règles dans l'ordre final).
+  La qualité de la recherche dépend d'abord de la couverture de la table : chaque nouveau domaine de packs
+  demandera ses entrées.
+  BIAIS : les ajouts à la table viennent de la série du propriétaire, donc 11/20 est optimiste sur des questions
+  neuves (comme le 31/33 de la première série). Il faut une série de CONTRÔLE écrite après coup, jamais utilisée
+  pour corriger quoi que ce soit.
+  TÉMOINS (ne rien ajouter à la table pour eux, décision du propriétaire) : « il fait moins dix dans la maison »,
+  « mon fils a avalé de l'eau de javel », « la plaie devient verte », « le bébé ne respire plus ». Ils mesurent
+  la recherche sur des formulations que la table n'a jamais vues. Reste aussi la section « Économies d'eau
+  potable » devant « Traitement de l'eau non potable » (écart de cosinus 0,18, hors de portée des ajustements).
   Catalogue (point 5 du propriétaire) : aucun pack de nomad ne traite du chauffage sans électricité, des
   puits ni du potager ; ce sont des manques de contenu, pas du moteur. À couvrir par le catalogue de packs.
   Lot 4 (vecteurs par llama.cpp, installé par install.sh sur nomad) : même score 31/33, 2,2 s par question,

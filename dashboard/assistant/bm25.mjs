@@ -10,6 +10,11 @@ const K1 = 1.2;
 const B = 0.75;
 const BONUS_SECTION = 0.5; // per query word found in the section heading
 // Rules around the main term (assistant/terme.mjs). Without a sure term, none of them applies.
+// The same rules in the FINAL order (by cosine), as small additions to it: an article whose title is
+// exactly the term comes before its particular cases (« Fièvre » before « Fièvre récurrente »), and a
+// general section before the others. The raw cosine stays apart: the thresholds of the assistant
+// use it. Measured on both series (CLAUDE.md).
+export const AJUSTEMENTS = { titreExact: 0.15, specialisation: -0.05, sectionGenerale: 0.03 };
 const POIDS = {
   titreExact: 3,        // « Fièvre » for the term « fièvre »
   titreCommence: 1.8,   // « Fièvre jaune » : one more word at most
@@ -77,19 +82,21 @@ export function classer(passages, requetes, n, { terme = null, secondaires = [] 
       const r = rapports[i];
       const regles = [];
       let score = brut;
-      if (r.type === 'exact') { score *= POIDS.titreExact; regles.push(`titre exact ×${POIDS.titreExact}`); }
+      let ajustement = 0;
+      if (r.type === 'exact') { score *= POIDS.titreExact; ajustement += AJUSTEMENTS.titreExact; regles.push(`titre exact ×${POIDS.titreExact}`); }
       else if (r.type === 'commence') { score *= POIDS.titreCommence; regles.push(`titre commence ×${POIDS.titreCommence}`); }
       else if (r.type === 'specialise' && general && r.extras.length >= 2 && !r.extras.some((m) => mots.some((q) => q === m || (m.length >= 5 && m.startsWith(q))))) {
         score *= POIDS.specialisation;
+        ajustement += AJUSTEMENTS.specialisation;
         regles.push(`cas particulier ×${POIDS.specialisation.toFixed(2)}`);
       }
-      if (sectionGenerale(p.section)) { score *= POIDS.sectionGenerale; regles.push(`section générale ×${POIDS.sectionGenerale}`); }
-      return { p, score, brut, regles };
+      if (sectionGenerale(p.section)) { score *= POIDS.sectionGenerale; ajustement += AJUSTEMENTS.sectionGenerale; regles.push(`section générale ×${POIDS.sectionGenerale}`); }
+      return { p, score, brut, regles, ajustement };
     })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, n)
-    .map((x) => ({ ...x.p, texte: couper(x.p.texte), bm25: x.score, bm25Brut: x.brut, regles: x.regles }));
+    .map((x) => ({ ...x.p, texte: couper(x.p.texte), bm25: x.score, bm25Brut: x.brut, regles: x.regles, ajustement: x.ajustement }));
 }
 
 // Share of the query found in a passage, weighted by rarity (idf over the given passages): 0 to 1,
