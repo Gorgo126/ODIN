@@ -1,4 +1,4 @@
-import { livresInstalles, AVERTISSEMENT_SANTE } from '../../lib/livres.mjs';
+import { livresInstalles, lireCatalogue, AVERTISSEMENT_SANTE } from '../../lib/livres.mjs';
 import { liaison } from '../../lib/liaison.mjs';
 import { octets } from '../../lib/format.mjs';
 import LienExterne from '../LienExterne';
@@ -11,7 +11,7 @@ const hote = (u) => { try { return new URL(u).hostname; } catch { return u; } };
 const date = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '');
 
 export default async function Livres() {
-  const [livres, etatLiaison] = await Promise.all([livresInstalles(), liaison()]);
+  const [livres, catalogue, etatLiaison] = await Promise.all([livresInstalles(), lireCatalogue(), liaison()]);
 
   return (
     <main>
@@ -25,9 +25,9 @@ export default async function Livres() {
 
       <h1 className="titre-page">Livres</h1>
 
-      {livres.length === 0 && (
-        <p className="vide">Aucun livre installé. Ajoutez-en depuis <a href="/configuration">Configuration</a>, section Livres.</p>
-      )}
+      {livres.length === 0 && (catalogue.length === 0
+        ? <p className="vide">Aucun livre n'est disponible pour l'instant.</p>
+        : <p className="vide">Aucun livre installé. Ajoutez-en depuis <a href="/configuration">Configuration</a>, section Livres.</p>)}
 
       {livres.map((l) => (
         <article key={l.id} id={l.id} className="fiche-livre">

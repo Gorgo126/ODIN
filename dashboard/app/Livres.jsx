@@ -36,7 +36,7 @@ export default function Livres({ liaisonInitiale }) {
   }
 
   if (!livres) return <p>Chargement du catalogue</p>;
-  if (!livres.length) return <p className="vide">Aucun livre au catalogue.</p>;
+  if (!livres.length) return <p className="vide">Aucun livre n'est disponible pour l'instant.</p>;
 
   return (
     <>

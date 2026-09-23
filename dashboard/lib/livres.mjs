@@ -39,6 +39,11 @@ function defaut(e) {
   return null;
 }
 
+// An entry with "publie": false is only offered where LIVRES_NON_PUBLIES=1 (install.sh sets it outside
+// the main branch): a book whose rights are not settled (Hesperian, see CLAUDE.md) never reaches the
+// public installation. Already installed books stay readable either way.
+const publie = (e) => e.publie !== false || process.env.LIVRES_NON_PUBLIES === '1';
+
 // Valid entries only: a broken entry is logged and skipped, never breaks the page
 export async function lireCatalogue() {
   let brut;
@@ -50,7 +55,7 @@ export async function lireCatalogue() {
   }
   if (!Array.isArray(brut)) return [];
   const vus = new Set();
-  return brut.filter((e) => {
+  return brut.filter(publie).filter((e) => {
     const d = defaut(e) || (vus.has(e.id) ? 'identifiant en double' : null);
     if (d) console.error(`Catalogue des livres, entrée ${e?.id ?? '?'} ignorée : ${d}`);
     else vus.add(e.id);

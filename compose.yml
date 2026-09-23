@@ -30,6 +30,9 @@ services:
       - VECTEURS_URL=http://vecteurs:8080
       - MODELE_EMBEDDING=${MODELE_EMBEDDING:-embeddinggemma:300m}
       - ASSISTANT_DIMENSIONS=${ASSISTANT_DIMENSIONS:-0}
+      # Books not yet cleared for publication (catalogue/livres.json « publie »: false): set by
+      # install.sh outside the main branch only
+      - LIVRES_NON_PUBLIES=${LIVRES_NON_PUBLIES:-}
     volumes:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config

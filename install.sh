@@ -61,6 +61,12 @@ fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
 
+# Books not yet cleared for publication (catalogue/livres.json) are offered on test branches only
+sed -i '/^# Livres non publiés/d; /^LIVRES_NON_PUBLIES=/d' "$CIBLE/.env"
+if [ "$BRANCHE" != "main" ]; then
+  printf '# Livres non publiés : proposés seulement hors de la branche main (tests)\nLIVRES_NON_PUBLIES=1\n' >> "$CIBLE/.env"
+fi
+
 msg "Dossier des données"
 # Data folder: DATA_DIR of .env, relative to $CIBLE unless absolute. DONNEES=<absolute path> puts the
 # data elsewhere, typically on a large data disk mounted by the system (fstab). Existing data is never
@@ -249,6 +255,22 @@ modele_vecteurs || echo "  Modèle non installé : la recherche marche par mots-
 
 msg "Démarrage des services"
 cd "$CIBLE"
+
+# --- Migration: language models of the former assistant. To be removed after v1. ---
+# Removed through Ollama while it still runs, before up --remove-orphans takes it away: otherwise
+# about 3 GB of models would stay in the data folder. Without the AI option, every model goes (none
+# is used any more); with it, only those ODIN no longer uses (the one chosen on the AI page stays).
+if [ -n "$(docker ps -q --filter 'name=^ollama$')" ]; then
+  modeles=""
+  for _ in $(seq 30); do modeles=$(docker exec ollama ollama list 2>/dev/null | awk 'NR > 1 { print $1 }') && break; sleep 1; done
+  for m in $modeles; do
+    if grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' .env; then
+      case "$m" in qwen2.5:3b|bge-m3:latest|qwen3:1.7b|qwen3:4b-instruct-2507-q4_K_M|embeddinggemma:300m) ;; *) continue ;; esac
+    fi
+    docker exec ollama ollama rm "$m" >/dev/null 2>&1 && echo "  Ancien modèle retiré : $m" || echo "  Avertissement : modèle $m non retiré."
+  done
+fi
+# --- End of migration ---
 docker compose pull
 docker compose up -d --remove-orphans
 
@@ -306,7 +328,8 @@ if ! grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' .env; then
     docker image rm -f $img >/dev/null 2>&1 && echo "  Ollama retiré : l'IA devient une option, la recherche n'en a plus besoin."
   fi
   # Shown at the very end, with the command: never deleted by the installer
-  if [ -d "$DATA/ollama" ] && [ -n "$(ls -A "$DATA/ollama" 2>/dev/null)" ]; then
+  # Empty folders left by « ollama rm » do not count (less than 1 MB)
+  if [ -d "$DATA/ollama" ] && [ "$(du -sk "$DATA/ollama" | cut -f1)" -ge 1024 ]; then
     NOTE_OLLAMA="$(du -sh "$DATA/ollama" | cut -f1)"
   fi
 fi

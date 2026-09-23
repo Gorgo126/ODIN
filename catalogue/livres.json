@@ -4,7 +4,11 @@
     "type": "pdf",
     "titre": "Là où il n'y a pas de docteur",
     "sousTitre": "Un guide de santé villageois",
-    "auteurs": ["David Werner", "Carol Thuman", "Jane Maxwell"],
+    "auteurs": [
+      "David Werner",
+      "Carol Thuman",
+      "Jane Maxwell"
+    ],
     "editeur": "Hesperian Health Guides",
     "edition": "Édition française 2019",
     "annee": 2019,
@@ -28,6 +32,7 @@
     "site": "https://hesperian.org",
     "avertissement": "sante",
     "parDefaut": true,
-    "description": "Guide de santé de référence pour les soins de base, là où les services médicaux manquent."
+    "description": "Guide de santé de référence pour les soins de base, là où les services médicaux manquent.",
+    "publie": false
   }
 ]
