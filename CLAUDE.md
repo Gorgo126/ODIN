@@ -141,6 +141,22 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   le lien ouvre /livres/<id>?page=N&q=…, où la visionneuse surligne les mots sur cette page seulement
   (la recherche de pdf.js, #search=, téléchargerait tout le livre).
 
+- Recherche avancée (produit principal depuis le 2026-09-23, plan en lots 0 à 7 : l'IA devient une option GPU).
+  /recherche : au-dessus des résultats par mots-clés (inchangés), app/recherche/Passages.jsx appelle
+  /api/recherche (index.rechercher sur les trois sources, puis assistant/passages.mjs : un groupe par document,
+  3 passages au plus, fenêtre de 420 caractères autour du premier mot, mots surlignés). Aucun modèle de langage.
+  Niveaux par les seuils de cosinus de chaque source (fort ≥ reponse, proche ≥ proches, sinon écarté) ; sans
+  vecteurs, par la couverture (part de la requête trouvée, pondérée par l'idf, mots absents de tous les passages
+  ignorés : CONSTANTES.couverture, provisoire). Bandeau d'urgence en tête (securite.mjs, textes
+  CONSTANTES.bandeauUrgence, au vouvoiement). ?debug=1 : scores et règles de chaque passage.
+  Compréhension : phrase brute pour l'instant (base de comparaison) ; table de synonymes au lot suivant.
+  Candidats de l'option IA (relevés le 2026-09-23, à refaire au lot 5 avec ce qui existera alors) :
+  tranche 8 Go : qwen3:8b-q4_K_M (5,2 Go, texte, Apache 2.0, hybride : think false, respecté par qwen3:1.7b
+  de la même famille, à revérifier) ; granite4:tiny-h (4,2 Go, texte, Apache 2.0, MoE 7B dont 1B actif,
+  français non vérifié). Tranche 16 Go : qwen3:14b-q4_K_M (9,3 Go, texte, Apache 2.0, think false) ;
+  ministral-3:14b-instruct-2512-q4_K_M (9,1 Go, Apache 2.0, encodeur d'images inclus). Écartés : Gemma 3
+  (texte seul en 1b et 270m seulement, licence Gemma), Mistral Small 3.x (24B, 15 Go), ministral-3:8b
+  (6 Go avec l'encodeur d'images). Replis de 2024 : qwen2.5:7b/14b-instruct, llama3.1:8b, mistral-nemo:12b.
 - Assistant documentaire (en construction, lots 1 à 5) : remplace Open WebUI et synchro, retirés au lot 1.
   Décisions validées : UI, API et ingestion dans le dashboard ; Node 24 pour node:sqlite (FTS5), aucune
   dépendance npm ajoutée ; pas de sqlite-vec ; OLLAMA_MAX_LOADED_MODELS=2 et keep_alive (30m) sur les deux
@@ -241,7 +257,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   BM25 local (assistant/bm25.mjs) : titre exact ×3, titre commençant par le terme avec un mot de plus
   au maximum ×1,8, cas particulier (le terme plus deux mots ou plus, absents de la question) ×2/3 mais
   seulement si un article général figure parmi les candidats, section de la liste fermée
-  (CONSTANTES.sectionsGenerales) ×1,4. Le mode debug montre le score brut, le terme retenu et les
+  (CONSTANTES.sectionsGenerales, égale ou au début du titre de section, jamais au milieu) ×1,4. Le mode debug montre le score brut, le terme retenu et les
   règles appliquées à chaque passage.
   Seuils par source (reglages.mjs). Santé ou sécurité : rappel du 112 toujours ajouté.
   Morceaux : un titre ferme le morceau dès 25 jetons (une section par morceau : sinon le modèle mêle
@@ -260,7 +276,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche, /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Règles

@@ -1,6 +1,7 @@
 import { rechercher, PAR_PAGE } from '../../lib/recherche.mjs';
 import { chercherDansLivres } from '../../lib/recherche-livres.mjs';
 import BarreRecherche from '../BarreRecherche';
+import Passages from './Passages';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ function ResultatLivre({ r, requete }) {
 }
 
 export default async function Recherche({ searchParams }) {
-  const { q = '', debut = '0', dans = '' } = await searchParams;
+  const { q = '', debut = '0', dans = '', debug = '' } = await searchParams;
   const requete = String(q).trim();
   const start = Math.max(0, parseInt(debut, 10) || 0);
   const seulementLivres = dans === 'livres';
@@ -40,11 +41,16 @@ export default async function Recherche({ searchParams }) {
   const page = (d, livresSeuls = seulementLivres) =>
     `/recherche?q=${encodeURIComponent(requete)}${livresSeuls ? '&dans=livres' : ''}&debut=${d}`;
   const aucunLivre = !livres?.total;
+  // Advanced search on the first page only; the keyword results follow, as before
+  const avancee = requete && start === 0 && !seulementLivres;
 
   return (
     <main>
       <h1><a href="/" className="retour-accueil">ODIN</a></h1>
       <BarreRecherche valeur={requete} />
+
+      {avancee && <Passages question={requete} debug={debug === '1'} />}
+      {avancee && <h2 className="titre-mots">Tous les résultats par mots-clés</h2>}
 
       {requete && livres && livres.total > 0 && (
         <section className="bloc-resultats">

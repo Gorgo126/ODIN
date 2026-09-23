@@ -4,6 +4,9 @@ import { messagesReponse, messagesProches, remplacer, etiquette, titreSource } f
 import { conversation, reponseConversation } from './conversation.mjs';
 import { besoinDeContexte, reformulationFiable } from './contexte.mjs';
 import { signeDeGravite, messageUrgence, estGuide } from './securite.mjs';
+import { lien, cleSource } from './passages.mjs';
+
+export { lienDocument } from './passages.mjs';
 
 // Answer pipeline of the assistant, as a stream of events:
 //   { type: 'etat', etat: 'comprehension' | 'recherche' | 'redaction' }
@@ -21,14 +24,6 @@ import { signeDeGravite, messageUrgence, estGuide } from './securite.mjs';
 
 const SEUILS = { documents: 'documents', wiki: 'wikis', livre: 'livres' };
 const seuil = (reglages, e) => reglages.seuils[SEUILS[e.origine] || 'documents'];
-
-// Where a source opens: personal PDFs in the viewer at the right page, other personal files as they
-// are, wiki articles in ODIN's reader, books in their viewer (links built by the source)
-export function lienDocument(chemin, page) {
-  if (/\.pdf$/i.test(chemin)) return `/assistant/document?chemin=${encodeURIComponent(chemin)}${page ? `&page=${page}` : ''}`;
-  return `/fichiers-documents/${chemin.split('/').map(encodeURIComponent).join('/')}`;
-}
-const lien = (e) => e.lien || lienDocument(e.chemin, e.page);
 
 // Could the start of the answer still be the [NON_TROUVE] marker? (with or without brackets)
 function marqueur(debut) {
@@ -76,7 +71,6 @@ function utiles(extraits, reglages, urgence = false) {
 // The model numbers the passages; the reader needs sources. Passages of the same document become
 // one source, numbered in the order they are cited, and the references of the answer are renumbered
 // ([1] [2] …, no gap). Only the cited sources are listed.
-const cleSource = (e) => (e.origine === 'documents' ? e.chemin : e.origine === 'wiki' ? e.lien : `livre:${e.source}`);
 
 function sources(texte, extraits) {
   const groupes = new Map();

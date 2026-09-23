@@ -16,7 +16,12 @@ const POIDS = {
   specialisation: 2 / 3, // « Fièvre pourprée des montagnes Rocheuses », only if a general one exists
   sectionGenerale: 1.4  // section from the closed list of constantes.mjs
 };
-const SECTIONS = new Set(CONSTANTES.sectionsGenerales);
+// A section from the closed list, or one that starts with it (« Premiers soins et traitement
+// immédiat »); a heading that merely contains it does not count
+const sectionGenerale = (section) => {
+  const s = normaliser(section || '').replace(/\s+/g, ' ').trim();
+  return CONSTANTES.sectionsGenerales.some((g) => s === g || s.startsWith(`${g} `));
+};
 
 // How the title of a passage relates to the main term
 function rapportAuTerme(titre, terme) {
@@ -72,11 +77,30 @@ export function classer(passages, requetes, n, { terme = null } = {}) {
         score *= POIDS.specialisation;
         regles.push(`cas particulier ×${POIDS.specialisation.toFixed(2)}`);
       }
-      if (SECTIONS.has(normaliser(p.section || '').trim())) { score *= POIDS.sectionGenerale; regles.push(`section générale ×${POIDS.sectionGenerale}`); }
+      if (sectionGenerale(p.section)) { score *= POIDS.sectionGenerale; regles.push(`section générale ×${POIDS.sectionGenerale}`); }
       return { p, score, brut, regles };
     })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, n)
     .map((x) => ({ ...x.p, texte: couper(x.p.texte), bm25: x.score, bm25Brut: x.brut, regles: x.regles }));
+}
+
+// Share of the query found in a passage, weighted by rarity (idf over the given passages): 0 to 1,
+// comparable across sources, unlike raw BM25 scores. Used to rank when there are no vectors.
+export function noterCouverture(passages, requetes) {
+  const mots = termes(requetes);
+  if (!mots.length || !passages.length) return;
+  const presents = passages.map((p) => {
+    const d = new Set(normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+    return mots.map((m) => d.has(m) || (m.length >= 5 && [...d].some((t) => t.startsWith(m))));
+  });
+  // A word found in no passage at all (« soigner », « comment ») says nothing about any of them:
+  // it does not count
+  const idf = mots.map((_, j) => {
+    const nj = presents.filter((f) => f[j]).length;
+    return nj ? Math.log(1 + (passages.length - nj + 0.5) / (nj + 0.5)) : 0;
+  });
+  const total = idf.reduce((s, v) => s + v, 0) || 1;
+  passages.forEach((p, i) => { p.couverture = presents[i].reduce((s, ok, j) => s + (ok ? idf[j] : 0), 0) / total; });
 }

@@ -38,6 +38,18 @@ export const CONSTANTES = {
     livres: { reponse: 0.45, proches: 0.3 }
   },
 
+  // Advanced search without the vectors (embedding model unavailable): share of the query found in
+  // a passage, rarity-weighted (assistant/bm25.mjs). Provisional, to be calibrated with the synonyms.
+  couverture: { forte: 0.75, proches: 0.5 },
+
+  // Banner at the top of the advanced search when the question describes a sign of gravity. Same
+  // rules and same network state as the assistant; ODIN's own voice (vous), passages below it.
+  bandeauUrgence: {
+    disponible: 'ODIN a encore accès à internet, donc le réseau fonctionne sans doute aussi : appelez les secours sans attendre. En attendant leur arrivée, suivez les passages ci-dessous.',
+    indisponible: 'ODIN n\'a plus accès à internet. Essayez quand même d\'appeler les secours : le réseau téléphonique peut fonctionner alors qu\'internet est coupé. Si vous n\'obtenez personne, appuyez-vous sur les passages ci-dessous.',
+    inconnu: 'Essayez d\'appeler les secours. Si vous n\'obtenez personne, appuyez-vous sur les passages ci-dessous.'
+  },
+
   // Sections that hold what one usually looks for. Closed list, exact match after normalisation:
   // a passage under one of them is preferred (see assistant/bm25.mjs).
   sectionsGenerales: ['premiers soins', 'traitement', 'que faire', 'symptomes', 'prevention', 'diagnostic'],

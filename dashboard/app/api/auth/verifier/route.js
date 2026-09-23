@@ -7,8 +7,8 @@ export async function GET(req) {
     return new Response(null, { status: 200 });
   }
   const h = req.headers;
-  // The assistant API is called by scripts and fetch(): a JSON 401 rather than the login page
-  if ((h.get('x-forwarded-uri') || '').startsWith('/api/assistant/')) {
+  // The assistant and search APIs are called by scripts and fetch(): a JSON 401 rather than the login page
+  if (/^\/api\/(assistant|recherche)(\/|\?|$)/.test(h.get('x-forwarded-uri') || '')) {
     return Response.json({ erreur: 'Connexion requise' }, { status: 401 });
   }
   const hoteComplet = h.get('x-forwarded-host') || h.get('host') || '';

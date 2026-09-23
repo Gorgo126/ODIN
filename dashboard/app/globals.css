@@ -282,6 +282,25 @@ a.bouton-lire:active { box-shadow: var(--creux); transform: translate(1px, 1px);
 .verifier-livre::before { content: '⚠ '; }
 .tout-voir { margin: .6rem 0 0; font-family: var(--mono); font-size: .8rem; }
 .tout-voir a { color: var(--or); }
+/* Advanced search: passages grouped by document, above the keyword results */
+.passages-etat { margin: 1.2rem 0 0; font-family: var(--mono); font-size: .8rem; letter-spacing: .08em; color: var(--or); }
+.passages-note { margin: .3rem 0; font-family: var(--mono); font-size: .75rem; opacity: .7; }
+.bandeau-urgence { margin: 0 0 1rem; font-size: .95rem; border-width: 2px; }
+.passage-groupe { display: flex; flex-direction: column; gap: .15rem; }
+.passage-livre { border-left: 3px solid var(--or); }
+.passage-titre { color: inherit; text-decoration: none; }
+.passage-titre:hover strong { color: var(--or); }
+.passage-groupe > em { font-size: .8rem; opacity: .7; }
+a.passage { display: block; margin-top: .35rem; padding: .35rem .6rem; border-left: 2px solid var(--bord); color: inherit; text-decoration: none; }
+a.passage:hover { border-left-color: var(--or); background: var(--fond); }
+.passage p { margin: .1rem 0 0; font-size: .88rem; line-height: 1.45; }
+.passage-ou { font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; opacity: .65; }
+.passage mark { background: color-mix(in srgb, var(--or) 30%, transparent); color: inherit; padding: 0 .05em; }
+.passage-debug { display: block; margin-top: .2rem; font-family: var(--mono); font-size: .66rem; opacity: .6; }
+.passages-debug { font-family: var(--mono); font-size: .7rem; opacity: .7; white-space: pre-wrap; }
+.passages-proches { margin-top: .8rem; }
+.passages-proches summary { cursor: pointer; font-family: var(--mono); font-size: .8rem; letter-spacing: .06em; color: var(--or); }
+.titre-mots { margin-top: 2rem; }
 /* Assistant (test page of lot 3, full interface in lot 4) */
 .chat-echange { margin: 1.2rem 0; }
 .chat-question { margin: 0 0 .5rem auto; max-width: 85%; width: fit-content; padding: .5rem .8rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); }

@@ -8,7 +8,7 @@ import { profil, reduire, vectoriser } from './embeddings.mjs';
 import { ErreurOllama } from './ollama.mjs';
 import { completer } from './generation.mjs';
 import { messagesResume } from './prompt.mjs';
-import { classer } from './bm25.mjs';
+import { classer, noterCouverture } from './bm25.mjs';
 import { termePrincipal } from './terme.mjs';
 import { passagesWikis } from './wikis.mjs';
 import { passagesLivres } from './source-livres.mjs';
@@ -535,8 +535,12 @@ export class Index {
       livres: livres.length ? Math.max(meilleur('livre'), -1) : null
     };
     for (const k of ['wikis', 'livres']) if (meilleurs[k] === -1) meilleurs[k] = null;
-    const extraits = [...docs.extraits, ...externes.filter((p) => p.cosinus != null)]
-      .sort((a, b) => (b.cosinus ?? -1) - (a.cosinus ?? -1))
+    // Share of the query found in each passage: shown in debug, and the ranking itself when the
+    // question could not be embedded (Ollama down): keywords only, on a common scale
+    noterCouverture([...docs.extraits, ...externes], req);
+    const note = (p) => (q ? p.cosinus ?? -1 : p.couverture ?? 0);
+    const extraits = [...docs.extraits, ...externes.filter((p) => !q || p.cosinus != null)]
+      .sort((a, b) => note(b) - note(a))
       .slice(0, n);
     // The best keyword match of the documents keeps its place: an exact reference or code can have
     // a low cosine
