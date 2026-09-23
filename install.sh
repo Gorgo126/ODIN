@@ -60,9 +60,50 @@ else
 fi
 
 [ -f "$CIBLE/.env" ] || cp "$CIBLE/.env.exemple" "$CIBLE/.env"
-mkdir -p "$CIBLE/data/zim" "$CIBLE/data/vecteurs" "$CIBLE/data/config" "$CIBLE/data/documents" "$CIBLE/data/filebrowser" "$CIBLE/data/cartes" "$CIBLE/data/assistant"
-[ -f "$CIBLE/data/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$CIBLE/data/zim/library.xml"
-[ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
+
+msg "Dossier des données"
+# Data folder: DATA_DIR of .env, relative to $CIBLE unless absolute. DONNEES=<absolute path> puts the
+# data elsewhere, typically on a large data disk mounted by the system (fstab). Existing data is never
+# moved nor abandoned silently.
+dossier_donnees() {
+  local d
+  d=$(sed -n 's/^DATA_DIR=//p' "$CIBLE/.env" | tail -1)
+  d=${d:-./data}
+  case "$d" in /*) echo "${d%/}" ;; *) echo "$CIBLE/${d#./}" ;; esac
+}
+if [ -n "${DONNEES:-}" ]; then
+  case "$DONNEES" in /*) ;; *) err "DONNEES doit être un chemin absolu, par exemple DONNEES=/mnt/donnees/odin." ;; esac
+  DONNEES=${DONNEES%/}
+  ANCIEN=$(dossier_donnees)
+  if [ "$DONNEES" != "$ANCIEN" ] && [ -f "$ANCIEN/config/auth.json" ] && [ ! -f "$DONNEES/config/auth.json" ]; then
+    err "Les données d'ODIN sont déjà dans $ANCIEN. Pour les déplacer : cd $CIBLE && sudo docker compose down, puis sudo rsync -a $ANCIEN/ $DONNEES/, puis relancez l'installeur avec DONNEES=$DONNEES."
+  fi
+  if grep -q '^DATA_DIR=' "$CIBLE/.env"; then
+    sed -i "s|^DATA_DIR=.*|DATA_DIR=$DONNEES|" "$CIBLE/.env"
+  else
+    printf 'DATA_DIR=%s\n' "$DONNEES" >> "$CIBLE/.env"
+  fi
+fi
+DATA=$(dossier_donnees)
+mkdir -p "$DATA"/{zim,vecteurs,config,documents,filebrowser,cartes,livres,assistant}
+[ -f "$DATA/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$DATA/zim/library.xml"
+[ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE" "$DATA"
+MONTAGE=$(df -P "$DATA" | awk 'NR==2 {print $6}')
+echo "  $DATA (système de fichiers monté sur $MONTAGE)"
+if [ "$MONTAGE" = "/" ] && [ -n "${DONNEES:-}" ]; then
+  echo "  Attention : ce dossier est sur la partition système. Si un disque de données devait y être monté, il ne l'est pas."
+fi
+# A separate data disk: Docker waits for it at boot. Otherwise the containers could start before the
+# mount, and Docker would create empty folders on the system disk in its place.
+if [ "$MONTAGE" != "/" ]; then
+  mkdir -p /etc/systemd/system/docker.service.d
+  printf '# ODIN : les données sont sur %s, monté avant le démarrage de Docker\n[Unit]\nRequiresMountsFor=%s\n' "$MONTAGE" "$DATA" \
+    > /etc/systemd/system/docker.service.d/odin-donnees.conf
+  systemctl daemon-reload
+elif [ -f /etc/systemd/system/docker.service.d/odin-donnees.conf ]; then
+  rm -f /etc/systemd/system/docker.service.d/odin-donnees.conf
+  systemctl daemon-reload
+fi
 
 msg "Nom réseau"
 if [ "$(hostname)" != "$NOM_HOTE" ]; then
@@ -81,7 +122,7 @@ systemctl enable avahi-daemon >/dev/null 2>&1 || true
 systemctl restart avahi-daemon >/dev/null 2>&1 || true
 
 msg "Matériel pour l'option IA"
-# Graphics cards seen by the system, written to data/config/materiel.json for the « Assistant IA »
+# Graphics cards seen by the system, written to config/materiel.json of the data folder for the « Assistant IA »
 # page. The AI option (Ollama) is enabled only when a card can run a language model: 8 GB of video
 # memory at least (an 8 GB card shows about 8,188 MB, hence 7,680), and the driver that lets Docker
 # use it. NOT VERIFIED on real hardware (no GPU to test on): every step falls back to « no AI ».
@@ -141,8 +182,8 @@ detecter_materiel() {
   fi
   printf '{"detecte_le":"%s","simule":%s,"cartes":[%s],"nvidia":{"pilote":%s,"toolkit":%s},"amd":{"kfd":%s},"option":%s,"raison":%s}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$simule" "$cartes" "$nv_pilote" "$nv_toolkit" "$kfd" \
-    "$(chaine "$option")" "$(chaine "$raison")" > "$CIBLE/data/config/materiel.json"
-  [ "$UTILISATEUR" != "root" ] && chown "$UTILISATEUR:$UTILISATEUR" "$CIBLE/data/config/materiel.json"
+    "$(chaine "$option")" "$(chaine "$raison")" > "$DATA/config/materiel.json"
+  [ "$UTILISATEUR" != "root" ] && chown "$UTILISATEUR:$UTILISATEUR" "$DATA/config/materiel.json"
   # COMPOSE_FILE in .env: the line written here only (a line set by hand without compose.ia.yml stays)
   sed -i '/^# Option IA, écrit par install.sh/d; /^COMPOSE_FILE=.*compose\.ia\.yml/d' "$CIBLE/.env"
   case "$option" in
@@ -166,6 +207,24 @@ detecter_materiel() {
 }
 detecter_materiel || echo "  Avertissement : détection du matériel impossible, option IA désactivée."
 
+msg "Espace disque"
+# Docker keeps its images on the system disk (DockerRootDir, /var/lib/docker): about 2.5 GB without the
+# AI option, 12 GB more with it (Ollama image and a model). An update only brings new versions.
+libre_mo() { df -Pm "$1" | awk 'NR==2 {print $4}'; }
+RACINE_DOCKER=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)
+[ -d "$RACINE_DOCKER" ] || RACINE_DOCKER=/
+BESOIN_MO=5120
+grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' "$CIBLE/.env" && BESOIN_MO=20480
+[ -n "$AVANT" ] && BESOIN_MO=2048
+LIBRE_SYSTEME=$(libre_mo "$RACINE_DOCKER")
+LIBRE_DONNEES=$(libre_mo "$DATA")
+echo "  Disque système (images Docker) : $((LIBRE_SYSTEME / 1024)) Go libres. Données : $((LIBRE_DONNEES / 1024)) Go libres."
+[ "$LIBRE_SYSTEME" -ge "$BESOIN_MO" ] \
+  || err "Place insuffisante sur le disque système ($RACINE_DOCKER) : $((LIBRE_SYSTEME / 1024)) Go libres, il en faut $((BESOIN_MO / 1024)). Libérez de la place (docker system prune, anciens fichiers), puis relancez l'installeur."
+if [ "$LIBRE_DONNEES" -lt 10240 ]; then
+  echo "  Attention : moins de 10 Go libres pour les données. Les contenus (packs, livres, cartes) en demandent souvent davantage."
+fi
+
 msg "Modèle de la recherche avancée"
 # EmbeddingGemma for llama.cpp (service « vecteurs »). Downloaded now and checked: offline, the
 # search never fetches anything. Pinned revision and SHA-256; a file that fails the check is dropped.
@@ -173,7 +232,7 @@ VECTEURS_FICHIER=embeddinggemma-300M-Q8_0.gguf
 VECTEURS_SOURCE="https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF/resolve/0f741b5a6585bd53aeb15cd1372c56f2a0f65e12/$VECTEURS_FICHIER"
 VECTEURS_SHA256=b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63
 modele_vecteurs() {
-  local f="$CIBLE/data/vecteurs/$VECTEURS_FICHIER"
+  local f="$DATA/vecteurs/$VECTEURS_FICHIER"
   if [ -f "$f" ]; then echo "  Déjà présent."; return 0; fi
   # No total delay (334 MB), but a stalled transfer stops after 60 s; resumed on the next run
   curl -fL --progress-bar --connect-timeout 15 --speed-limit 1024 --speed-time 60 -C - -o "$f.part" "$VECTEURS_SOURCE" || return 1
@@ -216,7 +275,7 @@ migrer_ancien_assistant() {
     done
   fi
   for d in openwebui synchro; do
-    if [ -d "$CIBLE/data/$d" ]; then rm -rf "${CIBLE:?}/data/$d"; retire=1; fi
+    if [ -d "$DATA/$d" ]; then rm -rf "${DATA:?}/$d"; retire=1; fi
   done
   if [ "$retire" -eq 1 ]; then echo "  Ancien assistant (Open WebUI) retiré : conteneurs, image, modèles et données de test."; fi
 }
@@ -247,11 +306,35 @@ if ! grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' .env; then
     docker image rm -f $img >/dev/null 2>&1 && echo "  Ollama retiré : l'IA devient une option, la recherche n'en a plus besoin."
   fi
   # Shown at the very end, with the command: never deleted by the installer
-  if [ -d data/ollama ] && [ -n "$(ls -A data/ollama 2>/dev/null)" ]; then
-    NOTE_OLLAMA="$(du -sh data/ollama | cut -f1)"
+  if [ -d "$DATA/ollama" ] && [ -n "$(ls -A "$DATA/ollama" 2>/dev/null)" ]; then
+    NOTE_OLLAMA="$(du -sh "$DATA/ollama" | cut -f1)"
   fi
 fi
 # --- End of migration ---
+
+msg "Anciennes images"
+# Every update brings a new dashboard image (about 450 MB). Kept: the images in use and, for each
+# service, the most recent previous one (to go back if an update goes wrong). The others are removed.
+# Only ODIN's images are touched.
+nettoyer_images() {
+  local utilisees repo id ref garde avant apres
+  avant=$(libre_mo "$RACINE_DOCKER")
+  utilisees=$(docker ps -aq | xargs -r docker inspect --format '{{.Image}}' | sort -u)
+  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama; do
+    garde=""
+    # Most recent first
+    while read -r id ref; do
+      grep -q "$id" <<<"$utilisees" && continue
+      if [ -z "$garde" ]; then garde=$id; continue; fi
+      [ "$id" = "$garde" ] && continue
+      case "$ref" in *'<none>'*) ref=$id ;; esac
+      docker image rm "$ref" >/dev/null 2>&1 || true
+    done < <(docker image ls --no-trunc --format '{{.ID}} {{.Repository}}:{{.Tag}}' "$repo")
+  done
+  apres=$(libre_mo "$RACINE_DOCKER")
+  if [ "$apres" -gt "$avant" ]; then echo "  $((apres - avant)) Mo libérés sur le disque système."; else echo "  Rien à retirer."; fi
+}
+nettoyer_images || echo "  Avertissement : nettoyage des anciennes images incomplet."
 
 msg "Index des documents"
 # The vector service loads its model in a few seconds; the index starts now instead of at the next scan
@@ -309,8 +392,8 @@ echo "  À la première visite, choisissez le mot de passe qui protégera ODIN."
 echo "  Le contenu (Wikipédia, livres, médecine...) s'installe depuis le tableau de bord."
 echo
 if [ -n "${NOTE_OLLAMA:-}" ]; then
-  echo "  Place à récupérer : $CIBLE/data/ollama ($NOTE_OLLAMA) contient des modèles d'IA qui ne servent"
+  echo "  Place à récupérer : $DATA/ollama ($NOTE_OLLAMA) contient des modèles d'IA qui ne servent"
   echo "  pas sans carte graphique compatible. Pour le supprimer :"
-  echo "    sudo rm -rf $CIBLE/data/ollama"
+  echo "    sudo rm -rf $DATA/ollama"
   echo
 fi

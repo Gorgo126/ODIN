@@ -5,6 +5,7 @@ import path from 'path';
 import { lirePacks, infos } from './catalogue.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { ecrireTexte } from './fichiers.mjs';
+import { reserver, liberer, disquePlein } from './espace.mjs';
 
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
@@ -56,11 +57,11 @@ export async function demarrer(id) {
         return;
       }
       t.etat = 'erreur';
-      t.erreur = c.signal.reason === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
+      t.erreur = disquePlein(err) || (c.signal.reason === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
         : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?'
-        : err.message;
+        : err.message);
     })
-    .finally(() => controles.delete(id));
+    .finally(() => { controles.delete(id); liberer(`zim:${id}`); });
   return t;
 }
 
@@ -78,8 +79,8 @@ async function telecharger(pack, e, t, controle) {
 
   if (!(await existe(dest))) {
     const deja = (await fs.stat(part).catch(() => null))?.size || 0;
-    const { bavail, bsize } = await fs.statfs(DATA);
-    if (bavail * bsize < e.taille - deja) throw new Error('Espace disque insuffisant');
+    // 2 % margin; the part already received is on the disk
+    await reserver(`zim:${pack.id}`, DATA, Math.ceil((e.taille - deja) * 1.02), () => e.taille - t.recu);
     await telechargerFlux(e.url.replace(/\.meta4$/, ''), part, t, controle);
     await fs.rename(part, dest);
   }

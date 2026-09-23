@@ -2,7 +2,7 @@ import { promises as fs, createReadStream } from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
 import { telechargerFlux } from './telechargements.mjs';
-import { octets } from './format.mjs';
+import { reserver, liberer, disquePlein } from './espace.mjs';
 import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { extrairePages } from './extraction.mjs';
@@ -243,12 +243,8 @@ async function lancer(id) {
   if (!(await enLigne())) throw new Error(HORS_LIAISON);
 
   await fs.mkdir(EN_COURS, { recursive: true });
-  const { bavail, bsize } = await fs.statfs(DOSSIER);
-  const libre = bavail * bsize;
-  const besoin = Math.ceil(livre.taille * MARGE);
-  if (libre < besoin) throw new Error(`Espace disque insuffisant : il faut ${octets(besoin)}, il reste ${octets(libre)}.`);
-
   const t = { etat: 'en cours', recu: 0, total: livre.taille, erreur: null, source: null, verification: false, extraction: false };
+  await reserver(`livre:${id}`, DOSSIER, Math.ceil(livre.taille * MARGE), () => livre.taille - t.recu);
   const c = new AbortController();
   etat.taches.set(id, t);
   etat.controles.set(id, c);
@@ -266,12 +262,13 @@ async function lancer(id) {
         return;
       }
       t.etat = 'erreur';
-      t.erreur = err.message;
+      t.erreur = disquePlein(err) || err.message;
     })
     .finally(() => {
       t.verification = false;
       t.extraction = false;
       etat.controles.delete(id);
+      liberer(`livre:${id}`);
     });
   return t;
 }

@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { lireJson, ecrireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { espaceDisque } from './etat.mjs';
-import { octets } from './format.mjs';
+import { reserver, liberer, disquePlein } from './espace.mjs';
 
 // AI option: a language model on a graphics card, installed from the « Assistant IA » page.
 // install.sh detects the hardware (data/config/materiel.json) and runs Ollama only when a card can
@@ -110,6 +110,7 @@ export async function etat() {
 // Readable message for a failed download
 function message(err, raison) {
   if (raison === 'annule') return null;
+  if (disquePlein(err) || /no space left/i.test(err.message)) return disquePlein({ code: 'ENOSPC' });
   if (raison === 'inactif') return 'Connexion perdue : aucune donnée depuis 2 minutes. « Réessayer » reprend là où le téléchargement s\'est arrêté.';
   if (err.message === 'fetch failed') return RAISONS.moteur;
   if (/registry|dial tcp|lookup|timeout|no such host|connection refused/i.test(err.message)) {
@@ -174,10 +175,9 @@ export async function installer(id) {
   if (!e.possible) throw new Error(e.raison);
   if (m.bloque) throw new Error(m.bloque);
   if (!(await enLigne())) throw new Error(HORS_LIAISON);
-  if (e.disque && e.disque.libre < m.taille + MARGE) {
-    throw new Error(`Espace disque insuffisant : ${octets(m.taille + MARGE)} nécessaires, ${octets(e.disque.libre)} libres.`);
-  }
   const t = { id, etat: 'en cours', statut: 'Connexion au registre', recu: 0, total: m.taille, erreur: null };
+  // Ollama stores models in the data folder, on the same disk as /data
+  await reserver('ia', '/data', m.taille + MARGE, () => m.taille - t.recu);
   const controle = new AbortController();
   etatTache.tache = t;
   etatTache.controle = controle;
@@ -198,7 +198,7 @@ export async function installer(id) {
       t.etat = raison === 'annule' ? 'annule' : 'erreur';
       t.erreur = message(err, raison);
     })
-    .finally(() => { etatTache.controle = null; });
+    .finally(() => { etatTache.controle = null; liberer('ia'); });
   return t;
 }
 

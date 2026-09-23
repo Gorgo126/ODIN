@@ -343,6 +343,24 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
 Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
+## Disques (lot 7)
+
+- Dossier des données : DATA_DIR de .env (relatif à /opt/odin sauf chemin absolu), lu par compose.yml, install.sh
+  (fonction dossier_donnees, variable DATA) et les scripts. DONNEES=<chemin absolu> à l'installation l'écrit dans
+  .env ; l'installeur refuse de changer de dossier si l'ancien contient des données (config/auth.json) et que le
+  nouveau n'en a pas, et donne la marche à suivre (compose down, rsync, relancer). Dossier hors de la partition
+  racine : drop-in systemd /etc/systemd/system/docker.service.d/odin-donnees.conf (RequiresMountsFor), pour que
+  Docker attende le montage au démarrage (sinon il créerait des dossiers vides sur le disque système).
+  DONNEES testé sur un système de fichiers monté (fichier-disque ext4 de 40 Go, fstab, VM test), PAS sur un
+  disque physique distinct (Multipass 1.16/Hyper-V ne sait pas ajouter de disque).
+- Place : install.sh vérifie le disque des images Docker (DockerRootDir) avant tout téléchargement : 5 Go (20 Go
+  avec l'option IA, 2 Go pour une mise à jour), arrêt sinon ; avertissement sous 10 Go pour les données.
+  lib/espace.mjs : chaque téléchargement (pack ZIM + 2 %, livre, carte + 5 %, modèle IA + 1 Go) réserve ce qu'il
+  lui reste à écrire sur son disque (même st_dev) ; disque plein pendant l'écriture (ENOSPC) → « Disque plein ».
+- Images : après chaque installation, install.sh garde par service l'image en service et la plus récente des
+  autres (retour arrière possible), et retire le reste (seulement les dépôts d'ODIN).
+- /var/lib/docker n'est pas déplacé par ODIN : marche à suivre dans le README (data-root).
+
 ## Règles
 
 - Rien en dur : ni IP, ni ports, ni noms de fichiers. Configuration dans .env, modèle dans .env.exemple.
@@ -389,8 +407,9 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - fetch de Node 24 (undici) vers kiwix-serve (Connection: close, gros articles) : plantage sur
   assert(!this.paused) dans Parser.finish, qui arrête le fil. L'assistant lit Kiwix avec le module http
   (assistant/http.mjs). lib/recherche.mjs et lib/lecture.mjs utilisent encore fetch vers Kiwix.
-- À vérifier au lot 7 : llama.cpp ne prenait que la moitié des cœurs ; chercher le même piège ailleurs
-  (indexation, extraction pdftotext, recherche, Kiwix, Ollama : num_thread déjà réglé pour lui).
+- Cœurs (vérifié au lot 7, nomad 4 cœurs) : vecteurs à ~380 % pendant l'indexation (-t nproc) ; deux lots en
+  parallèle ne vont pas plus vite (calcul saturé). pdftotext : un cœur par fichier, mais 1,9 s pour 639 pages,
+  négligeable devant les vecteurs. Kiwix : 4 fils par défaut. Ollama : num_thread = cœurs. Aucun autre piège.
 - multipass exec ne transmet pas l'entrée standard (un « cat > fichier » ou un « docker exec -i … < - » par un
   tube attend sans fin) : passer les fichiers par multipass transfer, puis docker cp ou une redirection sur la VM.
 - llama.cpp server prend par défaut la moitié des cœurs : -t $(nproc) dans le point d'entrée du service vecteurs.

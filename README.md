@@ -257,8 +257,42 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
 | `NOM_HOTE` | `odin` | Nom de la machine sur le réseau (`http://<nom>.local`). Une mise à jour garde le nom actuel. |
 | `BRANCHE` | `main` | Branche d'ODIN à installer. |
 | `DEPOT` | ce dépôt | Dépôt Git à cloner, pour une copie personnelle d'ODIN. |
+| `DONNEES` | `/opt/odin/data` | Dossier des données (chemin absolu), par exemple sur un gros disque de données. |
 
-Les ports et le dossier des données se règlent dans `/opt/odin/.env`.
+Les ports se règlent dans `/opt/odin/.env`, comme le dossier des données (`DATA_DIR`, écrit par `DONNEES`).
+
+### Disques
+
+ODIN s'installe dans `/opt/odin`, et Docker garde ses images sur le disque système (`/var/lib/docker`) :
+environ 2,5 Go sans l'option IA, 12 Go de plus avec elle. Tout le reste, et c'est le plus gros (packs,
+livres, cartes, documents, index), va dans le **dossier des données**. L'installeur vérifie la place
+libre avant de télécharger quoi que ce soit, et chaque ajout de contenu vérifie la sienne, en comptant
+les téléchargements déjà en cours. Après une mise à jour, il ne garde que l'image actuelle de chaque
+service et la précédente, pour pouvoir revenir en arrière.
+
+**Petit disque système et gros disque de données** : montez le disque de données (par exemple sur
+`/mnt/donnees`, déclaré dans `/etc/fstab`), puis installez avec `DONNEES` :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
+  | sudo DONNEES=/mnt/donnees/odin bash
+```
+
+Docker attend alors ce montage à chaque démarrage. Des données déjà présentes ne sont jamais déplacées
+d'office : l'installeur explique comment le faire.
+
+**Déplacer aussi les images Docker** (facultatif, à faire soi-même : ODIN ne touche pas à la
+configuration de Docker) :
+
+```bash
+sudo systemctl stop docker docker.socket
+sudo rsync -aP /var/lib/docker/ /mnt/donnees/docker/
+# Ajouter "data-root" à /etc/docker/daemon.json (fusionner avec son contenu s'il existe déjà) :
+echo '{ "data-root": "/mnt/donnees/docker" }' | sudo tee /etc/docker/daemon.json
+sudo systemctl start docker
+docker info --format '{{.DockerRootDir}}'   # doit afficher /mnt/donnees/docker
+# Une fois ODIN vérifié : sudo rm -rf /var/lib/docker
+```
 
 ### Ajouter du contenu en ligne de commande
 
