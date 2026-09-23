@@ -389,6 +389,17 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - Images : après chaque installation, install.sh garde par service l'image en service et la plus récente des
   autres (retour arrière possible), et retire le reste (seulement les dépôts d'ODIN).
 - /var/lib/docker n'est pas déplacé par ODIN : marche à suivre dans le README (data-root).
+- Mise à jour depuis main (test du 2026-09-23 sur VM vierge : main af15811 installé, mot de passe, pack climat,
+  deux documents, puis installeur de dev). Conservés à l'identique (mêmes SHA-256) : data/config/auth.json (ancien
+  mot de passe accepté), le pack et sa bibliothèque, data/documents (indexés ensuite), fond de carte, .env
+  (complété). Retirés : conteneurs ia (Open WebUI), synchro et ollama ; images Open WebUI (7,2 Go), Ollama
+  (9,2 Go), node:20 de synchro ; modèles qwen2.5:3b et bge-m3 (2,9 Go, retirés par Ollama AVANT son arrêt) ;
+  data/openwebui, data/synchro. Gardés : l'image précédente du dashboard (retour arrière). Disque système :
+  22 Go → 5,1 Go utilisés. Trouvé et corrigé : un clone --depth 1 -b main ne pouvait pas changer de branche
+  (checkout --track refusé) ; l'échec laissait les fichiers de dev sous le HEAD de main.
+- Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
+  LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
+  « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
 - VM vierge (lot 7, 2026-09-23 ; test, 60 Go, fichier-disque ext4 de 40 Go monté sur /mnt/donnees par fstab,
   installation avec DONNEES=/mnt/donnees/odin) : aucun /opt/odin/data, modèle de vecteurs, fond de carte,
   materiel.json, library.xml et pack climat sur le disque de données ; Kiwix et vecteurs montés dessus ; recherche
