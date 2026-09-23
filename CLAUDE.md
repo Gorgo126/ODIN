@@ -154,7 +154,20 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   vecteurs, par la couverture (part de la requête trouvée, pondérée par l'idf, mots absents de tous les passages
   ignorés : CONSTANTES.couverture, provisoire). Bandeau d'urgence en tête (securite.mjs, textes
   CONSTANTES.bandeauUrgence, au vouvoiement). ?debug=1 : scores et règles de chaque passage.
-  Compréhension : phrase brute pour l'instant (base de comparaison) ; table de synonymes au lot 3.
+  Compréhension (lot 3) : catalogue/synonymes.json, écrite à la main (dit → cherche, le premier est le terme
+  principal, aussi à poids 0,5), appliquée par assistant/synonymes.mjs (accents et casse ignorés, pluriel et
+  féminin, expression la plus longue d'abord, relue quand le fichier change). assistant/recherche-avancee.mjs
+  (route et évaluation) : requêtes Kiwix = phrase, termes de la table, mots seuls (accents gardés, 6 au plus) ;
+  question vectorisée avec ses termes. Termes de la table alignés sur des titres qui existent dans les packs.
+  Mesure (nomad, 2026-09-23, tests/recherche.json : 33 questions + 3 hors sujet, dashboard/assistant/
+  evaluation-recherche.mjs) : phrase brute hybride 10/33 en tête, 12/33 trouvées ; BM25 + synonymes 15/33
+  en tête avec les seuils de couverture (sans seuil : 18/33 en tête, 32/33 dans les 3 premiers, MRR 0,74,
+  1 hors-sujet sur 3 mal écarté), 0,35 s ; hybride + synonymes 31/33 en tête, 33/33 dans les 3 premiers,
+  MRR 0,97, 3/3 hors sujet écartés, 1,9 s (Ollama) comme 2,0 s (llama.cpp). llama.cpp server-v0.4.1 avec
+  ggml-org/embeddinggemma-300M-Q8_0.gguf (334 Mo, sha256 b5ce9d77…0d63) : vecteurs à 0,9997 de ceux
+  d'Ollama (mêmes classements), image 1,2 Go contre 9,2 Go, 554 Mo de RAM en charge contre 943 Mo.
+  Les expressions ajoutées après la première mesure viennent de ses échecs : la table reste à éprouver sur
+  d'autres questions.
   Candidats de l'option IA (relevés le 2026-09-23, à refaire au lot 5 avec ce qui existera alors) :
   tranche 8 Go : qwen3:8b-q4_K_M (5,2 Go, texte, Apache 2.0, hybride : think false, respecté par qwen3:1.7b
   de la même famille, à revérifier) ; granite4:tiny-h (4,2 Go, texte, Apache 2.0, MoE 7B dont 1B actif,
