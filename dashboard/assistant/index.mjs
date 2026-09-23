@@ -8,11 +8,11 @@ import { profil, reduire, vectoriser } from './embeddings.mjs';
 import { ErreurOllama } from './ollama.mjs';
 import { completer } from './generation.mjs';
 import { messagesResume } from './prompt.mjs';
-import { classer, noterCouverture } from './bm25.mjs';
+import { classer, noterCouverture, termes } from './bm25.mjs';
 import { termePrincipal } from './terme.mjs';
 import { passagesWikis } from './wikis.mjs';
 import { passagesLivres } from './source-livres.mjs';
-import { normaliser, motsRequete } from '../lib/normalisation.mjs';
+import { normaliser } from '../lib/normalisation.mjs';
 
 // Index of the personal documents: files, chunks, full-text index (FTS5) and vectors (Float32 BLOB,
 // loaded in memory, cosine in JS). Runs in the assistant's worker thread, never on Next's event loop.
@@ -428,7 +428,8 @@ export class Index {
 
   // BM25 on the normalized text; words of 4 letters or more also match as prefixes (plural forms)
   motsCles(question, n) {
-    const mots = motsRequete(question);
+    // One query per line (question, search terms…): see termes() in bm25.mjs
+    const mots = termes(question.split('\n'));
     if (!mots.length) return [];
     const requete = mots.map((m) => `"${m}"${m.length >= 4 ? '*' : ''}`).join(' OR ');
     return this.db.prepare('SELECT rowid AS id, bm25(morceaux_fts, 1.0, 0.6, 0.4) AS score FROM morceaux_fts WHERE morceaux_fts MATCH ? ORDER BY score LIMIT ?').all(requete, n);
@@ -472,9 +473,12 @@ export class Index {
   // fetched while the question is embedded, sorted by a local BM25 on both queries (keywords and
   // main term), and only the best ones get an embedding (8 wiki, 4 book paragraphs: CPU time).
   // Common ranking by cosine (same model, same prefixes). terme: main term proposed by the
-  // understanding step (second query by default). garder: the indexing stays paused after the
+  // understanding step (second query by default), trusted as is with termeSur (synonym table).
+  // secondaires: neighbouring terms, half weight in the local BM25. texteVecteur: the text embedded
+  // for the question (the question and its search terms). cfg.sansVecteurs: keywords only (measure).
+  // garder: the indexing stays paused after the
   // search (until reprendre(jeton), when the answer is written); otherwise it resumes right away.
-  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes, terme = requetes?.[1] } = {}) {
+  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes, terme = requetes?.[1], termeSur = false, secondaires = [], texteVecteur = question } = {}) {
     const debut = Date.now();
     const durees = {};
     const mesurer = (nom, promesse) => {
@@ -495,7 +499,8 @@ export class Index {
     try {
       const t = Date.now();
       // The rewritten question for the vectors, the keyword queries for FTS5, Kiwix and BM25
-      const [v] = await vectoriser(this.cfg, [prof.requete(question)]);
+      if (this.cfg.sansVecteurs) throw new ErreurOllama('vecteurs désactivés');
+      const [v] = await vectoriser(this.cfg, [prof.requete(texteVecteur)]);
       q = reduire(v, this.memoire.d || v.length);
       durees.requete = Date.now() - t;
     } catch (e) {
@@ -503,15 +508,17 @@ export class Index {
       this.erreurOllama = e.message;
     }
 
-    const docs = sources.includes('documents') ? this.documentsProches(q, req.join(' '), n) : { extraits: [], documents: [], meilleur: null };
+    const docs = sources.includes('documents') ? this.documentsProches(q, req.join('\n'), n) : { extraits: [], documents: [], meilleur: null };
     const [wikis, livres] = await Promise.all([pWikis, pLivres]);
     // Main term: the one of the understanding step when each of its words comes from the question,
     // otherwise the rarest word of the question among the passages found. Without a sure term, the
     // title and section rules do not apply at all.
     const tous = [...wikis, ...livres];
     const frequence = (mot) => tous.filter((p) => normaliser(`${p.titre} ${p.section} ${p.texte}`).includes(mot)).length;
-    const principal = termePrincipal(terme, question, frequence, wikis.map((p) => p.titre));
-    const externes = [...classer(wikis, req, 8, { terme: principal.terme }), ...classer(livres, req, 4, { terme: principal.terme })];
+    const principal = termeSur && terme
+      ? { terme: normaliser(terme), source: 'synonymes' }
+      : termePrincipal(terme, question, frequence, wikis.map((p) => p.titre));
+    const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires })];
     if (q && externes.length) {
       const t = Date.now();
       try {

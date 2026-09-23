@@ -35,7 +35,9 @@ function rapportAuTerme(titre, terme) {
   return { type: t.includes(terme) ? 'specialise' : 'aucun', extras };
 }
 
-export const termes = (requetes) => motsRequete(requetes.filter(Boolean).join(' '));
+// Words of several queries: each one on its own (motsRequete keeps 8 words of 200 characters), then
+// together, 16 at most
+export const termes = (requetes) => [...new Set(requetes.filter(Boolean).flatMap((r) => motsRequete(r)))].slice(0, 16);
 
 // Long paragraphs (encyclopedias, books) are cut at a sentence end: every character costs time for
 // the embedding and for the reading of the prompt on CPU
@@ -46,9 +48,13 @@ export function couper(texte, max = 700) {
   return fin > max / 2 ? debut.slice(0, fin + 1) : `${debut.replace(/\s+\S*$/, '')} …`;
 }
 
-export function classer(passages, requetes, n, { terme = null } = {}) {
-  const mots = termes(requetes);
-  if (!mots.length || !passages.length) return [];
+// secondaires: neighbouring terms (synonym table, « aussi »), counted at half weight
+const POIDS_SECONDAIRE = 0.5;
+export function classer(passages, requetes, n, { terme = null, secondaires = [] } = {}) {
+  const principaux = termes(requetes);
+  const mots = [...principaux, ...termes(secondaires).filter((m) => !principaux.includes(m))];
+  const poids = mots.map((_, j) => (j < principaux.length ? 1 : POIDS_SECONDAIRE));
+  if (!principaux.length || !passages.length) return [];
   // A general article among the candidates: only then is a specialised one pushed back
   const rapports = passages.map((p) => rapportAuTerme(p.titre, terme));
   const general = rapports.some((r) => r.type === 'exact' || r.type === 'commence');
@@ -58,7 +64,7 @@ export function classer(passages, requetes, n, { terme = null } = {}) {
   const frequences = docs.map((d) => mots.map((m) => compte(d, m)));
   const idf = mots.map((_, j) => {
     const nj = frequences.filter((f) => f[j] > 0).length;
-    return Math.log(1 + (docs.length - nj + 0.5) / (nj + 0.5));
+    return poids[j] * Math.log(1 + (docs.length - nj + 0.5) / (nj + 0.5));
   });
   const enSection = (p) => {
     const s = normaliser(p.section || '').split(/[^\p{L}\p{N}]+/u).filter(Boolean);

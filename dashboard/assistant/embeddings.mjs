@@ -26,8 +26,15 @@ export function reduire(v, dimensions) {
   return r;
 }
 
-// Full vectors, as returned by the model (they are stored whole, the cut happens in memory)
+// Full vectors, as returned by the model (they are stored whole, the cut happens in memory).
+// cfg.urlVecteurs: a llama.cpp server (OpenAI-style /v1/embeddings) instead of Ollama — measured in
+// lot 3 of the advanced search, same prefixes, same model file family.
 export async function vectoriser(cfg, textes, signal) {
+  if (cfg.urlVecteurs) {
+    const res = await appeler(cfg.urlVecteurs, '/v1/embeddings', { input: textes, model: cfg.modeleEmbedding }, cfg.inactivite, signal);
+    if (!Array.isArray(res?.data) || res.data.length !== textes.length) throw new Error('Réponse inattendue du serveur de vecteurs');
+    return [...res.data].sort((a, b) => a.index - b.index).map((d) => Float32Array.from(d.embedding));
+  }
   const res = await appeler(cfg.ollama, '/api/embed', {
     model: cfg.modeleEmbedding,
     input: textes,

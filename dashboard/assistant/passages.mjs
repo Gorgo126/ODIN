@@ -50,9 +50,10 @@ export function fenetre(texte, mots, max = LONGUEUR) {
 }
 
 // r: result of Index.rechercher. Returns the groups « fort » and « proche », best first.
-export function grouper(r, question, reglages, { urgence = false, debug = false } = {}) {
+// termes: search terms of the synonym table, highlighted too (« céphalée » for « mal de tête »)
+export function grouper(r, question, reglages, { urgence = false, debug = false, termes = [] } = {}) {
   // Words to show and highlight: the meaningful ones (« comment », « je » are not)
-  const utiles = motsUtiles(question);
+  const utiles = [...motsUtiles(question), ...termes.flatMap((t) => motsUtiles(t))];
   const mots = utiles.length ? [...new Set(utiles)] : motsRequete(question);
   const groupes = new Map();
   const ecartes = [];

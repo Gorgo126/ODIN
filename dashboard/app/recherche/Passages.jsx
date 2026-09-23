@@ -104,7 +104,7 @@ export default function Passages({ question, debug = false, onEtat }) {
       )}
       {r.debug && (
         <pre className="passages-debug">
-          {`terme : ${r.debug.terme?.terme ?? 'aucun'} (${r.debug.terme?.source})\nmeilleurs : ${JSON.stringify(r.debug.meilleurs)}\nseuils : ${JSON.stringify(r.debug.seuils)}\ndurées : ${JSON.stringify(r.durees)}`}
+          {`compris : ${r.debug.comprehension?.entrees?.join(' ; ') || 'rien dans la table'}\nrequêtes : ${r.debug.requetes?.join(' | ')}\nvecteur : ${r.debug.texteVecteur}\nterme : ${r.debug.terme?.terme ?? 'aucun'} (${r.debug.terme?.source})\nmeilleurs : ${JSON.stringify(r.debug.meilleurs)}\nseuils : ${JSON.stringify(r.debug.seuils)}\ndurées : ${JSON.stringify(r.durees)}`}
         </pre>
       )}
     </section>
