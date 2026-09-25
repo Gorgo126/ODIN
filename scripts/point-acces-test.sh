@@ -64,7 +64,7 @@ connecter() {
   if ! dans wpa_cli -p "/run/wpa-$TEL" -i "$itf" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'; then
     echo "non-associé"; return 1
   fi
-  dans dhcpcd -4 -1 -t 20 -C resolv.conf -C hostname "$itf" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
+  dans dhcpcd -4 -w -t 20 -C resolv.conf -C hostname "$itf" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
   # DNS of the lease for the phone's resolver
   dans dhcpcd -U -4 "$itf" 2>/dev/null | sed -n "s/^domain_name_servers='\?\([^' ]*\).*/nameserver \1/p" > "/etc/netns/$TEL/resolv.conf"
   echo "connecté"
