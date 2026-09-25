@@ -310,13 +310,20 @@ arreter() {
 # DATA and NOM for the state file, from the parameters
 lire_config_donnees() { DATA=${DATA:-}; NOM=$(hostname); }
 
+# Main process running: « active », or still in its ExecStartPost (the other service's check runs
+# while this one is not « active » yet; waiting for « active » would make them wait for each other)
+en_marche() {
+  local e; e=$(systemctl show -p ActiveState -p SubState --value "$1" 2>/dev/null | tr '\n' ' ')
+  [[ "$e" == "active "* || "$e" == *" start-post "* ]]
+}
+
 # Called after hostapd or dnsmasq started: actif once both run and the card is an access point
 etat_ecrire() {
   charger_parametres || return 0
   lire_config_donnees
   local i
   for i in $(seq 20); do
-    if systemctl is-active --quiet odin-hostapd.service && systemctl is-active --quiet odin-dnsmasq.service \
+    if en_marche odin-hostapd.service && en_marche odin-dnsmasq.service \
       && iw dev "$INTERFACE" info 2>/dev/null | grep -q 'type AP'; then
       ecrire_etat actif; return 0
     fi
