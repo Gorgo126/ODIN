@@ -66,7 +66,11 @@ connecter() {
   fi
   dans dhcpcd -4 -w -t 20 -C resolv.conf -C hostname "$itf" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
   # DNS of the lease for the phone's resolver
-  dans dhcpcd -U -4 "$itf" 2>/dev/null | sed -n "s/^domain_name_servers='\?\([^' ]*\).*/nameserver \1/p" > "/etc/netns/$TEL/resolv.conf"
+  for i in $(seq 10); do
+    dans dhcpcd -U -4 "$itf" 2>/dev/null | sed -n "s/^domain_name_servers='\?\([^' ]*\).*/nameserver \1/p" > "/etc/netns/$TEL/resolv.conf"
+    [ -s "/etc/netns/$TEL/resolv.conf" ] && break
+    sleep 0.5
+  done
   echo "connecté"
 }
 
