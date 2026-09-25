@@ -197,7 +197,7 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .voyant { --c: #6b7280; flex: none; width: 1.35rem; height: 1.35rem; border-radius: 50% !important; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 35%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent), inset 0 -2px 3px rgba(0, 0, 0, .45); border: 2px solid #111; }
 .voyant-vert { --c: #22c55e; animation: pulsation 2.4s ease-in-out infinite; }
 .voyant-orange { --c: #f59e0b; }
-.voyant-rouge { --c: #ef4444; }
+.voyant-neutre { --c: var(--or); box-shadow: inset 0 -2px 3px rgba(0, 0, 0, .45); }
 .voyant-gris { --c: #6b7280; box-shadow: inset 0 -2px 3px rgba(0, 0, 0, .45); }
 @keyframes pulsation { 50% { box-shadow: 0 0 22px var(--c), inset 0 -2px 3px rgba(0, 0, 0, .45); filter: brightness(1.18); } }
 @media (prefers-reduced-motion: reduce) { .voyant-vert { animation: none; } }
@@ -205,7 +205,7 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .liaison-etat strong { font-family: var(--mono); font-size: 1rem; letter-spacing: .14em; }
 .liaison-vert .liaison-etat strong { color: #22c55e; }
 .liaison-orange .liaison-etat strong { color: #f59e0b; }
-.liaison-rouge .liaison-etat strong { color: #ef4444; }
+.liaison-neutre .liaison-etat strong { color: var(--or); }
 .liaison-gris .liaison-etat strong { color: #9ca3af; }
 .liaison-mode { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; color: var(--or); }
 .liaison-contact { flex-basis: 100%; font-size: .8rem; opacity: .8; }
@@ -214,7 +214,7 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .liaison-detail p { margin: .5rem 0 0; font-family: var(--mono); font-size: .78rem; opacity: .75; }
 .liaison-detail ul { list-style: none; margin: .5rem 0 0; padding: 0; font-family: var(--mono); font-size: .78rem; line-height: 1.7; }
 .ok-texte { color: #22c55e; }
-.ko-texte { color: #ef4444; }
+.ko-texte { color: #9ca3af; }
 .liaison-infos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .35rem; }
 /* External links on the right, keeping the card low; stacked below on narrow screens */
 .liaison-liens { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: .5rem; }

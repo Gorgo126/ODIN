@@ -46,7 +46,8 @@ export default function CarteLiaison({ initiale }) {
   }, []);
 
   if (!l) return null;
-  const voyant = { etablie: 'vert', degradee: 'orange', rompue: 'rouge' }[l.etat] || 'gris';
+  // Offline is ODIN's normal mode: neutral (gold), never red
+  const voyant = { etablie: 'vert', degradee: 'orange', rompue: 'neutre' }[l.etat] || 'gris';
 
   return (
     <div className={`liaison liaison-${voyant}`}>

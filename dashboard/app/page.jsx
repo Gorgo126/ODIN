@@ -56,7 +56,9 @@ const ICONES = {
 };
 
 export default async function Page() {
-  const [services, etatLiaison] = await Promise.all([etatServices(), liaison()]);
+  const [etats, etatLiaison] = await Promise.all([etatServices(), liaison()]);
+  // Available services first, in the order of SERVICES; the others (not installed, stopped) after them
+  const services = [...etats.filter((s) => s.ok), ...etats.filter((s) => !s.ok)];
   const assistant = reglagesAssistant();
 
   return (
@@ -70,11 +72,6 @@ export default async function Page() {
       </header>
 
       <BarreRecherche />
-
-      <section>
-        <h2>Connectivité externe</h2>
-        <CarteLiaison initiale={etatLiaison} />
-      </section>
 
       <section>
         <h2>Services</h2>
@@ -100,6 +97,11 @@ export default async function Page() {
       <section>
         <h2>Stockage</h2>
         <Stockage />
+      </section>
+
+      <section>
+        <h2>Connectivité externe</h2>
+        <CarteLiaison initiale={etatLiaison} />
       </section>
     </main>
   );
