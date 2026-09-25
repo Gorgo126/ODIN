@@ -235,9 +235,13 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   dnsmasq : interface=<if>, except-interface=lo (sinon il écoute aussi 127.0.0.1 et ::1), bind-interfaces, no-resolv,
   no-hosts, host-record <nom>,<nom>.lan, address=/#/<ip>, local=/#/ (AAAA : réponse vide ; sans lui REFUSED, faute de
   serveur amont ; filter-AAAA n'y change rien), baux dans /run/odin-point-acces/.
-  NetworkManager : /etc/NetworkManager/conf.d/odin-point-acces.conf avec unmanaged-devices+=interface-name:<if>
-  (« += » AJOUTE à la liste d'Ubuntu « *,except:type:wifi,… » ; « = » la remplacerait et donnerait l'Ethernet et les
-  ponts Docker à NM), plus nmcli device set managed no/yes ; retiré par l'arrêt : NM reprend la carte.
+  NetworkManager : /etc/NetworkManager/conf.d/odin-point-acces.conf avec une section [device-odin-point-acces]
+  match-device=interface-name:<if> et managed=0, plus nmcli device set managed no/yes. PAS keyfile.unmanaged-devices :
+  la liste d'Ubuntu contient « except:type:wifi », et une exclusion except: l'emporte sur toute la liste, donc
+  « += interface-name:<if> » ne rend jamais une carte Wi-Fi non gérée (--print-config l'affiche pourtant) ;
+  « = » donnerait l'Ethernet et les ponts Docker à NM. La déclaration reste tant que l'option est installée (seul
+  desinstaller la retire) : retirée à chaque arrêt, NM prenait la carte au démarrage suivant pendant ~10 s, assez
+  pour rejoindre un réseau Wi-Fi enregistré (vu au lot 2 : journal de NM, « unmanaged -> unavailable »).
   État : ${DATA}/config/point-acces.json (etat actif|inactif|indisponible, raison, interface, ssid, motDePasse, adresse,
   noms [<nom>.lan, <nom>.local si avahi], canal, pays, maj), 640 au propriétaire de data/config : le conteneur
   dashboard tourne en root (vérifié le 2026-09-25) et le lira au lot 2 ; à revoir si l'image passe en non-root.
@@ -254,6 +258,52 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   (mac80211_hwsim de linux-modules-extra-$(uname -r), 3 radios : wlan0 ODIN, wlan1 dans l'espace de noms
   « telephone » avec wpa_supplicant et udhcpc de busybox, wlan2 dans « box » pour le lot 3 ; hwsim chargé au
   démarrage par /etc/modules-load.d pour le test). Les espaces de noms ne survivent pas au redémarrage : preparer.
+  Portail captif (lot 2) : Caddyfile, bloc en tête de :80 : remote_ip {$PORTAIL_RESEAU} et Host absent de
+  {$PORTAIL_HOTES} → rewrite /api/portail/sonde, chemin d'origine dans X-Odin-Chemin, Host gardé. Caddy voit la vraie
+  IP du client (vérifié par capture sur le pont Docker : source 10.42.0.42, X-Forwarded-For: 10.42.0.42 ; le port
+  publié passe par le DNAT de Docker). Une variable à espaces ({$PORTAIL_HOTES}) donne bien plusieurs hôtes (caddy
+  adapt). compose.yml : PORTAIL_RESEAU=${PORTAIL_RESEAU:-192.0.2.0/32} (plage de documentation, ne correspond à rien)
+  et PORTAIL_HOTES=${PORTAIL_HOTES:-portail.invalid} pour caddy, PORTAIL_RESEAU pour le dashboard. install.sh les
+  écrit dans .env dès que POINT_ACCES=1 et la plage valide et libre (point-acces.sh portail), QUEL QUE SOIT l'état du
+  point d'accès (un échec passager de hostapd ne doit pas priver la machine de portail, et le lot 3 basculera sans
+  install.sh) ; retirés seulement par POINT_ACCES=0 ; docker compose up -d si elles changent. Hôtes exclus :
+  <adresse>, <nom>, <nom>.lan, <nom>.local (avahi).
+  Dashboard : lib/portail.mjs = LA table des sondes (SONDES) et les appareils libérés (IP → 12 h, globalThis, perdus
+  au redémarrage du dashboard : le portail revient, accepté). /api/portail/sonde (GET, HEAD, POST) : non libéré → 302
+  http://<adresse>/portail ; libéré et sonde connue → réponse exacte + X-NetworkManager-Status: online ; sinon → 302
+  http://<adresse>/. /api/portail/liberer : formulaire HTML (pas de JavaScript ni de cookie), 303 vers
+  /portail?libre=1, 403 hors de PORTAIL_RESEAU. /portail public (Caddy @public : /portail, /api/portail/*), consigne
+  Android visible par tous après « Continuer ». /point-acces/fiche (protégée, imprimable) et /api/point-acces/qr/{wifi,
+  adresse} (SVG en <img>, CSP sandbox). Panneau « Point d'accès Wi-Fi » de Configuration. Le dashboard n'écrit rien.
+  dnsmasq : dns.msftncsi.com → 131.107.255.255 (sonde DNS de Windows 10).
+  Sondes (réponses vérifiées le 2026-09-25 dans les sources, et identiques aux serveurs réels) :
+  Android (AOSP NetworkStack, config.xml, CaptivePortalProbeResult, NetworkMonitor) : connectivitycheck.gstatic.com,
+  www.google.com, play.googleapis.com, clients3/clients1.google.com, connectivitycheck.android.com, /generate_204 et
+  /gen_204 → 204 vide ; un 302 = portail (redirections non suivies). Apple (Apple Support « Use Apple products on
+  enterprise networks » ; aucune règle publiée) : captive.apple.com, tout chemin → 200 text/html, page Success de 69
+  octets (\n final) ; www.apple.com/library/test/success.html → même page, 68 octets ; anciens hôtes
+  (appleiphonecell.com, itools.info, ibook.info, airport.us, thinkdifferent.us) : SOURCES SECONDAIRES seulement.
+  Windows (Microsoft Learn, NCSI) : www.msftconnecttest.com et ipv6.msftconnecttest.com /connecttest.txt → 200
+  « Microsoft Connect Test » ; www.msftncsi.com/ncsi.txt → « Microsoft NCSI » ; Windows 11 et le Wi-Fi décident par
+  HTTP. Firefox (all.js, CaptiveDetect.sys.mjs ; domaine changé le 2026-08-10) : firefox-portal-detection.com
+  /generate_204 → 204 vide, /success.txt → « success\n » ; ESR 140 : detectportal.firefox.com/canonical.html → le
+  meta refresh exact (90 octets), /success.txt. NetworkManager (nm-connectivity.c : l'en-tête X-NetworkManager-Status:
+  online suffit ; sinon corps comparé sur son début) : connectivity-check.ubuntu.com. (avec le point final : Host
+  normalisé), nmcheck.gnome.org, ping.archlinux.org, fedoraproject.org/static/hotspot.txt.
+  Tests du lot 2 : node --test tests/portail.test.mjs (6 : réponses et tailles exactes, hôtes, libération, plage) ;
+  sudo scripts/point-acces-test.sh portail (B6, 33 contrôles : 14 sondes → 302 /portail, /portail 200, Continuer 303,
+  14 sondes → réponse identique à l'octet, autre domaine → 302 /, dns.msftncsi.com, ODIN par son adresse sans portail).
+  Résultats lot 2 (VM test, 2026-09-25/26) : B6 33/33 ; depuis le PC par l'IP Ethernet, Host de sonde → 302 /connexion
+  (aucun portail), liberer → 403, fiche et QR → connexion. B10 : hors-ligne.sh couper, redémarrage à froid, point
+  d'accès revenu seul, B1 à B6 bons, pages (accueil, recherche, lecteur, /kiwix, Documents, livres, carte, traduction,
+  santé, /portail, /portail?libre=1, fiche) sans requête vers un autre hôte ni erreur de console, Configuration « hors
+  ligne » en 156 ms, dépôt dans FileBrowser ; journal : sonde du dashboard (TCP 443 et DNS de wikipedia.org), NTP,
+  et les tentatives volontaires des tests (téléphone et VM vers 1.1.1.1) : aucune ligne due à l'option. Redémarrages
+  à froid avec NetworkManager : réseau et portail revenus, carte « unmanaged » dès le démarrage (après correction),
+  multi-user.target à 14 s, hostapd cassé → echec-demarrage et ODIN complet. Tests A et B du lot 1 relancés : bons.
+  VM vierge (dev 605589c) : POINT_ACCES=1 sans carte → indisponible, portail activé quand même, 165 s ; radios et
+  relance → B1 à B6 bons. Pack climat de B10 téléchargé par curl sur la VM (IPv6) puis inscrit par ODIN : le miroir
+  Kiwix ne répondait qu'en IPv6.
   Résultats (VM test, 2026-09-25, Ubuntu 24.04, noyau 6.8.0-139, Docker 29.8.1) : A 25/25. B 1 à 5 : actif, JSON et
   QR, mauvais mot de passe refusé, bail .42 dans la plage, passerelle et DNS = ODIN, tout nom → ODIN, http://test.lan
   → page de connexion, 1.1.1.1 (TCP 443 et ping) et la box injoignables alors que la VM a internet. Cohabitation avec
@@ -265,9 +315,13 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   bons, carte « unmanaged » pendant l'option puis « disconnected » (rendue à NM) après POINT_ACCES=0. VM vierge :
   POINT_ACCES=1 sans carte → « Point d'accès Wi-Fi indisponible : Aucune carte Wi-Fi détectée », installation normale
   (166 s) ; puis radios virtuelles et relance (POINT_ACCES repris de .env) → B 1 à 5 bons.
-  NON VÉRIFIÉ : vrais pilotes (Intel, MediaTek, Realtek), portée, nombre d'appareils, fenêtres de portail d'iOS,
-  d'Android et de Windows sur de vrais appareils ; redémarrage à froid AVEC NetworkManager ; B6, B9, B10 (lots 2 et 3,
-  test hors ligne complet avec l'option). Premier test réel prévu : Ubuntu desktop en clé USB live (NetworkManager).
+  NON VÉRIFIÉ : vrais pilotes (Intel, MediaTek, Realtek), portée, nombre d'appareils ; B9 (lot 3). Sur de VRAIS
+  appareils : les fenêtres de portail d'iOS (mini-navigateur), d'Android et de Windows ; Android après « Continuer »
+  (sonde HTTPS impossible hors ligne : « connectivité limitée », il peut garder la 4G comme réseau par défaut et
+  rendre ODIN injoignable ; la consigne de /portail suffit-elle ?) ; le risque de l'expérience Google
+  dns_probe_private_ip_no_internet (désactivée par défaut, activable à distance) : une sonde qui résout vers une IP
+  privée donnerait « échec » sans page de portail ; DNS privé / DoH forcé ; « odin.lan » pris pour une recherche.
+  Premier test réel prévu : Ubuntu desktop en clé USB live (NetworkManager).
 
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
 Une montée de version se fait volontairement, une image à la fois, après test sur odintest puis hors ligne.
@@ -655,5 +709,8 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 - iw : les modes sont indentés « \t\t * AP » (deux tabulations, une espace) ; « AP » apparaît aussi dans AP/VLAN et
   dans « valid interface combinations » : ne lire que la section Supported interface modes.
 - mac80211_hwsim n'est pas dans l'image cloud d'Ubuntu : paquet linux-modules-extra-$(uname -r).
+- NetworkManager, liste unmanaged-devices : une spec « except: » qui correspond l'emporte sur toute la liste. Pour
+  écarter une seule carte, une section [device-xxx] avec match-device et managed=0 ; vérifier au démarrage dans le
+  journal de NM (« state change »), --print-config ne suffit pas.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

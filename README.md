@@ -294,8 +294,9 @@ disque, le télécharge et teste son chargement sur la carte.
 ### Point d'accès Wi-Fi (option, non vérifiée)
 
 Sans box ni routeur, ODIN peut créer **son propre réseau Wi-Fi** avec la carte Wi-Fi de la machine :
-un téléphone rejoint le réseau « ODIN », puis ouvre ODIN à l'adresse `http://10.42.0.1` ou
-`http://<nom>.lan`. Option désactivée par défaut, activée à l'installation :
+un téléphone rejoint le réseau « ODIN », une page d'accueil s'ouvre d'elle-même (portail captif), puis
+on utilise ODIN dans son navigateur habituel, à l'adresse `http://10.42.0.1` ou `http://<nom>.lan`.
+Option désactivée par défaut, activée à l'installation :
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sudo POINT_ACCES=1 bash
@@ -311,14 +312,31 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 - **Jamais bloquant** : sans carte compatible, ou si le point d'accès ne démarre pas, l'installation se
   termine normalement en indiquant la raison, et ODIN reste joignable par le réseau existant. Le
   démarrage de la machine n'attend jamais le Wi-Fi.
+- **Portail captif** : à la connexion, le téléphone ou l'ordinateur ouvre la page de bienvenue d'ODIN ;
+  après « Continuer », elle indique l'adresse à retenir. Android, iPhone, Windows, Firefox et Linux
+  (NetworkManager) sont reconnus.
+- **Fiche à imprimer** (Configuration → Point d'accès Wi-Fi) : nom du réseau, mot de passe, adresse et
+  deux QR codes, à poser à côté de la machine.
 - Relancer l'installeur avec `POINT_ACCES=0` retire tout et rend la carte au système (NetworkManager
   compris).
+
+**Limites connues**
+- **Android reste en « connectivité limitée »** après « Continuer » : il exige une réponse d'un site HTTPS
+  de Google, impossible sans internet. Il peut alors garder la 4G pour naviguer, et ODIN devient
+  introuvable : accepter « Utiliser ce réseau » / « Rester connecté » dans la notification, ou couper les
+  données mobiles (la page du portail le rappelle).
+- Les adresses en **HTTPS** d'autres sites échouent (erreur de certificat) : c'est inévitable hors ligne.
+- Un appareil réglé sur un **DNS privé** (DNS over TLS/HTTPS forcé) ne voit ni le portail ni les noms
+  d'ODIN : taper `http://10.42.0.1`, ou scanner le QR code de la fiche.
+- Certains navigateurs mobiles prennent `odin.lan` pour une recherche : taper `http://` devant, ou utiliser
+  le QR code d'adresse.
 
 > **Non vérifié sur du vrai matériel.** Ce chemin a été testé avec des radios Wi-Fi virtuelles
 > (`mac80211_hwsim`) : connexion, bail, DNS, accès à ODIN, absence de sortie vers internet, redémarrage,
 > retrait, avec et sans NetworkManager. Restent non vérifiés : les vrais pilotes (Intel, MediaTek,
 > Realtek), la portée, le nombre d'appareils, et le comportement de vrais téléphones et ordinateurs.
-> La page d'accueil qui s'ouvre toute seule à la connexion (portail captif) viendra ensuite.
+> Le portail captif a été testé avec les sondes de chaque système simulées une à une, pas avec de
+> vraies fenêtres de portail d'iOS, d'Android ou de Windows.
 
 ### Options d'installation
 
