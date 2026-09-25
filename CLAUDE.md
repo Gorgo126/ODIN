@@ -128,7 +128,7 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   tant qu'une langue installée s'en sert.
   Rechargement sans socket Docker, sur le modèle de Kiwix (qui relit library.xml, --monitorLibrary) : le dashboard
   écrit .recharger, une fois après la dernière de plusieurs opérations simultanées ; le point d'entrée du service
-  (compose.yml) le lit toutes les 2 s et envoie HUP à gunicorn (pid dans /tmp/gunicorn.pid par GUNICORN_CMD_ARGS),
+  (compose.yml) le lit toutes les 2 s et envoie HUP au maître gunicorn (trouvé dans /proc : enfant gunicorn du script d'entrée),
   qui démarre un nouveau processus serveur (relecture des modèles) avant d'arrêter l'ancien. Ce point d'entrée
   transmet SIGTERM à gunicorn (docker stop immédiat) et se termine avec lui (restart: unless-stopped le relance).
   /api/traduction/languages rend { langues, rechargement } : « Rechargement des langues… » sur /traduction tant
@@ -522,5 +522,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /tradu
 - LibreTranslate/Argos téléchargent au premier usage le découpeur de phrases MiniSBD de chaque langue source
   (~/.local/share/argos-translate/minisbd/<code>.onnx) : il n'est pas dans les paquets Argos. Chaque pack de langue le
   pose (champ decoupage du catalogue). Un modèle manquant ne se voit qu'hors ligne : tester une traduction depuis CHAQUE langue.
+- gunicorn (LibreTranslate) : jamais GUNICORN_CMD_ARGS. Au HUP, il relit sa configuration et perd alors le nom de
+  l'application (« No application module specified ») : le maître s'arrête et le conteneur redémarre en entier. Un
+  fichier pid (--pid) survit aussi à un kill -9 du maître et bloque le démarrage suivant (« Already running »).
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

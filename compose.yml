@@ -96,28 +96,37 @@ services:
     # was added or removed): gunicorn reloads its worker on HUP, which reads the models again, the old
     # worker serving until the new one is ready. docker stop: SIGTERM forwarded to gunicorn at once.
     # gunicorn gone: the loop ends with it, the container stops and restart: unless-stopped restarts it.
+    # The master is found in /proc (the gunicorn child of the image's entry point): no pid file, which
+    # could outlive a killed master, and no GUNICORN_CMD_ARGS, which makes gunicorn lose its application
+    # on HUP (« No application module specified », master gone).
     entrypoint:
       - bash
       - -c
       - |
         S=/home/libretranslate/.local/share/argos-translate/.recharger
-        P=/tmp/gunicorn.pid
         lu() { cat "$$S" 2>/dev/null; }
+        maitre() {
+          local d pp
+          for d in /proc/[0-9]*; do
+            read -r _ _ _ pp _ < "$$d/stat" 2>/dev/null || continue
+            [ "$$pp" = "$$E" ] && grep -qa gunicorn "$$d/cmdline" 2>/dev/null && { echo "$${d#/proc/}"; return 0; }
+          done
+          return 1
+        }
         vu=$$(lu)
         ./scripts/entrypoint.sh & E=$$!
-        arret() { if [ -s "$$P" ]; then kill -TERM "$$(cat "$$P")"; else kill -TERM "$$E"; fi 2>/dev/null; }
+        arret() { local m; if m=$$(maitre); then kill -TERM "$$m"; else kill -TERM "$$E"; fi 2>/dev/null; }
         trap arret TERM INT
         while kill -0 "$$E" 2>/dev/null; do
           sleep 2 & wait $$!
           n=$$(lu)
-          if [ "$$n" != "$$vu" ] && [ -s "$$P" ]; then
+          if [ "$$n" != "$$vu" ] && m=$$(maitre); then
             vu=$$n
-            kill -HUP "$$(cat "$$P")" && echo "ODIN : modèles modifiés, rechargement"
+            kill -HUP "$$m" && echo "ODIN : modèles modifiés, rechargement"
           fi
         done
         wait "$$E"
     environment:
-      - GUNICORN_CMD_ARGS=--pid /tmp/gunicorn.pid
       - LT_LOAD_ONLY=fr,en
       - LT_CHAR_LIMIT=${TRADUCTION_LIMITE:-5000}
       - LT_DISABLE_WEB_UI=true
