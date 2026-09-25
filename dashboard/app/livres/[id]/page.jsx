@@ -30,7 +30,7 @@ export default async function Lire({ params, searchParams }) {
       <nav className="barre">
         <a href="/" className="accueil">ODIN</a>
         <span className="sep">/</span>
-        <a href="/livres">Livres</a>
+        <a href="/livres">Bibliothèque</a>
         <span className="sep">/</span>
         <span className="titre">{livre.titre}</span>
         <a className="externe" href={`/livres#${id}`} title="Auteurs, licence et attribution">Fiche du livre</a>

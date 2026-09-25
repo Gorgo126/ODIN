@@ -3,6 +3,8 @@ import Stockage from '../Stockage';
 import Packs from '../Packs';
 import PacksCartes from '../PacksCartes';
 import Livres from '../Livres';
+import PacksTraduction from '../PacksTraduction';
+import { languesInstallees } from '../../lib/traduction-packs.mjs';
 import { listeLivres } from '../../lib/livres.mjs';
 import { installees } from '../../lib/cartes.mjs';
 import { liaison } from '../../lib/liaison.mjs';
@@ -50,6 +52,18 @@ const iconeAssistant = (
   </svg>
 );
 
+// Letters and sign: translation
+const iconeTraduction = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <path d="M4 5h9" />
+    <path d="M8.5 3v2" />
+    <path d="M11 5c-1 4-4 7-7 8.5" />
+    <path d="M6 8.5c1.2 2 3 3.6 5 4.5" />
+    <path d="M12 21l4.5-10L21 21" />
+    <path d="M13.6 17.5h5.8" />
+  </svg>
+);
+
 const iconeLiaison = (
   <svg viewBox="0 0 24 24" {...trait}>
     <circle cx="12" cy="12" r="10" />
@@ -61,7 +75,7 @@ const iconeLiaison = (
 const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e}${n > 1 ? 's' : ''}`;
 
 export default async function Configuration() {
-  const [livres, cartes, etatLiaison, reglages, pdf] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres()]);
+  const [livres, cartes, etatLiaison, reglages, pdf, langues] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres(), languesInstallees().catch(() => [])]);
   const assistant = reglagesAssistant();
   // The index answers at once; a worker still starting must not hold the page
   const etatIndex = await demander('etat', {}, 3000).catch(() => null);
@@ -104,8 +118,8 @@ export default async function Configuration() {
 
       <Panneau
         icone={iconeLivre}
-        titre="Bibliothèque"
-        sousTitre="Encyclopédies et ouvrages de référence au format ZIM"
+        titre="Encyclopédie"
+        sousTitre="Encyclopédies et wikis au format ZIM"
         resume={resume}
       >
         <h3>Contenu installé ({livres.length})</h3>
@@ -128,8 +142,8 @@ export default async function Configuration() {
 
       <Panneau
         icone={iconeLivreFerme}
-        titre="Livres"
-        sousTitre="Livres de référence au format PDF, lisibles hors ligne"
+        titre="Bibliothèque"
+        sousTitre="Ouvrages de référence au format PDF, lisibles hors ligne"
         resume={pluriel(pdf.filter((l) => l.installe).length, 'livre')}
       >
         <div className="grille">
@@ -145,6 +159,18 @@ export default async function Configuration() {
       >
         <div className="grille">
           <PacksCartes liaisonInitiale={etatLiaison} />
+        </div>
+      </Panneau>
+
+      <Panneau
+        id="traduction"
+        icone={iconeTraduction}
+        titre="Traduction"
+        sousTitre="Langues de la traduction hors ligne : français et anglais inclus"
+        resume={pluriel(langues.length, 'langue', 'e')}
+      >
+        <div className="grille">
+          <PacksTraduction liaisonInitiale={etatLiaison} />
         </div>
       </Panneau>
     </main>

@@ -25,8 +25,9 @@ RUN wget -qO /tmp/pdfjs.zip "https://github.com/mozilla/pdf.js/releases/download
 
 FROM node:24.21.0-alpine3.23 AS build
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev --no-audit --no-fund
+# Exact versions of every dependency, transitive ones included (package-lock.json, integrity checked)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
 COPY . .
 COPY --from=ressources /r ./public/ressources-carte
 COPY --from=pdfjs /pdfjs ./public/pdfjs
@@ -40,7 +41,8 @@ ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 ENV UV_THREADPOOL_SIZE=16
 COPY --from=pmtiles /go-pmtiles /usr/local/bin/pmtiles
 # Text of the book PDFs for the search (pdftotext), run as a child process
-RUN apk add --no-cache "poppler-utils~25.12"
+# Exact package version: if Alpine drops it from its repository, the build fails instead of changing silently
+RUN apk add --no-cache "poppler-utils=25.12.0-r0"
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public

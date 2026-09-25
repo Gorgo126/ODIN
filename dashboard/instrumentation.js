@@ -9,5 +9,8 @@ export async function register() {
     // Document assistant: its worker thread indexes data/documents from startup
     const { demarrerAssistant } = await import('./lib/assistant.mjs');
     demarrerAssistant();
+    // Translation packs: nothing left by an installation interrupted by a restart
+    const { nettoyerTraduction } = await import('./lib/traduction-packs.mjs');
+    nettoyerTraduction().catch((e) => console.error(`Traduction, nettoyage : ${e.message}`));
   }
 }

@@ -217,12 +217,12 @@ detecter_materiel() {
 detecter_materiel || echo "  Avertissement : détection du matériel impossible, option IA désactivée."
 
 msg "Espace disque"
-# Docker keeps its images on the system disk (DockerRootDir, /var/lib/docker): about 2.5 GB without the
+# Docker keeps its images on the system disk (DockerRootDir, /var/lib/docker): about 3 GB without the
 # AI option, 12 GB more with it (Ollama image and a model). An update only brings new versions.
 libre_mo() { df -Pm "$1" | awk 'NR==2 {print $4}'; }
 RACINE_DOCKER=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)
 [ -d "$RACINE_DOCKER" ] || RACINE_DOCKER=/
-BESOIN_MO=5120
+BESOIN_MO=6144
 grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' "$CIBLE/.env" && BESOIN_MO=20480
 [ -n "$AVANT" ] && BESOIN_MO=2048
 LIBRE_SYSTEME=$(libre_mo "$RACINE_DOCKER")
@@ -256,6 +256,23 @@ modele_vecteurs() {
 }
 modele_vecteurs || echo "  Modèle non installé : la recherche marche par mots-clés seulement. Relancez l'installeur avec internet."
 
+msg "Langues de la traduction"
+# The models are installed by the dashboard (language packs, catalogue/traduction.json), which checks and
+# unpacks them; LibreTranslate never downloads anything (internal network, read-only models).
+# TRADUCTION_LANGUES: languages of a first installation only (when no model is present yet); afterwards
+# the disk decides, and each run only guarantees French and English (a language removed from the
+# dashboard never comes back by itself).
+if grep -qx 'TRADUCTION_LANGUES=fr,en,nl,de,es,it' "$CIBLE/.env"; then
+  # Default written by the previous installer, not a choice of the owner
+  sed -i 's/^TRADUCTION_LANGUES=fr,en,nl,de,es,it$/TRADUCTION_LANGUES=fr,en/' "$CIBLE/.env"
+fi
+grep -q '^TRADUCTION_LANGUES=' "$CIBLE/.env" \
+  || printf '# Traduction hors ligne : langues de la première installation (ensuite, packs de langues dans ODIN)\nTRADUCTION_LANGUES=fr,en\n' >> "$CIBLE/.env"
+grep -q '^TRADUCTION_LIMITE=' "$CIBLE/.env" \
+  || printf '# Traduction hors ligne : taille maximale d'"'"'un texte, en caractères\nTRADUCTION_LIMITE=5000\n' >> "$CIBLE/.env"
+LANGUES=$(sed -n 's/^TRADUCTION_LANGUES=//p' "$CIBLE/.env" | tail -1 | tr -d ' ')
+mkdir -p "$DATA/traduction"
+
 msg "Démarrage des services"
 cd "$CIBLE"
 
@@ -275,6 +292,48 @@ if [ -n "$(docker ps -q --filter 'name=^ollama$')" ]; then
 fi
 # --- End of migration ---
 docker compose pull
+# The dashboard first, alone: it installs the translation models before LibreTranslate starts, so
+# that LibreTranslate never starts without them (it would try to download them)
+docker compose up -d dashboard
+docker exec -i -e LANGUES="$LANGUES" dashboard node - <<'JS' || err "Langues de la traduction non installées (français et anglais au moins). Relancez l'installeur avec internet."
+const base = 'http://localhost:3000';
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const get = (c) => fetch(base + c, { signal: AbortSignal.timeout(30000) }).then((r) => r.json());
+(async () => {
+  let liste;
+  for (let i = 0; i < 60 && !Array.isArray(liste); i++) liste = await get('/api/traduction/packs').catch(() => pause(2000));
+  if (!Array.isArray(liste)) throw new Error('tableau de bord injoignable');
+  const voulues = new Set(liste.filter((l) => l.base).map((l) => l.code));
+  // TRADUCTION_LANGUES only when no model is installed yet
+  if (!liste.some((l) => l.installee)) {
+    for (const c of process.env.LANGUES.split(',').filter(Boolean)) {
+      if (!liste.some((l) => l.code === c)) throw new Error(`langue ${c} absente de catalogue/traduction.json`);
+      voulues.add(c);
+    }
+  }
+  const manquantes = liste.filter((l) => voulues.has(l.code) && !l.installee);
+  if (!manquantes.length) return console.log(`  Déjà installées : ${liste.filter((l) => l.installee).map((l) => l.code).join(', ')}.`);
+  // The internet probe gives its first result a few seconds after the start of the dashboard
+  for (let i = 0; i < 30 && !(await get('/api/liaison').catch(() => ({}))).dernierTest; i++) await pause(1000);
+  for (const l of manquantes) {
+    const r = await fetch(`${base}/api/traduction/packs/${l.code}`, { method: 'POST' }).then((x) => x.json());
+    if (r.erreur) throw new Error(`${l.nom} : ${r.erreur}`);
+    console.log(`  ${l.nom}...`);
+  }
+  // No total delay: the dashboard stops a stalled download after 30 s
+  for (;;) {
+    await pause(3000);
+    liste = await get('/api/traduction/packs');
+    const encours = liste.filter((l) => voulues.has(l.code) && l.tache?.etat === 'en cours');
+    const erreur = liste.find((l) => voulues.has(l.code) && l.tache?.etat === 'erreur');
+    if (erreur) throw new Error(`${erreur.nom} : ${erreur.tache.erreur}`);
+    if (!encours.length) break;
+  }
+  const absentes = liste.filter((l) => voulues.has(l.code) && !l.installee);
+  if (absentes.length) throw new Error(`non installées : ${absentes.map((l) => l.nom).join(', ')}`);
+  console.log(`  Installées : ${liste.filter((l) => l.installee).map((l) => l.code).join(', ')}.`);
+})().catch((e) => { console.error('  ' + e.message); process.exit(1); });
+JS
 docker compose up -d --remove-orphans
 
 # --- Migration: former assistant (Open WebUI + synchro). To be removed after v1. ---
@@ -350,7 +409,7 @@ nettoyer_images() {
   local utilisees repo id ref garde avant apres
   avant=$(libre_mo "$RACINE_DOCKER")
   utilisees=$(docker ps -aq | xargs -r docker inspect --format '{{.Image}}' | sort -u)
-  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama; do
+  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama libretranslate/libretranslate; do
     garde=""
     # Most recent first
     while read -r id ref; do
@@ -372,6 +431,17 @@ for _ in $(seq 30); do docker exec caddy wget -qO- http://vecteurs:8080/health >
 docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index", { method: "POST", signal: AbortSignal.timeout(30000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' \
   && echo "  Indexation lancée." \
   || echo "  Indexation des documents : elle démarrera d'elle-même dans les 5 minutes."
+
+msg "Traduction"
+# Its healthcheck asks /languages (ready in a few seconds; models load at the first translation)
+etat_traduction() { docker inspect -f '{{.State.Health.Status}}' libretranslate 2>/dev/null; }
+for _ in $(seq 90); do [ "$(etat_traduction)" = healthy ] && break; sleep 2; done
+if [ "$(etat_traduction)" = healthy ]; then
+  docker exec dashboard node -e 'fetch("http://libretranslate:5000/languages", { signal: AbortSignal.timeout(10000) }).then((r) => r.json()).then((l) => console.log("  Prête : " + l.map((x) => x.code).join(", ") + "."))' \
+    || echo "  Service démarré, langues illisibles depuis le tableau de bord."
+else
+  echo "  Avertissement : la traduction ne répond pas encore (docker compose logs libretranslate)."
+fi
 
 msg "Fond de carte mondial"
 # Installed through the dashboard, which holds the pinned pmtiles tool

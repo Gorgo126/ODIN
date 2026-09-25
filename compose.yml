@@ -18,7 +18,7 @@ services:
       - filebrowser
 
   dashboard:
-    image: ghcr.io/gorgo126/odin-dashboard:054013b1e37ea42de3767dd5fbeb0fce86c24c26
+    image: ghcr.io/gorgo126/odin-dashboard:a469e42554f6b1a714521c07c8150a928cd9272f
     container_name: dashboard
     environment:
       - HTTP_PORT=${HTTP_PORT}
@@ -33,6 +33,12 @@ services:
       # Books not yet cleared for publication (catalogue/livres.json « publie »: false): set by
       # install.sh outside the main branch only
       - LIVRES_NON_PUBLIES=${LIVRES_NON_PUBLIES:-}
+      # Offline translation (service « libretranslate », internal network): same limit as LT_CHAR_LIMIT
+      - TRADUCTION_URL=http://libretranslate:5000
+      - TRADUCTION_LIMITE=${TRADUCTION_LIMITE:-5000}
+    networks:
+      - default
+      - traduction
     volumes:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config
@@ -41,6 +47,8 @@ services:
       - ./catalogue:/catalogue:ro
       - ${DATA_DIR}/documents:/documents:ro
       - ${DATA_DIR}/assistant:/assistant
+      # Translation models: written here (language packs), read-only for libretranslate
+      - ${DATA_DIR}/traduction:/traduction
     restart: unless-stopped
 
   kiwix:
@@ -75,6 +83,79 @@ services:
     volumes:
       - ${DATA_DIR}/vecteurs:/modeles:ro
     restart: unless-stopped
+
+  libretranslate:
+    # Offline translation (Argos models on the CPU). Its network is internal: it can never reach internet,
+    # only the dashboard reaches it. Models are downloaded, checked and unpacked by the dashboard
+    # (language packs, catalogue/traduction.json) and mounted read-only here: nothing can be fetched at
+    # start or first use. The languages served are the models on disk; LT_LOAD_ONLY would only limit a
+    # download, disabled here (and impossible on this network).
+    image: libretranslate/libretranslate:v1.9.6
+    container_name: libretranslate
+    # Entry point of the image, plus the watch of .recharger (written by the dashboard after a language
+    # was added or removed): the server process (gunicorn worker) is stopped gracefully, the gunicorn
+    # master starts a new one at once, which reads the models again; the port stays open, a request
+    # waits during that start. Never HUP: the gunicorn_conf.py of the image rewrites sys.argv at start,
+    # and on HUP gunicorn loses its application (« No application module specified ») and stops.
+    # docker stop: SIGTERM forwarded to gunicorn at once. gunicorn gone: the loop ends with it, the
+    # container stops and restart: unless-stopped restarts it. Processes found in /proc (no pid file,
+    # which would outlive a killed master).
+    entrypoint:
+      - bash
+      - -c
+      - |
+        S=/home/libretranslate/.local/share/argos-translate/.recharger
+        lu() { cat "$$S" 2>/dev/null; }
+        # gunicorn processes whose parent is $$1: the master (child of the entry point), its workers
+        enfants() {
+          local d pp
+          for d in /proc/[0-9]*; do
+            read -r _ _ _ pp _ < "$$d/stat" 2>/dev/null || continue
+            [ "$$pp" = "$$1" ] && grep -qa gunicorn "$$d/cmdline" 2>/dev/null && echo "$${d#/proc/}"
+          done
+        }
+        maitre() { local m; m=$$(enfants "$$E" | head -1); [ -n "$$m" ] && echo "$$m"; }
+        vu=$$(lu)
+        ./scripts/entrypoint.sh & E=$$!
+        arret() { local m; if m=$$(maitre); then kill -TERM "$$m"; else kill -TERM "$$E"; fi 2>/dev/null; }
+        trap arret TERM INT
+        while kill -0 "$$E" 2>/dev/null; do
+          sleep 2 & wait $$!
+          n=$$(lu)
+          if [ "$$n" != "$$vu" ] && m=$$(maitre); then
+            vu=$$n
+            w=$$(enfants "$$m")
+            [ -n "$$w" ] && kill -TERM $$w && echo "ODIN : modèles modifiés, nouveau processus serveur"
+          fi
+        done
+        wait "$$E"
+    environment:
+      - LT_LOAD_ONLY=fr,en
+      - LT_CHAR_LIMIT=${TRADUCTION_LIMITE:-5000}
+      - LT_DISABLE_WEB_UI=true
+      - LT_DISABLE_FILES_TRANSLATION=true
+      - LT_API_KEYS=false
+      - LT_UPDATE_MODELS=false
+      - LT_FORCE_UPDATE_MODELS=false
+      # One server process: each one loads its own copy of the models
+      - LT_THREADS=1
+    volumes:
+      - ${DATA_DIR}/traduction:/home/libretranslate/.local/share/argos-translate:ro
+    networks:
+      - traduction
+    # The image has no curl: Python, as the server itself
+    healthcheck:
+      test: ["CMD", "/app/venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/languages', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  # No route to internet (internal): LibreTranslate and the dashboard only
+  traduction:
+    internal: true
 
 volumes:
   caddy_data:

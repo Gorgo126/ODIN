@@ -3,7 +3,10 @@ import { ecrireJson, lireJson } from './fichiers.mjs';
 
 const OPDS = 'https://library.kiwix.org/catalog/v2/entries';
 const CATALOGUE = '/catalogue/packs.txt';
-const cache = globalThis.__odinOpds ??= new Map();
+// Whole OPDS catalogue, read in one request and kept 1 h (1 min after a failure), shared by all packs
+const cache = globalThis.__odinOpdsCatalogue ??= { t: 0, v: null, p: null };
+const DUREE = 3600000;
+const DUREE_ECHEC = 60000;
 // Last size read in the catalogue for each pack, kept on disk so that it can be shown offline
 const MESURES = '/data/tailles.json';
 const memoire = globalThis.__odinTaillesZim ??= { valeurs: null };
@@ -40,42 +43,55 @@ export async function lirePacks() {
     });
 }
 
-async function entrees(nom) {
-  const c = cache.get(nom);
-  if (c && Date.now() - c.t < (c.v ? 600000 : 60000)) return c.v;
-  let v = null;
-  try {
-    const r = await fetch(`${OPDS}?name=${encodeURIComponent(nom)}&count=20`, { signal: AbortSignal.timeout(8000) });
-    if (r.ok) {
-      const xml = await r.text();
-      v = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map(([, b]) => {
-        const lien = b.match(/<link[^>]*acquisition\/open-access[^>]*>/)?.[0] || '';
-        return {
-          uuid: balise(b, 'id').replace('urn:uuid:', ''),
-          titre: balise(b, 'title'),
-          description: balise(b, 'summary'),
-          langue: balise(b, 'language'),
-          nom: balise(b, 'name'),
-          variante: balise(b, 'flavour'),
-          tags: balise(b, 'tags'),
-          date: balise(b, 'updated').slice(0, 10),
-          articles: parseInt(balise(b, 'articleCount') || '0', 10),
-          medias: parseInt(balise(b, 'mediaCount') || '0', 10),
-          createur: decoder(b.match(/<author>\s*<name>([\s\S]*?)<\/name>/)?.[1] || ''),
-          editeur: decoder(b.match(/<dc:publisher>\s*<name>([\s\S]*?)<\/name>/)?.[1] || ''),
-          url: lien.match(/href="([^"]*)"/)?.[1] || '',
-          taille: parseInt(lien.match(/length="(\d+)"/)?.[1] || '0', 10)
-        };
-      }).filter((e) => e.url);
+const entree = (b) => {
+  const lien = b.match(/<link[^>]*acquisition\/open-access[^>]*>/)?.[0] || '';
+  return {
+    uuid: balise(b, 'id').replace('urn:uuid:', ''),
+    titre: balise(b, 'title'),
+    description: balise(b, 'summary'),
+    langue: balise(b, 'language'),
+    nom: balise(b, 'name'),
+    variante: balise(b, 'flavour'),
+    tags: balise(b, 'tags'),
+    date: balise(b, 'updated').slice(0, 10),
+    articles: parseInt(balise(b, 'articleCount') || '0', 10),
+    medias: parseInt(balise(b, 'mediaCount') || '0', 10),
+    createur: decoder(b.match(/<author>\s*<name>([\s\S]*?)<\/name>/)?.[1] || ''),
+    editeur: decoder(b.match(/<dc:publisher>\s*<name>([\s\S]*?)<\/name>/)?.[1] || ''),
+    url: lien.match(/href="([^"]*)"/)?.[1] || '',
+    taille: parseInt(lien.match(/length="(\d+)"/)?.[1] || '0', 10)
+  };
+};
+
+// The API filters on one name only: the whole catalogue (about 450 KB compressed) is cheaper
+// than one request per pack. Entries grouped by name; null when the catalogue is unreachable.
+async function catalogue() {
+  if (Date.now() - cache.t < (cache.v ? DUREE : DUREE_ECHEC)) return cache.v;
+  // Concurrent callers (one per pack) share the same request
+  cache.p ??= (async () => {
+    let v = null;
+    try {
+      const r = await fetch(`${OPDS}?count=-1`, { signal: AbortSignal.timeout(15000) });
+      if (r.ok) {
+        v = new Map();
+        for (const [, b] of (await r.text()).matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
+          const e = entree(b);
+          if (e.url) v.set(e.nom, [...(v.get(e.nom) || []), e]);
+        }
+      }
+    } catch (e) {
+      console.error(`Catalogue Kiwix injoignable : ${e.message}`);
     }
-  } catch {}
-  cache.set(nom, { t: Date.now(), v });
-  return v;
+    Object.assign(cache, { t: Date.now(), v, p: null });
+    return v;
+  })();
+  return cache.p;
 }
 
 export async function infos(pack) {
-  const liste = await entrees(pack.nom);
-  if (!liste) return null;
+  const tout = await catalogue();
+  if (!tout) return null;
+  const liste = tout.get(pack.nom) || [];
   const e = liste.find((e) => pack.variante === '-' || e.variante === pack.variante) || null;
   if (e) await memoriser(pack.id, e.taille);
   return e;

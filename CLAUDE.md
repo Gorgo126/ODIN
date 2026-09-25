@@ -94,6 +94,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
 - dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Dépendances : Next, React, et pour
   la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
+  Dépendances transitives figées par dashboard/package-lock.json (npm ci au build) ; poppler-utils figé à la version
+  exacte d'Alpine (=25.12.0-r0) : si Alpine la retire, le build échoue au lieu de changer en silence.
 - kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
 - vecteurs : llama.cpp (ghcr.io/ggml-org/llama.cpp:server-v0.4.1) sert EmbeddingGemma sur le processeur pour
   la recherche avancée et l'index (VECTEURS_URL=http://vecteurs:8080, /v1/embeddings), réseau interne seulement.
@@ -105,6 +107,47 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   répond 503 « L'assistant IA n'est pas installé ». Absent de l'installation par défaut depuis le lot 4 ;
   install.sh (migration) retire son image sans l'option IA et laisse data/ollama avec une note.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
+- libretranslate : traduction hors ligne (libretranslate/libretranslate:v1.9.6, CPU, modèles Argos). Réseau Docker
+  « traduction » en internal: true, partagé avec le dashboard seul : aucun port publié, absent de Caddy, et aucune
+  route vers internet. Modèles dans ${DATA_DIR}/traduction (packages/, minisbd/), en lecture seule pour lui
+  (/home/libretranslate/.local/share/argos-translate, UID 1032), en écriture pour le dashboard (/traduction).
+  Vérifié : ni Argos ni LibreTranslate n'y écrivent (index.json et verrous MiniSBD seulement pour un téléchargement).
+  LT_DISABLE_WEB_UI, LT_DISABLE_FILES_TRANSLATION, LT_API_KEYS=false, LT_UPDATE_MODELS=false, LT_THREADS=1 (chaque
+  processus charge sa copie des modèles), LT_CHAR_LIMIT = TRADUCTION_LIMITE (même limite dans la route du dashboard).
+  Healthcheck Python sur /languages (pas de curl dans l'image) ; carte d'accueil et page font le même test.
+  LibreTranslate sert les modèles présents sur le disque ; LT_LOAD_ONLY ne servirait qu'à un téléchargement. Avec
+  moins de 2 modèles, il tenterait de tout télécharger : install.sh démarre donc le dashboard seul, lui fait installer
+  fr et en, et seulement ensuite le reste.
+  Packs de langues (lib/traduction-packs.mjs, catalogue/traduction.json : 49 langues de l'index Argos, xx→en et
+  en→xx, modèle MiniSBD utilisé, code de l'API quand il diffère : pb → pt-BR, zh → zh-Hans, zt → zh-Hant). Base fr et
+  en, jamais désinstallables. Le dashboard télécharge (reprise, 30 s d'inactivité, 3 essais avant le premier octet),
+  vérifie l'empreinte, décompresse (unzip de BusyBox) dans .en-cours/ du même volume, écrit odin-sha256 (un modèle
+  installé est reconnu par l'empreinte de son archive, pas par son dossier), rend lisible par tous (chmod), puis
+  renomme d'un coup dans packages/. .en-cours/ est vidé au démarrage du dashboard, et une langue à moitié présente
+  est retirée : une installation interrompue ne laisse rien. Un modèle MiniSBD partagé (tr.onnx : tr et az) reste
+  tant qu'une langue installée s'en sert.
+  Rechargement sans socket Docker, sur le modèle de Kiwix (qui relit library.xml, --monitorLibrary) : le dashboard
+  écrit .recharger, une fois après la dernière de plusieurs opérations simultanées ; le point d'entrée du service
+  (compose.yml) le lit toutes les 2 s et arrête proprement le processus serveur (SIGTERM au worker gunicorn) ; le maître
+  en relance un aussitôt, qui relit les modèles (1 à 2 s, le port reste ouvert : une requête attend). Pas de HUP (voir
+  Pièges). Processus trouvés dans /proc (enfants gunicorn du script d'entrée), sans fichier pid. Ce point d'entrée
+  transmet SIGTERM à gunicorn (docker stop immédiat) et se termine avec lui (restart: unless-stopped le relance).
+  /api/traduction/languages rend { langues, rechargement } : « Rechargement des langues… » sur /traduction tant
+  que LibreTranslate ne sert pas les langues installées (60 s au plus), jamais une erreur.
+  TRADUCTION_LANGUES (.env, défaut fr,en) : langues de la première installation seulement (aucun modèle présent) ;
+  ensuite le disque fait foi, install.sh ne garantit que fr et en, une langue désinstallée ne revient jamais seule.
+  Toutes les paires passent par l'anglais (pivot automatique d'Argos : fr→de = fr→en→de, moins précis).
+  Vérifié sur nomad (2026-09-25) : relecture des modèles en 1,5 à 2,7 s, 23 traductions envoyées pendant ce temps,
+  0 échec, conteneur non redémarré ; un seul signal pour 5 installations simultanées ; docker stop en 2,2 s ; kill -9
+  du maître → conteneur relancé ; dashboard redémarré en cours d'installation → rien sur le disque, langue absente ;
+  empreinte fausse → refus, rien d'installé ; redémarrage à froid avec fr et en seuls ; aucune écriture de
+  LibreTranslate dans le dossier des modèles. RAM : 119 Mo au repos, 1,08 Go avec 7 langues sources chargées ; pas
+  de pic au rechargement (l'ancien processus s'arrête avant que le nouveau charge ses modèles, à la demande).
+  Dashboard : lib/traduction.mjs, /api/traduction/{languages,detect,translate}, /api/traduction/packs[/<code>],
+  page /traduction (lien « Ajouter des langues » vers /configuration#traduction), panneau Traduction.
+  Ajouter une langue au catalogue : ses modèles xx→en et en→xx de l'index argospm-index, empreinte et taille calculées
+  sur les fichiers, son modèle MiniSBD (même correspondance que MiniSBDSentencizer d'Argos, anglais à défaut), son nom
+  français ; puis tester une traduction depuis cette langue hors ligne.
 - Cartes : packs PMTiles (fonds Protomaps, données OSM) dans data/cartes/<id>.pmtiles, servis par
   Caddy sur /tuiles/* (file_server, requêtes Range, derrière l'authentification). Catalogue :
   catalogue/cartes.txt (id|ouest,sud,est,nord ou -|zoom max|libellé). Un pack = pmtiles extract
@@ -369,7 +412,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage), /configuration, /traduction, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Disques (lot 7)
@@ -382,7 +425,7 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
   Docker attende le montage au démarrage (sinon il créerait des dossiers vides sur le disque système).
   DONNEES testé sur un système de fichiers monté (fichier-disque ext4 de 40 Go, fstab, VM test), PAS sur un
   disque physique distinct (Multipass 1.16/Hyper-V ne sait pas ajouter de disque).
-- Place : install.sh vérifie le disque des images Docker (DockerRootDir) avant tout téléchargement : 5 Go (20 Go
+- Place : install.sh vérifie le disque des images Docker (DockerRootDir) avant tout téléchargement : 6 Go (20 Go
   avec l'option IA, 2 Go pour une mise à jour), arrêt sinon ; avertissement sous 10 Go pour les données.
   lib/espace.mjs : chaque téléchargement (pack ZIM + 2 %, livre, carte + 5 %, modèle IA + 1 Go) réserve ce qu'il
   lui reste à écrire sur son disque (même st_dev) ; disque plein pendant l'écriture (ENOSPC) → « Disque plein ».
@@ -397,6 +440,11 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
   data/openwebui, data/synchro. Gardés : l'image précédente du dashboard (retour arrière). Disque système :
   22 Go → 5,1 Go utilisés. Trouvé et corrigé : un clone --depth 1 -b main ne pouvait pas changer de branche
   (checkout --track refusé) ; l'échec laissait les fichiers de dev sous le HEAD de main.
+- Fusion dans main le 2026-09-23 : 054013b (image figée par 306def3). Main d'avant, pour revenir en arrière si
+  l'installation publique pose problème : af1581102effa1915320c9a61f015394859abbcd. Snapshot nomad :
+  avant-fusion-main. Vérifié après la fusion sur VM vierge depuis main : installation complète, pas de
+  LIVRES_NON_PUBLIES dans .env, « Aucun livre n'est disponible », contrôle hors ligne (15 pages, licence sous
+  l'article, aucune requête vers un autre hôte ; journal : sonde et NTP seulement).
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
@@ -439,7 +487,9 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 
 - kiwix-serve ajoute déjà --port=8080 ; tourne en UID 1001 ; boucle si library.xml est absent.
 - Next standalone ne copie pas public/ : le Dockerfile doit le faire.
-- download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries.
+- download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries (renvoie vers
+  opds.library.kiwix.org). Le filtre name ne prend qu'un nom : le catalogue entier est lu en une requête
+  (count=-1, ~450 Ko compressés) et gardé 1 h (lib/catalogue.mjs).
 - Le build arm64 émulé bloque GitHub Actions.
 - raw.githubusercontent.com garde un cache jusqu'à 5 minutes : tester avec l'identifiant du commit.
 - Ollama interroge ollama.com au démarrage puis toutes les 4 h (recommandations, cache cloud) :
@@ -473,5 +523,15 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - multipass exec ne transmet pas l'entrée standard (un « cat > fichier » ou un « docker exec -i … < - » par un
   tube attend sans fin) : passer les fichiers par multipass transfer, puis docker cp ou une redirection sur la VM.
 - llama.cpp server prend par défaut la moitié des cœurs : -t $(nproc) dans le point d'entrée du service vecteurs.
+- Jamais de rm avec joker après un cd enchaîné par « ; » (« cd X; rm -f * » efface le dossier courant, donc le
+  dépôt, si le cd échoue). Chemin absolu, dossier créé d'abord, étapes liées par && :
+  S=<scratchpad>; mkdir -p "$S" && rm -f "$S"/* && cd "$S" && ...
+- LibreTranslate/Argos téléchargent au premier usage le découpeur de phrases MiniSBD de chaque langue source
+  (~/.local/share/argos-translate/minisbd/<code>.onnx) : il n'est pas dans les paquets Argos. Chaque pack de langue le
+  pose (champ decoupage du catalogue). Un modèle manquant ne se voit qu'hors ligne : tester une traduction depuis CHAQUE langue.
+- gunicorn de LibreTranslate : jamais de HUP. Le gunicorn_conf.py de l'image réécrit sys.argv au démarrage
+  (on_starting) ; au HUP, gunicorn relit ces arguments, perd l'application (« No application module specified »), le
+  maître s'arrête et le conteneur redémarre en entier. Pour relire les modèles : SIGTERM au worker. Pas de fichier pid
+  non plus (--pid) : il survit à un kill -9 du maître et bloque le démarrage suivant (« Already running »).
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

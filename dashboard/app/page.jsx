@@ -9,12 +9,13 @@ import Sprite from './assistant/Sprite';
 export const dynamic = 'force-dynamic';
 
 const DESCRIPTIONS = {
-  assistant: "Il cherche dans vos documents, la bibliothèque et vos livres, et répond avec ce qu'il y trouve, en citant ses sources.",
+  assistant: "Il cherche dans vos documents personnels, l'encyclopédie et la bibliothèque, et répond avec ce qu'il y trouve, en citant ses sources.",
   // Card of the assistant while the AI option is not installed: it leads to the installation page
   assistantAbsent: "Option : un modèle de langage qui rédige les réponses à partir des passages trouvés. Demande une carte graphique de 8 Go au moins.",
-  bibliotheque: "Encyclopédies et ouvrages de référence au format ZIM, indexés en plein texte et consultables hors ligne.",
+  bibliotheque: "Encyclopédies et wikis au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
-  livres: "Livres de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
+  livres: "Ouvrages de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
+  traduction: "Traduction de textes entre les langues installées, sur ce serveur, sans internet.",
   carte: "Cartes OpenStreetMap consultables hors ligne, jusqu'au niveau des rues pour les régions installées."
 };
 
@@ -46,6 +47,16 @@ const ICONES = {
       <path d="M14 2v7l2-1.5L18 9V2" />
     </svg>
   ),
+  traduction: (
+    <svg viewBox="0 0 24 24" {...trait}>
+      <path d="M4 5h9" />
+      <path d="M8.5 3v2" />
+      <path d="M11 5c-1 4-4 7-7 8.5" />
+      <path d="M6 8.5c1.2 2 3 3.6 5 4.5" />
+      <path d="M12 21l4.5-10L21 21" />
+      <path d="M13.6 17.5h5.8" />
+    </svg>
+  ),
   carte: (
     <svg viewBox="0 0 24 24" {...trait}>
       <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z" />
@@ -56,7 +67,9 @@ const ICONES = {
 };
 
 export default async function Page() {
-  const [services, etatLiaison] = await Promise.all([etatServices(), liaison()]);
+  const [etats, etatLiaison] = await Promise.all([etatServices(), liaison()]);
+  // Available services first, in the order of SERVICES; the others (not installed, stopped) after them
+  const services = [...etats.filter((s) => s.ok), ...etats.filter((s) => !s.ok)];
   const assistant = reglagesAssistant();
 
   return (
@@ -72,11 +85,6 @@ export default async function Page() {
       <BarreRecherche />
 
       <section>
-        <h2>Connectivité externe</h2>
-        <CarteLiaison initiale={etatLiaison} />
-      </section>
-
-      <section>
         <h2>Services</h2>
         <div className="services">
           {services.map((s) => {
@@ -87,7 +95,7 @@ export default async function Page() {
               <a key={s.id} href={option ? '/ia' : s.interne ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
                 <div className="service-tete">
                   <span className="service-icone">{perso ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}</span>
-                  <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : option ? 'Non installé' : 'Offline'}</span>
+                  <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Actif' : option ? 'Non installé' : 'Offline'}</span>
                 </div>
                 <strong>{perso ? assistant.nom : s.nom}</strong>
                 <p>{option ? DESCRIPTIONS.assistantAbsent : DESCRIPTIONS[s.id]}</p>
@@ -100,6 +108,11 @@ export default async function Page() {
       <section>
         <h2>Stockage</h2>
         <Stockage />
+      </section>
+
+      <section>
+        <h2>Connectivité externe</h2>
+        <CarteLiaison initiale={etatLiaison} />
       </section>
     </main>
   );
