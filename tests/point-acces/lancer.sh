@@ -57,7 +57,7 @@ FAUX_IW_SCAN= cas "scan en échec : 6" "6" "choisir_canal wlp2s0"
 cas "scan vide : 6" "6" "canal_depuis_scan </dev/null"
 
 echo "Réseau"
-cas "plage par défaut" "10.42.0.1 24 255.255.255.0 10.42.0.10 10.42.0.250" 'echo "$ADRESSE $PREFIXE $MASQUE $DEBUT $FIN"'
+cas "plage par défaut" "10.42.0.1 24 255.255.255.0 10.42.0.10 10.42.0.250 10.42.0.0/24" 'echo "$ADRESSE $PREFIXE $MASQUE $DEBUT $FIN $CIDR"'
 POINT_ACCES_RESEAU=192.168.50.1/24 cas "plage imposée" "192.168.50.10 192.168.50.250" 'echo "$DEBUT $FIN"'
 cas "plage invalide refusée" "refus" 'decouper_reseau 10.42.0.1/30 || echo refus'
 

@@ -11,7 +11,24 @@
 }
 
 :80 {
-	@public path /connexion /connexion/* /api/auth/* /_next/* /favicon.ico /logo.png
+	# Captive portal (option POINT_ACCES, docs/conception-point-acces.md). A device of the Wi-Fi network
+	# asking for any other site (connectivity probes of Android, Apple, Windows, Firefox, NetworkManager,
+	# or any http:// address) gets the answer of the dashboard, which knows whether it was released.
+	# remote_ip is the real client: the published port goes through Docker's DNAT (checked). Without
+	# the option, the defaults of compose.yml match nobody. The original path goes in X-Odin-Chemin,
+	# the original Host is kept by reverse_proxy.
+	@sonde {
+		remote_ip {$PORTAIL_RESEAU}
+		not host {$PORTAIL_HOTES}
+	}
+	handle @sonde {
+		rewrite * /api/portail/sonde
+		reverse_proxy dashboard:3000 {
+			header_up X-Odin-Chemin {http.request.orig_uri.path}
+		}
+	}
+
+	@public path /connexion /connexion/* /api/auth/* /_next/* /favicon.ico /logo.png /portail /api/portail/*
 	handle @public {
 		reverse_proxy dashboard:3000
 	}

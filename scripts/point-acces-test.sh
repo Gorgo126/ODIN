@@ -5,6 +5,7 @@
 #   sudo scripts/point-acces-test.sh preparer        hwsim (3 radios, also at boot), phone and box namespaces
 #   sudo scripts/point-acces-test.sh connecter [mdp] the phone joins the network (password of ODIN by default)
 #   sudo scripts/point-acces-test.sh verifier        points 1 to 5 of the brief, one line each
+#   sudo scripts/point-acces-test.sh portail         point 6: captive portal, every probe before and after release
 #   sudo scripts/point-acces-test.sh deconnecter
 #   sudo scripts/point-acces-test.sh nettoyer        namespaces removed, hwsim no longer loaded at boot
 set -uo pipefail
@@ -134,6 +135,65 @@ verifier() {
   [ "$ECHECS" -eq 0 ] && echo "Tout est bon." || echo "$ECHECS échec(s)."
 }
 
+# B6: every probe before release (302 to the portal), release, then the exact answer, byte for byte.
+# Expected values typed from the sources (CLAUDE.md), independent of dashboard/lib/portail.mjs.
+APPLE='<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>'
+SONDES=(
+  "connectivitycheck.gstatic.com|/generate_204|204|"
+  "www.google.com|/gen_204|204|"
+  "clients3.google.com|/generate_204|204|"
+  "play.googleapis.com|/generate_204|204|"
+  "captive.apple.com|/hotspot-detect.html|200|$APPLE\n"
+  "www.apple.com|/library/test/success.html|200|$APPLE"
+  "www.msftconnecttest.com|/connecttest.txt|200|Microsoft Connect Test"
+  "www.msftncsi.com|/ncsi.txt|200|Microsoft NCSI"
+  "firefox-portal-detection.com|/generate_204|204|"
+  "firefox-portal-detection.com|/success.txt?ipv4|200|success\n"
+  "detectportal.firefox.com|/success.txt|200|success\n"
+  "detectportal.firefox.com|/canonical.html|200|<meta http-equiv=\"refresh\" content=\"0;url=https://support.mozilla.org/kb/captive-portal\"/>"
+  "connectivity-check.ubuntu.com.|/|204|"
+  "nmcheck.gnome.org|/check_network_status.txt|200|NetworkManager is online"
+)
+
+portail() {
+  local adresse s hote chemin statut corps r
+  adresse=$(sed -n 's/^  "adresse": "\(.*\)",/\1/p' "$ETAT")
+  [ "$(connecter)" = connecté ] || { ko "téléphone non connecté"; return; }
+  echo "6. Portail captif"
+  echo "  avant « Continuer »"
+  for s in "${SONDES[@]}"; do
+    IFS='|' read -r hote chemin statut corps <<<"$s"
+    r=$(dans curl -s -m 8 -o /dev/null -w '%{http_code} %{redirect_url}' "http://$hote$chemin")
+    [ "$r" = "302 http://$adresse/portail" ] && ok "$hote$chemin → $r" || ko "$hote$chemin → $r"
+  done
+  r=$(dans curl -s -m 8 -o /dev/null -w '%{http_code}' "http://$adresse/portail")
+  [ "$r" = 200 ] && ok "page /portail : 200" || ko "page /portail : $r"
+  r=$(dans curl -s -m 8 -o /dev/null -w '%{http_code} %{redirect_url}' -X POST "http://$adresse/api/portail/liberer")
+  [ "$r" = "303 http://$adresse/portail?libre=1" ] && ok "Continuer → $r" || ko "Continuer → $r"
+  echo "  après « Continuer »"
+  local attendu obtenu entete
+  for s in "${SONDES[@]}"; do
+    IFS='|' read -r hote chemin statut corps <<<"$s"
+    attendu=$(mktemp); obtenu=$(mktemp); entete=$(mktemp)
+    printf '%b' "$corps" > "$attendu"
+    r=$(dans curl -s -m 8 -D "$entete" -o "$obtenu" -w '%{http_code}' "http://$hote$chemin")
+    if [ "$r" = "$statut" ] && cmp -s "$attendu" "$obtenu" && grep -qi '^X-NetworkManager-Status: online' "$entete"; then
+      ok "$hote$chemin → $r, $(stat -c %s "$obtenu") octets identiques"
+    else
+      ko "$hote$chemin → $r, $(stat -c %s "$obtenu") octets (attendu $statut, $(stat -c %s "$attendu") octets)"
+    fi
+    rm -f "$attendu" "$obtenu" "$entete"
+  done
+  r=$(dans curl -s -m 8 -o /dev/null -w '%{http_code} %{redirect_url}' "http://exemple-quelconque.org/page")
+  [ "$r" = "302 http://$adresse/" ] && ok "autre domaine → $r" || ko "autre domaine → $r"
+  r=$(dans busybox nslookup -type=a dns.msftncsi.com "$adresse" 2>/dev/null | awk '/^Address/ && !/#53/ { print $NF }' | tail -1)
+  [ "$r" = 131.107.255.255 ] && ok "dns.msftncsi.com → $r" || ko "dns.msftncsi.com → $r"
+  r=$(dans curl -s -m 8 -o /dev/null -w '%{http_code} %{redirect_url}' "http://$adresse/")
+  [[ "$r" == "302 "*"/connexion"* ]] && ok "ODIN par son adresse → $r (pas de portail)" || ko "ODIN par son adresse → $r"
+  echo
+  [ "$ECHECS" -eq 0 ] && echo "Tout est bon." || echo "$ECHECS échec(s)."
+}
+
 nettoyer() {
   deconnecter >/dev/null 2>&1
   ip netns del "$TEL" 2>/dev/null; ip netns del "$BOX" 2>/dev/null
@@ -146,6 +206,7 @@ case "${1:-}" in
   connecter) connecter "${2:-}" ;;
   deconnecter) deconnecter ;;
   verifier) verifier; [ "$ECHECS" -eq 0 ] ;;
+  portail) portail; [ "$ECHECS" -eq 0 ] ;;
   nettoyer) nettoyer ;;
   *) echo "Usage : sudo $0 preparer|connecter [mdp]|verifier|deconnecter|nettoyer"; exit 1 ;;
 esac

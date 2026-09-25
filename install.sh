@@ -515,6 +515,22 @@ elif [ -f /etc/systemd/system/odin-point-acces.target ] || [ -d /etc/odin/point-
 else
   echo "  Option désactivée (POINT_ACCES=1 après sudo pour l'activer)."
 fi
+# Captive portal (Caddy and dashboard): as soon as the option is on and its range is valid and free,
+# whatever the state of the access point now (a passing hostapd failure must not leave the machine
+# without portal for good). Removed only by POINT_ACCES=0. Compose recreates caddy and the dashboard
+# when these values change.
+avant_portail=$(grep '^PORTAIL_' "$CIBLE/.env" || true)
+sed -i '/^# Portail captif/d; /^PORTAIL_/d' "$CIBLE/.env"
+if [ "$POINT_ACCES" = 1 ]; then
+  portail=$(bash "$CIBLE/scripts/point-acces.sh" portail 2>/dev/null || true)
+  if [ -n "$portail" ]; then
+    printf '# Portail captif du point d'"'"'accès Wi-Fi (écrit par install.sh)\n%s\n' "$portail" >> "$CIBLE/.env"
+  fi
+fi
+if [ "$(grep '^PORTAIL_' "$CIBLE/.env" || true)" != "$avant_portail" ]; then
+  echo "  Portail captif : $(grep -q '^PORTAIL_' "$CIBLE/.env" && echo 'activé' || echo 'retiré')."
+  docker compose up -d --remove-orphans >/dev/null 2>&1 || echo "  Avertissement : redémarrage de Caddy et du tableau de bord impossible."
+fi
 
 msg "Terminé"
 echo

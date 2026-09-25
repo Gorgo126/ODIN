@@ -4,6 +4,11 @@ services:
     container_name: caddy
     ports:
       - "${HTTP_PORT}:80"
+    environment:
+      # Captive portal of the Wi-Fi access point, written in .env by install.sh when POINT_ACCES=1.
+      # Defaults match nobody: 192.0.2.0/32 is a documentation range (RFC 5737)
+      - PORTAIL_RESEAU=${PORTAIL_RESEAU:-192.0.2.0/32}
+      - PORTAIL_HOTES=${PORTAIL_HOTES:-portail.invalid}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${DATA_DIR}/cartes:/srv/cartes:ro
@@ -38,6 +43,8 @@ services:
       - TRADUCTION_LIMITE=${TRADUCTION_LIMITE:-5000}
       # Server health (/sante): containers read through the filtered socket proxy, internal network only
       - DOCKER_URL=http://socket-proxy:2375
+      # Captive portal: only devices of this range may be released (/api/portail/liberer)
+      - PORTAIL_RESEAU=${PORTAIL_RESEAU:-192.0.2.0/32}
     networks:
       - default
       - traduction

@@ -56,6 +56,7 @@ decouper_reseau() {
   local n m base
   n=$(ip_en_nombre "$ADRESSE"); m=$(masque_de "$PREFIXE"); base=$(( n & m ))
   MASQUE=$(nombre_en_ip "$m")
+  CIDR="$(nombre_en_ip "$base")/$PREFIXE"
   DEBUT=$(nombre_en_ip $(( base + 10 )))
   FIN=$(nombre_en_ip $(( base + 250 )))
 }
@@ -209,6 +210,7 @@ ecrire_etat() {
   "ssid": $(echapper_json "$SSID"),
   "motDePasse": $(json_ou_null "$mdp"),
   "adresse": $(json_ou_null "${ADRESSE:-}"),
+  "reseau": $(json_ou_null "${CIDR:-}"),
   "noms": $noms,
   "canal": $canal,
   "pays": $(json_ou_null "${PAYS_CODE:-${DET_PAYS:-}}"),
@@ -437,6 +439,21 @@ desinstaller() {
   echo "Point d'accès Wi-Fi retiré."
 }
 
+# Variables of the captive portal (Caddy and dashboard), for .env: printed once the range is valid and
+# free, whatever the state of the access point (a hostapd failure during the installation must not
+# leave the machine without portal). Nothing printed otherwise.
+portail() {
+  lire_config
+  decouper_reseau "$RESEAU" || return 0
+  local itf=
+  if [ -f "$ETC/parametres" ]; then itf=$(sed -n 's/^INTERFACE=//p' "$ETC/parametres" | tr -d "'\""); fi
+  plage_occupee "$itf" && return 0
+  local hotes="$ADRESSE $NOM $NOM.lan"
+  systemctl is-active --quiet avahi-daemon 2>/dev/null && hotes+=" $NOM.local"
+  echo "PORTAIL_RESEAU=$CIDR"
+  echo "PORTAIL_HOTES=\"$hotes\""
+}
+
 # One line for the end of the installer
 resume() {
   lire_config
@@ -466,12 +483,13 @@ principal() {
     etat)
       if [ "${2:-}" = --ecrire ]; then etat_ecrire; else lire_config; cat "$DATA/config/point-acces.json" 2>/dev/null || echo '{"etat": "inactif"}'; fi ;;
     resume) resume ;;
+    portail) portail ;;
     *) echo "Usage : sudo $0 detecter|installer|desinstaller|etat"; return 1 ;;
   esac
 }
 
 # Sourced by the tests: functions only
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-  if [ "$(id -u)" -ne 0 ] && [ "${1:-}" != etat ] && [ "${1:-}" != resume ]; then echo "Lancez ce script avec sudo."; exit 1; fi
+  if [ "$(id -u)" -ne 0 ] && [ "${1:-}" != etat ] && [ "${1:-}" != resume ] && [ "${1:-}" != portail ]; then echo "Lancez ce script avec sudo."; exit 1; fi
   principal "$@"
 fi
