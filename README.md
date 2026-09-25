@@ -291,6 +291,35 @@ disque, le télécharge et teste son chargement sur la carte.
 > Ubuntu, ni une carte de 8 Go exactement n'ont été éprouvés. Sans carte adaptée, rien n'est téléchargé
 > et ODIN fonctionne en recherche avancée.
 
+### Point d'accès Wi-Fi (option, non vérifiée)
+
+Sans box ni routeur, ODIN peut créer **son propre réseau Wi-Fi** avec la carte Wi-Fi de la machine :
+un téléphone rejoint le réseau « ODIN », puis ouvre ODIN à l'adresse `http://10.42.0.1` ou
+`http://<nom>.lan`. Option désactivée par défaut, activée à l'installation :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sudo POINT_ACCES=1 bash
+```
+
+- Réseau en **2,4 GHz** (canal 1, 6 ou 11, le moins encombré à chaque démarrage), **WPA2** avec un mot
+  de passe généré, affiché à la fin de l'installation et gardé aux mises à jour. Deux QR codes (rejoindre
+  le réseau, ouvrir ODIN) sont produits dans `data/config/`.
+- **Aucun accès à internet** pour les appareils du réseau, même quand ODIN en a un : seul ODIN est
+  joignable, et les appareils ne se voient pas entre eux.
+- **Seule la carte Wi-Fi est touchée** : l'Ethernet, sa configuration et Docker restent tels quels. Une
+  carte Wi-Fi qui sert déjà à la connexion de la machine n'est pas prise : préparez ODIN par l'Ethernet.
+- **Jamais bloquant** : sans carte compatible, ou si le point d'accès ne démarre pas, l'installation se
+  termine normalement en indiquant la raison, et ODIN reste joignable par le réseau existant. Le
+  démarrage de la machine n'attend jamais le Wi-Fi.
+- Relancer l'installeur avec `POINT_ACCES=0` retire tout et rend la carte au système (NetworkManager
+  compris).
+
+> **Non vérifié sur du vrai matériel.** Ce chemin a été testé avec des radios Wi-Fi virtuelles
+> (`mac80211_hwsim`) : connexion, bail, DNS, accès à ODIN, absence de sortie vers internet, redémarrage,
+> retrait, avec et sans NetworkManager. Restent non vérifiés : les vrais pilotes (Intel, MediaTek,
+> Realtek), la portée, le nombre d'appareils, et le comportement de vrais téléphones et ordinateurs.
+> La page d'accueil qui s'ouvre toute seule à la connexion (portail captif) viendra ensuite.
+
 ### Options d'installation
 
 Des variables, placées **après `sudo`**, ajustent l'installation :
@@ -306,12 +335,16 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
 | `BRANCHE` | `main` | Branche d'ODIN à installer. |
 | `DEPOT` | ce dépôt | Dépôt Git à cloner, pour une copie personnelle d'ODIN. |
 | `DONNEES` | `/opt/odin/data` | Dossier des données (chemin absolu), par exemple sur un gros disque de données. |
+| `POINT_ACCES` | `0` | `1` : ODIN crée son propre réseau Wi-Fi (option non vérifiée, voir plus haut). Gardé aux mises à jour ; `0` le retire. |
 
 Dans `/opt/odin/.env`, `TRADUCTION_LANGUES` (défaut `fr,en`) choisit les langues de traduction d'une
 **première** installation, par exemple `fr,en,de,es` ; ensuite, les langues se gèrent dans ODIN, et une
 mise à jour ne réinstalle que le français et l'anglais s'ils manquaient.
 
 Les ports se règlent dans `/opt/odin/.env`, comme le dossier des données (`DATA_DIR`, écrit par `DONNEES`).
+Le point d'accès s'y règle aussi : `POINT_ACCES_SSID` (nom du réseau, `ODIN`), `POINT_ACCES_RESEAU`
+(`10.42.0.1/24`), `POINT_ACCES_INTERFACE` (carte imposée) et `PAYS` (code pays, déduit sinon du fuseau
+horaire) ; relancer l'installeur ensuite.
 
 ### Disques
 

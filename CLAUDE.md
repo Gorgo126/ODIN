@@ -209,6 +209,66 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   (assistant/wikis.mjs). Un ZIM hors catalogue ou d'une autre variante que celle du catalogue (medecine nopic sur
   odintest) n'est pas désinstallable depuis ODIN.
 
+- Point d'accès Wi-Fi (option POINT_ACCES, NON VÉRIFIÉE sur du vrai matériel ; brief docs/conception-point-acces.md,
+  lot 1 fait, lots 2 portail captif et 3 bascule à venir). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
+  (paquet dnsmasq-base, PAS dnsmasq qui lance un service sur le port 53) sous systemd. scripts/point-acces.sh
+  (detecter, installer, desinstaller, etat ; demarrer, arreter, echec pour les unités ; fonctions chargeables par
+  les tests), modèles dans config/point-acces/, fichiers générés dans /etc/odin/point-acces/ (root, 600 : parametres,
+  hostapd.conf avec @CANAL@, dnsmasq.conf, mot-de-passe), hostapd.conf du démarrage dans /run/odin-point-acces/.
+  Les unités ne lisent jamais .env : parametres fige interface, plage, SSID, pays et DATA à l'installation.
+  Unités : odin-point-acces.target (WantedBy multi-user, DefaultDependencies=no + Conflicts/Before=shutdown.target
+  remis à la main : la target est atteinte sans attendre ses services, donc multi-user.target non plus),
+  odin-point-acces-reseau.service (oneshot, After=docker.service, TimeoutStartSec=30, scan de 8 s au plus :
+  rfkill, NetworkManager, canal, adresse, IPv6 coupé sur l'interface seule, pare-feu ; son arrêt défait tout),
+  odin-hostapd et odin-dnsmasq (BindsTo le réseau, Restart=on-failure, 5 essais en 2 min), odin-point-acces-echec
+  (OnFailure= des trois : état echec-demarrage). hostapd.service de la distribution masqué.
+  Détection : iw dev (interface imposée par POINT_ACCES_INTERFACE sinon la première libre avec « * AP » dans
+  Supported interface modes), occupée si route par défaut, adresse autre que la nôtre ou « Connected to » ;
+  une installation existante garde son interface tant qu'elle existe (sinon une autre carte serait prise et
+  l'ancienne adresse ferait croire la plage occupée : vu au test). Pays : PAYS, sinon fuseau → zone.tab, sinon 00
+  (pas de country_code dans hostapd.conf alors). Canal : scan, groupe le moins chargé parmi 1/6/11, 6 à égalité ou
+  en échec. Raisons : aucune-carte, pas-de-mode-ap, wifi-occupe, echec-demarrage, plage-occupee.
+  Pare-feu (Docker 29.8.1 : backend iptables, via iptables-nft) : iptables et ip6tables
+  -I DOCKER-USER -i <if> -m conntrack ! --ctstate DNAT -j DROP (FORWARD si la chaîne n'existe pas), posée par le
+  démarrage sans doublon (-C), retirée par l'arrêt. Jamais forwarding=0 sur l'interface : l'accès à Caddy passe par
+  le DNAT de Docker. Politique FORWARD de Docker déjà DROP, la règle est une garantie de plus.
+  dnsmasq : interface=<if>, except-interface=lo (sinon il écoute aussi 127.0.0.1 et ::1), bind-interfaces, no-resolv,
+  no-hosts, host-record <nom>,<nom>.lan, address=/#/<ip>, local=/#/ (AAAA : réponse vide ; sans lui REFUSED, faute de
+  serveur amont ; filter-AAAA n'y change rien), baux dans /run/odin-point-acces/.
+  NetworkManager : /etc/NetworkManager/conf.d/odin-point-acces.conf avec unmanaged-devices+=interface-name:<if>
+  (« += » AJOUTE à la liste d'Ubuntu « *,except:type:wifi,… » ; « = » la remplacerait et donnerait l'Ethernet et les
+  ponts Docker à NM), plus nmcli device set managed no/yes ; retiré par l'arrêt : NM reprend la carte.
+  État : ${DATA}/config/point-acces.json (etat actif|inactif|indisponible, raison, interface, ssid, motDePasse, adresse,
+  noms [<nom>.lan, <nom>.local si avahi], canal, pays, maj), 640 au propriétaire de data/config : le conteneur
+  dashboard tourne en root (vérifié le 2026-09-25) et le lira au lot 2 ; à revoir si l'image passe en non-root.
+  QR codes point-acces-wifi.svg et point-acces-adresse.svg (qrencode) à côté. « actif » écrit par ExecStartPost de
+  hostapd et dnsmasq quand les deux tournent et que la carte est en mode AP ; un service dans son ExecStartPost n'est
+  pas « active » : attendre « active » faisait s'attendre les deux (10 s perdues, état jamais écrit au démarrage).
+  install.sh (« Point d'accès Wi-Fi », avant « Terminé ») : POINT_ACCES après sudo, sinon celui de .env (gardé),
+  paquets iw hostapd dnsmasq-base qrencode rfkill, puis installer ; 0 sur une machine où l'option était active :
+  desinstaller (unités, /etc/odin/point-acces, règles, déclaration NM, adresse ; état inactif). Une mise à jour
+  régénère les fichiers et ne redémarre que si l'un d'eux change (comparaison des fichiers générés). Le mot de passe
+  (xxxx-xxxx-xxxx sans 0/o/1/l) est gardé aux mises à jour, perdu par POINT_ACCES=0.
+  Tests A : bash tests/point-acces/lancer.sh (25 cas, faux iw/ip/timedatectl dans tests/point-acces/faux).
+  Tests B : sudo scripts/point-acces-test.sh preparer|connecter|verifier|nettoyer, sur une VM test SEULEMENT
+  (mac80211_hwsim de linux-modules-extra-$(uname -r), 3 radios : wlan0 ODIN, wlan1 dans l'espace de noms
+  « telephone » avec wpa_supplicant et udhcpc de busybox, wlan2 dans « box » pour le lot 3 ; hwsim chargé au
+  démarrage par /etc/modules-load.d pour le test). Les espaces de noms ne survivent pas au redémarrage : preparer.
+  Résultats (VM test, 2026-09-25, Ubuntu 24.04, noyau 6.8.0-139, Docker 29.8.1) : A 25/25. B 1 à 5 : actif, JSON et
+  QR, mauvais mot de passe refusé, bail .42 dans la plage, passerelle et DNS = ODIN, tout nom → ODIN, http://test.lan
+  → page de connexion, 1.1.1.1 (TCP 443 et ping) et la box injoignables alors que la VM a internet. Cohabitation avec
+  hors-ligne.sh dans les deux ordres : page joignable, rien ne sort, règle en place. B 7 : redémarrage à froid, réseau
+  revenu seul ; multi-user.target à 18 s, réseau Wi-Fi à 26 s (hors de la chaîne critique) ; hostapd cassé exprès :
+  5 relances puis echec-demarrage, ODIN complet, démarrage non retardé. B 8 : relance → mot de passe inchangé ;
+  POINT_ACCES=0 → unités, fichiers, règles v4/v6 retirés, carte sans adresse, IPv6 rétabli, Ethernet et internet
+  intacts. Avec network-manager installé (netplan garde networkd pour l'Ethernet, resté « unmanaged ») : B 1 à 5 et 8
+  bons, carte « unmanaged » pendant l'option puis « disconnected » (rendue à NM) après POINT_ACCES=0. VM vierge :
+  POINT_ACCES=1 sans carte → « Point d'accès Wi-Fi indisponible : Aucune carte Wi-Fi détectée », installation normale
+  (166 s) ; puis radios virtuelles et relance (POINT_ACCES repris de .env) → B 1 à 5 bons.
+  NON VÉRIFIÉ : vrais pilotes (Intel, MediaTek, Realtek), portée, nombre d'appareils, fenêtres de portail d'iOS,
+  d'Android et de Windows sur de vrais appareils ; redémarrage à froid AVEC NetworkManager ; B6, B9, B10 (lots 2 et 3,
+  test hors ligne complet avec l'option). Premier test réel prévu : Ubuntu desktop en clé USB live (NetworkManager).
+
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
 Une montée de version se fait volontairement, une image à la fois, après test sur odintest puis hors ligne.
 Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
@@ -590,5 +650,10 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 - Miroirs Kiwix : download.kiwix.org renvoie vers un miroir choisi par lb.download.kiwix.org ; le 2026-09-25,
   ftp.nluug.nl ne répondait plus qu'en IPv6 depuis odintest. La VM a l'IPv6, pas les conteneurs : curl sur la VM
   passe, le dashboard échoue (UND_ERR_CONNECT_TIMEOUT). Tester avec curl -4 avant de chercher dans ODIN.
+- /run est monté noexec sur Ubuntu : un script d'accroche (udhcpc -s, dhcpcd -c) placé dans /run n'est jamais
+  exécuté, sans erreur visible. Les mettre ailleurs (/var/lib/…).
+- iw : les modes sont indentés « \t\t * AP » (deux tabulations, une espace) ; « AP » apparaît aussi dans AP/VLAN et
+  dans « valid interface combinations » : ne lire que la section Supported interface modes.
+- mac80211_hwsim n'est pas dans l'image cloud d'Ubuntu : paquet linux-modules-extra-$(uname -r).
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
