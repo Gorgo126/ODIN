@@ -137,6 +137,12 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   TRADUCTION_LANGUES (.env, défaut fr,en) : langues de la première installation seulement (aucun modèle présent) ;
   ensuite le disque fait foi, install.sh ne garantit que fr et en, une langue désinstallée ne revient jamais seule.
   Toutes les paires passent par l'anglais (pivot automatique d'Argos : fr→de = fr→en→de, moins précis).
+  Vérifié sur nomad (2026-09-25) : relecture des modèles en 1,5 à 2,7 s, 23 traductions envoyées pendant ce temps,
+  0 échec, conteneur non redémarré ; un seul signal pour 5 installations simultanées ; docker stop en 2,2 s ; kill -9
+  du maître → conteneur relancé ; dashboard redémarré en cours d'installation → rien sur le disque, langue absente ;
+  empreinte fausse → refus, rien d'installé ; redémarrage à froid avec fr et en seuls ; aucune écriture de
+  LibreTranslate dans le dossier des modèles. RAM : 119 Mo au repos, 1,08 Go avec 7 langues sources chargées ; pas
+  de pic au rechargement (l'ancien processus s'arrête avant que le nouveau charge ses modèles, à la demande).
   Dashboard : lib/traduction.mjs, /api/traduction/{languages,detect,translate}, /api/traduction/packs[/<code>],
   page /traduction (lien « Ajouter des langues » vers /configuration#traduction), panneau Traduction.
   Ajouter une langue au catalogue : ses modèles xx→en et en→xx de l'index argospm-index, empreinte et taille calculées
