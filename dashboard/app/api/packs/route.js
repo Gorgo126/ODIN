@@ -1,9 +1,16 @@
 import { lirePacks, infos, dernieresTailles } from '../../../lib/catalogue.mjs';
 import { enLigne } from '../../../lib/liaison.mjs';
-import { tache, etatInstallation } from '../../../lib/telechargements.mjs';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { tache, etatInstallation, fichiersPack } from '../../../lib/telechargements.mjs';
 import { licenceZim } from '../../../lib/licences.mjs';
 
 export const dynamic = 'force-dynamic';
+
+async function tailleInstallee(p) {
+  const tailles = await Promise.all((await fichiersPack(p)).map((f) => fs.stat(path.join('/data', f)).then((s) => s.size, () => 0)));
+  return tailles.reduce((a, b) => a + b, 0);
+}
 
 export async function GET() {
   const packs = await lirePacks().catch(() => []);
@@ -20,6 +27,8 @@ export async function GET() {
       derniereMesure: dernieres[p.id] || 0,
       disponible: !!e,
       installation: await etatInstallation(p, e),
+      // Size on disk of its installed files (freed by an uninstall)
+      installe: await tailleInstallee(p),
       tache: tache(p.id)
     };
   }));

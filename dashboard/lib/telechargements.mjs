@@ -2,7 +2,7 @@ import { promises as fs, createWriteStream } from 'fs';
 import { Readable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 import path from 'path';
-import { lirePacks, infos } from './catalogue.mjs';
+import { lirePacks, infos, oublierTaille } from './catalogue.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { ecrireTexte } from './fichiers.mjs';
 import { reserver, liberer, disquePlein } from './espace.mjs';
@@ -14,6 +14,9 @@ const INACTIVITE = 30000;
 const taches = globalThis.__odinTaches ??= new Map();
 // Kept apart from taches: tasks are serialized to the browser
 const controles = globalThis.__odinControles ??= new Map();
+// End of each running download (promise), and packs being uninstalled
+const fins = globalThis.__odinFinsZim ??= new Map();
+const retraits = globalThis.__odinRetraitsZim ??= new Set();
 
 const existe = (p) => fs.access(p).then(() => true, () => false);
 const esc = (s) => String(s ?? '')
@@ -25,19 +28,30 @@ const prefixe = (nom) => `${nom}_`;
 export const tache = (id) => taches.get(id) || null;
 export const nomFichier = (e) => path.basename(e.url.replace(/\.meta4$/, ''));
 
+// ZIM files of this pack (its name, and its variant unless « - »). Two packs may share a name
+// (wikipedia_fr_all nopic and maxi): only the variant tells them apart.
+export async function fichiersPack(pack) {
+  const debut = pack.variante === '-' ? prefixe(pack.nom) : `${pack.nom}_${pack.variante}_`;
+  return (await fs.readdir(DATA).catch(() => []))
+    .filter((f) => f.startsWith(debut) && f.endsWith('.zim'));
+}
+
 // absent | installe | maj (même variante, plus ancienne) | autre (autre variante)
 export async function etatInstallation(pack, e) {
   const fichiers = (await fs.readdir(DATA).catch(() => []))
     .filter((f) => f.startsWith(prefixe(pack.nom)) && f.endsWith('.zim'));
   if (!fichiers.length) return 'absent';
-  if (!e || fichiers.includes(nomFichier(e))) return 'installe';
-  const memeVariante = fichiers.some((f) => f.startsWith(`${pack.nom}_${e.variante}_`));
-  return memeVariante ? 'maj' : 'autre';
+  const siens = await fichiersPack(pack);
+  // Offline (no catalogue entry): installed when a file of its own variant is there
+  if (!e) return siens.length ? 'installe' : 'autre';
+  if (fichiers.includes(nomFichier(e))) return 'installe';
+  return siens.length ? 'maj' : 'autre';
 }
 
 export async function demarrer(id) {
   const courante = taches.get(id);
   if (courante?.etat === 'en cours') return courante;
+  if (retraits.has(id)) throw new Error('Désinstallation en cours');
 
   const pack = (await lirePacks()).find((p) => p.id === id);
   if (!pack) throw new Error('Pack inconnu');
@@ -49,7 +63,7 @@ export async function demarrer(id) {
   const c = new AbortController();
   taches.set(id, t);
   controles.set(id, c);
-  telecharger(pack, e, t, c)
+  const fin = telecharger(pack, e, t, c)
     .catch(async (err) => {
       if (c.signal.reason === 'annule') {
         t.etat = 'annule';
@@ -61,7 +75,8 @@ export async function demarrer(id) {
         : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?'
         : err.message);
     })
-    .finally(() => { controles.delete(id); liberer(`zim:${id}`); });
+    .finally(() => { controles.delete(id); fins.delete(id); liberer(`zim:${id}`); });
+  fins.set(id, fin);
   return t;
 }
 
@@ -70,6 +85,28 @@ export function annuler(id) {
   if (!c) return false;
   c.abort('annule');
   return true;
+}
+
+// Uninstalls a pack: its books out of library.xml first (kiwix-serve, --monitorLibrary, stops serving
+// them; the assistant sees the new date of the file), then its files and its remembered size. A
+// download of the same pack still running (update) is cancelled and awaited first, so that it can
+// neither register its book afterwards nor leave its .part.
+export async function supprimer(id) {
+  const pack = (await lirePacks()).find((p) => p.id === id);
+  if (!pack) throw new Error('Pack inconnu');
+  if (retraits.has(id)) throw new Error('Désinstallation déjà en cours');
+  retraits.add(id);
+  try {
+    if (annuler(id)) await fins.get(id)?.catch(() => {});
+    const fichiers = await fichiersPack(pack);
+    if (!fichiers.length) throw new Error('Ce pack n\'est pas installé');
+    await retirer(new Set(fichiers));
+    for (const f of fichiers) await fs.rm(path.join(DATA, f), { force: true });
+    await oublierTaille(id);
+    taches.delete(id);
+  } finally {
+    retraits.delete(id);
+  }
 }
 
 async function telecharger(pack, e, t, controle) {
@@ -112,11 +149,20 @@ async function telecharger(pack, e, t, controle) {
 
 // Read-modify-write of library.xml: two packs finishing together would otherwise drop one book
 const verrou = globalThis.__odinBibliotheque ??= { suite: Promise.resolve() };
-function inscrire(...args) {
-  const tache = verrou.suite.then(() => inscrireMaintenant(...args));
+function enFile(f) {
+  const tache = verrou.suite.then(f);
   verrou.suite = tache.catch(() => {});
   return tache;
 }
+const inscrire = (...args) => enFile(() => inscrireMaintenant(...args));
+
+// Removes from library.xml the books whose file is in `fichiers`
+const retirer = (fichiers) => enFile(async () => {
+  const xml = await fs.readFile(LIB, 'utf8').catch(() => null);
+  if (xml === null) return;
+  const neuf = xml.replace(/\s*<book\b[^>]*\/>/g, (b) => (fichiers.has(b.match(/path="([^"]*)"/)?.[1]) ? '' : b));
+  if (neuf !== xml) await ecrireTexte(LIB, neuf);
+});
 
 async function inscrireMaintenant(e, fichier, debut) {
   let xml = await fs.readFile(LIB, 'utf8').catch(() => VIDE);
