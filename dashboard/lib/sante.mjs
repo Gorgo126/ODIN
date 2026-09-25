@@ -65,6 +65,8 @@ function image(c) {
 }
 
 function sante(c) {
+  // A stopped container keeps the result of its last check: meaningless once stopped
+  if (c.State !== 'running') return null;
   const s = c.Health?.Status;
   if (s && s !== 'none') return s;
   // Docker before API 1.52: the health is only in the status text

@@ -479,8 +479,8 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .sante-tableau th, .sante-tableau td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--bord); white-space: nowrap; }
 .sante-tableau th { font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: .68rem; opacity: .7; }
 .sante-tableau tr.sante-mal td { color: var(--critique); }
-.sante-image { word-break: break-all; }
-.sante-espace-tete { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.sante-tableau td.sante-image { white-space: normal; overflow-wrap: anywhere; min-width: 7rem; }
+.sante-espace-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
 .sante-espace-tete button { padding: .35rem .8rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
 .sante-note { font-size: .78rem; opacity: .6; margin: .3rem 0 .8rem; }
 .sante-categorie-tete { display: flex; justify-content: space-between; gap: 1rem; font-family: var(--mono); }
