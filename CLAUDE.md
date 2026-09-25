@@ -36,8 +36,9 @@ garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshom
 
 - On travaille sur la branche dev. odintest suit dev.
 - Pour tester : commit et push sur dev, puis
-  multipass exec odintest -- bash -lc "cd /opt/odin && git pull && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
+  multipass exec odintest -- bash -lc "cd /opt/odin && git pull --ff-only origin dev && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
   (--remove-orphans retire les conteneurs d'un service supprimé de compose.yml ; install.sh fait de même)
+  « origin dev » explicite : l'installeur crée la branche sans suivi (pas de --track), un git pull seul tenterait de fusionner main.
   Si le .env de odintest porte COMPOSE_FILE (option IA, simulée sur odintest depuis le lot 5), les -f l'ignorent
   et --remove-orphans supprimerait Ollama : ajouter -f compose.ia.yml avant -f compose.dev.yml.
   Revenir sans IA sur odintest : relancer l'installeur sans ODIN_SIMULER_VRAM (il retire la ligne COMPOSE_FILE).
