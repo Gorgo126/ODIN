@@ -217,12 +217,12 @@ detecter_materiel() {
 detecter_materiel || echo "  Avertissement : détection du matériel impossible, option IA désactivée."
 
 msg "Espace disque"
-# Docker keeps its images on the system disk (DockerRootDir, /var/lib/docker): about 2.5 GB without the
+# Docker keeps its images on the system disk (DockerRootDir, /var/lib/docker): about 3 GB without the
 # AI option, 12 GB more with it (Ollama image and a model). An update only brings new versions.
 libre_mo() { df -Pm "$1" | awk 'NR==2 {print $4}'; }
 RACINE_DOCKER=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)
 [ -d "$RACINE_DOCKER" ] || RACINE_DOCKER=/
-BESOIN_MO=5120
+BESOIN_MO=6144
 grep -q '^COMPOSE_FILE=.*compose\.ia\.yml' "$CIBLE/.env" && BESOIN_MO=20480
 [ -n "$AVANT" ] && BESOIN_MO=2048
 LIBRE_SYSTEME=$(libre_mo "$RACINE_DOCKER")
@@ -255,6 +255,101 @@ modele_vecteurs() {
   echo "  Téléchargé et vérifié."
 }
 modele_vecteurs || echo "  Modèle non installé : la recherche marche par mots-clés seulement. Relancez l'installeur avec internet."
+
+msg "Modèles de traduction"
+# LibreTranslate (Argos) never downloads anything itself: its network is internal and its models are
+# mounted read-only. Everything is fetched here, from catalogue/traduction.txt (pinned URL, size and
+# SHA-256): translation models xx→en and en→xx, and the MiniSBD sentence splitter of each language,
+# which LibreTranslate would otherwise fetch at the first translation from that language.
+# Languages: TRADUCTION_LANGUES of .env, also read by compose.yml. Missing models stop the installer.
+grep -q '^TRADUCTION_LANGUES=' "$CIBLE/.env" \
+  || printf '# Traduction hors ligne : langues (modèles téléchargés par install.sh, voir catalogue/traduction.txt)\nTRADUCTION_LANGUES=fr,en,nl,de,es,it\n' >> "$CIBLE/.env"
+grep -q '^TRADUCTION_LIMITE=' "$CIBLE/.env" \
+  || printf '# Traduction hors ligne : taille maximale d'"'"'un texte, en caractères\nTRADUCTION_LIMITE=5000\n' >> "$CIBLE/.env"
+TRAD="$DATA/traduction"
+LANGUES=$(sed -n 's/^TRADUCTION_LANGUES=//p' "$CIBLE/.env" | tail -1 | tr -d ' ')
+# UID of the « libretranslate » user of the image
+UID_TRADUCTION=1032
+modeles_traduction() {
+  local catalogue="$CIBLE/catalogue/traduction.txt" type de vers url sha taille nom cible f l besoin_mo=0
+  local garder=() installer=() manquants=()
+  voulue() { case ",$LANGUES," in *",$1,"*) return 0 ;; esac; return 1; }
+  # Every pair goes through English (Argos pivots, fr→de = fr→en→de)
+  voulue en || err "TRADUCTION_LANGUES doit contenir en (toutes les traductions passent par l'anglais)."
+  for l in ${LANGUES//,/ }; do
+    grep -q "^sbd|$l|" "$catalogue" || err "Langue $l absente de catalogue/traduction.txt : retirez-la de TRADUCTION_LANGUES dans $CIBLE/.env."
+  done
+  mkdir -p "$TRAD/packages" "$TRAD/minisbd" "$TRAD/.telechargements"
+  chown -R "$UID_TRADUCTION:$UID_TRADUCTION" "$TRAD"
+
+  # Place: archive and installed copy side by side, for what is still missing
+  while IFS='|' read -r type de vers url sha taille; do
+    case "$type" in argos|sbd) ;; *) continue ;; esac
+    voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
+    nom=$(basename "$url")
+    [ "$type" = argos ] && cible="$TRAD/packages/${nom%.argosmodel}/metadata.json" || cible="$TRAD/minisbd/$de.onnx"
+    [ -f "$cible" ] || besoin_mo=$(( besoin_mo + taille * 2 / 1048576 ))
+  done < "$catalogue"
+  if [ "$besoin_mo" -gt 0 ]; then
+    [ "$(libre_mo "$DATA")" -ge $(( besoin_mo + 512 )) ] \
+      || err "Place insuffisante pour les modèles de traduction : il faut $(( besoin_mo + 512 )) Mo libres dans $DATA."
+  fi
+
+  while IFS='|' read -r type de vers url sha taille; do
+    case "$type" in argos|sbd) ;; *) continue ;; esac
+    voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
+    nom=$(basename "$url")
+    if [ "$type" = argos ]; then
+      garder+=("${nom%.argosmodel}"); cible="$TRAD/packages/${nom%.argosmodel}/metadata.json"
+    else
+      garder+=("$de.onnx"); cible="$TRAD/minisbd/$de.onnx"
+    fi
+    [ -f "$cible" ] && continue
+    f="$TRAD/.telechargements/$nom"
+    if ! { [ -f "$f" ] && echo "$sha  $f" | sha256sum -c --quiet - >/dev/null 2>&1; }; then
+      echo "  $nom"
+      # A stalled transfer stops after 60 s; a partial file is resumed on the next run
+      if ! curl -fL --progress-bar --connect-timeout 15 --speed-limit 1024 --speed-time 60 -C - -o "$f.part" "$url"; then
+        echo "  Téléchargement impossible : $nom"; continue
+      fi
+      if ! echo "$sha  $f.part" | sha256sum -c --quiet - >/dev/null 2>&1; then
+        rm -f "$f.part"; echo "  Empreinte incorrecte : $nom supprimé."; continue
+      fi
+      mv "$f.part" "$f"
+    fi
+    if [ "$type" = argos ]; then installer+=("$nom"); else install -m 0644 "$f" "$TRAD/minisbd/$de.onnx" && rm -f "$f"; fi
+  done < "$catalogue"
+  chown -R "$UID_TRADUCTION:$UID_TRADUCTION" "$TRAD"
+
+  # Installed by Argos itself, in the image of the service (same version), on its internal network
+  if [ ${#installer[@]} -gt 0 ]; then
+    ( cd "$CIBLE" && docker compose pull -q libretranslate \
+      && docker compose run --rm --no-deps -T --entrypoint /app/venv/bin/python \
+        -e ARGOS_PACKAGES_DIR=/traduction/packages -v "$TRAD:/traduction" libretranslate \
+        -c 'import sys; from argostranslate import package; [package.install_from_path(p) for p in sys.argv[1:]]' \
+        "${installer[@]/#//traduction/.telechargements/}" ) \
+      || err "Installation des modèles de traduction impossible."
+    for nom in "${installer[@]}"; do rm -f "$TRAD/.telechargements/$nom"; done
+  fi
+
+  # Models of languages removed from TRADUCTION_LANGUES, or replaced by a newer version: removed, so
+  # that the languages served are exactly those of TRADUCTION_LANGUES
+  for f in "$TRAD"/packages/* "$TRAD"/minisbd/*.onnx; do
+    [ -e "$f" ] || continue
+    nom=$(basename "$f")
+    printf '%s\n' "${garder[@]}" | grep -qxF "$nom" && continue
+    rm -rf "${f:?}"; echo "  Retiré : $nom"
+  done
+
+  for nom in "${garder[@]}"; do
+    case "$nom" in *.onnx) cible="$TRAD/minisbd/$nom" ;; *) cible="$TRAD/packages/$nom/metadata.json" ;; esac
+    [ -f "$cible" ] || manquants+=("$nom")
+  done
+  [ ${#manquants[@]} -eq 0 ] \
+    || err "Modèles de traduction manquants (${manquants[*]}). Relancez l'installeur avec internet."
+  echo "  Langues : $LANGUES ($(du -sh "$TRAD" | cut -f1))."
+}
+modeles_traduction
 
 msg "Démarrage des services"
 cd "$CIBLE"
@@ -350,7 +445,7 @@ nettoyer_images() {
   local utilisees repo id ref garde avant apres
   avant=$(libre_mo "$RACINE_DOCKER")
   utilisees=$(docker ps -aq | xargs -r docker inspect --format '{{.Image}}' | sort -u)
-  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama; do
+  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama libretranslate/libretranslate; do
     garde=""
     # Most recent first
     while read -r id ref; do
@@ -372,6 +467,17 @@ for _ in $(seq 30); do docker exec caddy wget -qO- http://vecteurs:8080/health >
 docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index", { method: "POST", signal: AbortSignal.timeout(30000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' \
   && echo "  Indexation lancée." \
   || echo "  Indexation des documents : elle démarrera d'elle-même dans les 5 minutes."
+
+msg "Traduction"
+# Its healthcheck asks /languages; the models load in about a minute
+etat_traduction() { docker inspect -f '{{.State.Health.Status}}' libretranslate 2>/dev/null; }
+for _ in $(seq 90); do [ "$(etat_traduction)" = healthy ] && break; sleep 2; done
+if [ "$(etat_traduction)" = healthy ]; then
+  docker exec dashboard node -e 'fetch("http://libretranslate:5000/languages", { signal: AbortSignal.timeout(10000) }).then((r) => r.json()).then((l) => console.log("  Prête : " + l.map((x) => x.code).join(", ") + "."))' \
+    || echo "  Service démarré, langues illisibles depuis le tableau de bord."
+else
+  echo "  Avertissement : la traduction ne répond pas encore (docker compose logs libretranslate)."
+fi
 
 msg "Fond de carte mondial"
 # Installed through the dashboard, which holds the pinned pmtiles tool

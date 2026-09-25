@@ -107,6 +107,26 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   répond 503 « L'assistant IA n'est pas installé ». Absent de l'installation par défaut depuis le lot 4 ;
   install.sh (migration) retire son image sans l'option IA et laisse data/ollama avec une note.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
+- libretranslate : traduction hors ligne (libretranslate/libretranslate:v1.9.6, CPU, modèles Argos). Réseau Docker
+  « traduction » en internal: true, partagé avec le dashboard seul : aucun port publié, absent de Caddy, et aucune
+  route vers internet. Modèles dans ${DATA_DIR}/traduction (packages/, minisbd/), montés en lecture seule sur
+  /home/libretranslate/.local/share/argos-translate (utilisateur 1032). LT_DISABLE_WEB_UI, LT_DISABLE_FILES_TRANSLATION,
+  LT_API_KEYS=false, LT_UPDATE_MODELS=false, LT_THREADS=1 (chaque processus charge sa copie des modèles),
+  LT_CHAR_LIMIT = TRADUCTION_LIMITE (même limite dans la route du dashboard). Healthcheck Python sur /languages
+  (l'image n'a pas curl) ; la carte d'accueil et la page font le même test (le dashboard ne lit pas l'état Docker).
+  Langues : TRADUCTION_LANGUES de .env, seule source (install.sh et LT_LOAD_ONLY de compose.yml). LT_LOAD_ONLY ne sert
+  qu'aux téléchargements (désactivés) : LibreTranslate sert les modèles présents sur le disque. Une langue sans modèle
+  est simplement absente de /languages ; avec moins de 2 modèles, il tenterait de tout télécharger (hors ligne :
+  message « normal if you're offline », appels Argos sans délai). D'où install.sh qui retire les modèles hors liste
+  et refuse de continuer s'il en manque.
+  Toutes les paires passent par l'anglais (xx↔en, pivot automatique d'Argos : fr→de = fr→en→de, moins précis).
+  install.sh : catalogue/traduction.txt (URL, taille, SHA-256 figés), téléchargement vérifié, installation par
+  install_from_path d'Argos dans l'image du service elle-même (docker compose run, réseau interne), archives effacées.
+  Dashboard : lib/traduction.mjs, /api/traduction/{languages,detect,translate}, page /traduction.
+  Ajouter une langue : ajouter au catalogue ses lignes argos xx→en et en→xx (index argospm-index, empreinte calculée
+  sur le fichier téléchargé) et sa ligne sbd (MiniSBD, releases v0.0.1), l'ajouter à TRADUCTION_LANGUES dans .env,
+  relancer install.sh (puis docker compose up -d libretranslate si seul .env a changé), vérifier une traduction
+  depuis cette langue hors ligne. Une langue sans modèle MiniSBD n'est pas prise en charge (Argos se replie sur en).
 - Cartes : packs PMTiles (fonds Protomaps, données OSM) dans data/cartes/<id>.pmtiles, servis par
   Caddy sur /tuiles/* (file_server, requêtes Range, derrière l'authentification). Catalogue :
   catalogue/cartes.txt (id|ouest,sud,est,nord ou -|zoom max|libellé). Un pack = pmtiles extract
@@ -371,7 +391,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage), /configuration, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage), /configuration, /traduction, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Disques (lot 7)
@@ -384,7 +404,7 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
   Docker attende le montage au démarrage (sinon il créerait des dossiers vides sur le disque système).
   DONNEES testé sur un système de fichiers monté (fichier-disque ext4 de 40 Go, fstab, VM test), PAS sur un
   disque physique distinct (Multipass 1.16/Hyper-V ne sait pas ajouter de disque).
-- Place : install.sh vérifie le disque des images Docker (DockerRootDir) avant tout téléchargement : 5 Go (20 Go
+- Place : install.sh vérifie le disque des images Docker (DockerRootDir) avant tout téléchargement : 6 Go (20 Go
   avec l'option IA, 2 Go pour une mise à jour), arrêt sinon ; avertissement sous 10 Go pour les données.
   lib/espace.mjs : chaque téléchargement (pack ZIM + 2 %, livre, carte + 5 %, modèle IA + 1 Go) réserve ce qu'il
   lui reste à écrire sur son disque (même st_dev) ; disque plein pendant l'écriture (ENOSPC) → « Disque plein ».
@@ -485,5 +505,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - Jamais de rm avec joker après un cd enchaîné par « ; » (« cd X; rm -f * » efface le dossier courant, donc le
   dépôt, si le cd échoue). Chemin absolu, dossier créé d'abord, étapes liées par && :
   S=<scratchpad>; mkdir -p "$S" && rm -f "$S"/* && cd "$S" && ...
+- LibreTranslate/Argos téléchargent au premier usage le découpeur de phrases MiniSBD de chaque langue source
+  (~/.local/share/argos-translate/minisbd/<code>.onnx) : il n'est pas dans les paquets Argos. install.sh le pose
+  (lignes sbd du catalogue). Un modèle manquant ne se voit qu'hors ligne : tester une traduction depuis CHAQUE langue.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
