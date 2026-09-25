@@ -345,10 +345,11 @@ actif() { systemctl is-active --quiet odin-hostapd.service && systemctl is-activ
 installer() {
   lire_config
   decouper_reseau "$RESEAU" || { echo "POINT_ACCES_RESEAU invalide : $RESEAU (attendu : 10.42.0.1/24, préfixe de 16 à 24)."; return 0; }
-  # The access point already running keeps its interface (it would look « in use » otherwise)
-  if [ -f "$ETC/parametres" ] && actif; then
+  # An existing installation keeps its interface while it exists, running or not: another card
+  # would be picked otherwise, and the old one's address would make the range look « in use »
+  if [ -z "$IF_IMPOSEE" ] && [ -f "$ETC/parametres" ]; then
     local ancien; ancien=$(sed -n 's/^INTERFACE=//p' "$ETC/parametres" | tr -d "'\"")
-    [ -z "$IF_IMPOSEE" ] && IF_IMPOSEE=$ancien
+    interfaces_wifi | awk '{ print $1 }' | grep -qx "$ancien" && IF_IMPOSEE=$ancien
   fi
   detecter
   INTERFACE=$DET_IF; PAYS_CODE=$DET_PAYS
