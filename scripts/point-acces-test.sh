@@ -27,7 +27,10 @@ phy_de() { iw dev "$1" info 2>/dev/null | awk '$1 == "wiphy" { print "phy" $2 }'
 if_de() { ip netns exec "$1" iw dev 2>/dev/null | awk '$1 == "Interface" { print $2; exit }'; }
 
 preparer() {
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "linux-modules-extra-$(uname -r)" wpasupplicant iw busybox-static >/dev/null 2>&1 || { echo "Paquets impossibles à installer."; exit 1; }
+  # apt only when something is missing: after a cold restart offline, the namespaces must come back
+  if ! modinfo mac80211_hwsim >/dev/null 2>&1 || ! command -v wpa_supplicant iw busybox >/dev/null; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "linux-modules-extra-$(uname -r)" wpasupplicant iw busybox-static >/dev/null 2>&1 || { echo "Paquets impossibles à installer."; exit 1; }
+  fi
   modinfo mac80211_hwsim >/dev/null 2>&1 || { echo "mac80211_hwsim introuvable : test impossible."; exit 1; }
   # Loaded at boot as well, for the cold restart test (test machine only)
   echo mac80211_hwsim > /etc/modules-load.d/odin-test-hwsim.conf
