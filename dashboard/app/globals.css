@@ -497,3 +497,11 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
   .sante-categorie li button, .sante-fixe { grid-column: 1 / -1; }
   .sante-fixe { display: none; }
 }
+
+/* Login message: an old amber terminal screen with a blinking block cursor */
+.terminal { position: relative; margin: 1.6rem 0 1.4rem; padding: 1.1rem 1rem .9rem; font-family: var(--mono); font-size: .9rem; line-height: 1.65; color: var(--or); text-shadow: 0 0 6px color-mix(in srgb, var(--or) 60%, transparent); background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px), #0b0a08; border: 1px solid color-mix(in srgb, var(--or) 55%, transparent); box-shadow: var(--creux), 0 0 22px color-mix(in srgb, var(--or) 14%, transparent), inset 0 0 26px rgba(0, 0, 0, .7); animation: allumage .8s steps(8) both; }
+.terminal::before { content: attr(data-titre); position: absolute; top: -.62rem; left: .8rem; padding: 0 .45rem; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: var(--or); background: Canvas; text-shadow: none; }
+.terminal-invite { margin-right: .55rem; opacity: .7; }
+.curseur { display: inline-block; width: .6em; height: 1.05em; margin-left: .3em; vertical-align: -.15em; background: var(--or); box-shadow: 0 0 8px var(--or); animation: clignoter 1.06s steps(1) infinite; }
+@keyframes clignoter { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .terminal, .curseur { animation: none; } }
