@@ -21,7 +21,8 @@ const DECOUPAGE = path.join(DOSSIER, 'minisbd');
 // reload never sees a partial model. Emptied at startup: an interrupted installation leaves nothing.
 const EN_COURS = path.join(DOSSIER, '.en-cours');
 const SIGNAL = path.join(DOSSIER, '.recharger');
-const CATALOGUE = '/catalogue/traduction.json';
+// Both paths can be changed for a test in a separate folder (tests of a wrong fingerprint)
+const CATALOGUE = process.env.TRADUCTION_CATALOGUE || '/catalogue/traduction.json';
 const INACTIVITE = 30000;
 const SHA = /^[0-9a-f]{64}$/;
 const CODE = /^[a-z]{2,3}(-[a-z]{2,4})?$/;
@@ -166,6 +167,7 @@ export async function installer(code) {
         for (const n of await fs.readdir(travail).catch(() => [])) {
           if (!n.endsWith('.part')) await fs.rm(path.join(travail, n), { recursive: true, force: true });
         }
+        await fs.rmdir(travail).catch(() => {});
       } else {
         await fs.rm(travail, { recursive: true, force: true });
       }
@@ -279,6 +281,8 @@ export async function desinstaller(code) {
 // in packages/ (stopped between two renames) is removed, so that it never looks installed.
 export async function nettoyerTraduction() {
   await fs.rm(EN_COURS, { recursive: true, force: true });
+  // Download folder of the installer before the language packs (empty)
+  await fs.rmdir(path.join(DOSSIER, '.telechargements')).catch(() => {});
   const { base, langues } = await lireCatalogue();
   const modeles = await modelesInstalles();
   let retire = false;
