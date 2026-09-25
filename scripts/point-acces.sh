@@ -438,6 +438,7 @@ desinstaller() {
     desinstaller_unites
   fi
   rm -rf "$ETC" "$RUN"
+  rmdir "$(dirname "$ETC")" 2>/dev/null
   rm -f "$DATA/config"/point-acces-*.svg
   ADRESSE=; ecrire_etat inactif
   echo "Point d'accès Wi-Fi retiré."
