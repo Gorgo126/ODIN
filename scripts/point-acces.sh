@@ -306,7 +306,9 @@ arreter() {
   ip -4 addr del "$RESEAU" dev "$INTERFACE" 2>/dev/null
   ip link set "$INTERFACE" down 2>/dev/null
   sysctl -q -w "net.ipv6.conf.$INTERFACE.disable_ipv6=0" 2>/dev/null
-  nm_rendre
+  # The NetworkManager declaration stays while the option is installed (only desinstaller gives the
+  # card back): removed at every shutdown, NM would take the card at the next boot until this unit
+  # runs, and could join a saved Wi-Fi network meanwhile
   rm -f "$RUN/hostapd.conf" "$RUN/canal"
   lire_config_donnees
   ecrire_etat inactif
