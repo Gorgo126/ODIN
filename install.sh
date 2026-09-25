@@ -271,9 +271,15 @@ LANGUES=$(sed -n 's/^TRADUCTION_LANGUES=//p' "$CIBLE/.env" | tail -1 | tr -d ' '
 # UID of the « libretranslate » user of the image
 UID_TRADUCTION=1032
 modeles_traduction() {
-  local catalogue="$CIBLE/catalogue/traduction.txt" type de vers url sha taille nom cible f l besoin_mo=0
+  local catalogue="$CIBLE/catalogue/traduction.txt" type de vers url sha taille nom cle f l besoin_mo=0
   local garder=() installer=() manquants=()
   voulue() { case ",$LANGUES," in *",$1,"*) return 0 ;; esac; return 1; }
+  # An installed Argos model is recognised by the SHA-256 of its archive, written in its folder at
+  # installation (odin-sha256): the folder name inside the archive does not follow the file name
+  present() {
+    if [ "$1" = argos ]; then grep -qxF "$3" "$TRAD"/packages/*/odin-sha256 2>/dev/null
+    else [ -f "$TRAD/minisbd/$2.onnx" ]; fi
+  }
   # Every pair goes through English (Argos pivots, fr→de = fr→en→de)
   voulue en || err "TRADUCTION_LANGUES doit contenir en (toutes les traductions passent par l'anglais)."
   for l in ${LANGUES//,/ }; do
@@ -287,8 +293,7 @@ modeles_traduction() {
     case "$type" in argos|sbd) ;; *) continue ;; esac
     voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
     nom=$(basename "$url")
-    [ "$type" = argos ] && cible="$TRAD/packages/${nom%.argosmodel}/metadata.json" || cible="$TRAD/minisbd/$de.onnx"
-    [ -f "$cible" ] || besoin_mo=$(( besoin_mo + taille * 2 / 1048576 ))
+    present "$type" "$de" "$sha" || besoin_mo=$(( besoin_mo + taille * 2 / 1048576 ))
   done < "$catalogue"
   if [ "$besoin_mo" -gt 0 ]; then
     [ "$(libre_mo "$DATA")" -ge $(( besoin_mo + 512 )) ] \
@@ -299,12 +304,8 @@ modeles_traduction() {
     case "$type" in argos|sbd) ;; *) continue ;; esac
     voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
     nom=$(basename "$url")
-    if [ "$type" = argos ]; then
-      garder+=("${nom%.argosmodel}"); cible="$TRAD/packages/${nom%.argosmodel}/metadata.json"
-    else
-      garder+=("$de.onnx"); cible="$TRAD/minisbd/$de.onnx"
-    fi
-    [ -f "$cible" ] && continue
+    if [ "$type" = argos ]; then garder+=("$sha"); else garder+=("$de.onnx"); fi
+    present "$type" "$de" "$sha" && continue
     f="$TRAD/.telechargements/$nom"
     if ! { [ -f "$f" ] && echo "$sha  $f" | sha256sum -c --quiet - >/dev/null 2>&1; }; then
       echo "  $nom"
@@ -317,7 +318,7 @@ modeles_traduction() {
       fi
       mv "$f.part" "$f"
     fi
-    if [ "$type" = argos ]; then installer+=("$nom"); else install -m 0644 "$f" "$TRAD/minisbd/$de.onnx" && rm -f "$f"; fi
+    if [ "$type" = argos ]; then installer+=("/traduction/.telechargements/$nom" "$sha"); else install -m 0644 "$f" "$TRAD/minisbd/$de.onnx" && rm -f "$f"; fi
   done < "$catalogue"
   chown -R "$UID_TRADUCTION:$UID_TRADUCTION" "$TRAD"
 
@@ -326,10 +327,18 @@ modeles_traduction() {
     ( cd "$CIBLE" && docker compose pull -q libretranslate \
       && docker compose run --rm --no-deps -T --entrypoint /app/venv/bin/python \
         -e ARGOS_PACKAGES_DIR=/traduction/packages -v "$TRAD:/traduction" libretranslate \
-        -c 'import sys; from argostranslate import package; [package.install_from_path(p) for p in sys.argv[1:]]' \
-        "${installer[@]/#//traduction/.telechargements/}" ) \
+        -c '
+import sys, zipfile
+from argostranslate import package, settings
+a = sys.argv[1:]
+for chemin, sha in zip(a[::2], a[1::2]):
+    racines = {n.split("/")[0] for n in zipfile.ZipFile(chemin).namelist()}
+    if len(racines) != 1: sys.exit(f"{chemin} : archive inattendue")
+    package.install_from_path(chemin)
+    (settings.package_data_dir / racines.pop() / "odin-sha256").write_text(sha + "\n")
+' "${installer[@]}" ) \
       || err "Installation des modèles de traduction impossible."
-    for nom in "${installer[@]}"; do rm -f "$TRAD/.telechargements/$nom"; done
+    rm -f "$TRAD"/.telechargements/*.argosmodel
   fi
 
   # Models of languages removed from TRADUCTION_LANGUES, or replaced by a newer version: removed, so
@@ -337,14 +346,16 @@ modeles_traduction() {
   for f in "$TRAD"/packages/* "$TRAD"/minisbd/*.onnx; do
     [ -e "$f" ] || continue
     nom=$(basename "$f")
-    printf '%s\n' "${garder[@]}" | grep -qxF "$nom" && continue
+    case "$nom" in *.onnx) cle=$nom ;; *) cle=$(cat "$f/odin-sha256" 2>/dev/null) ;; esac
+    printf '%s\n' "${garder[@]}" | grep -qxF "$cle" && continue
     rm -rf "${f:?}"; echo "  Retiré : $nom"
   done
 
-  for nom in "${garder[@]}"; do
-    case "$nom" in *.onnx) cible="$TRAD/minisbd/$nom" ;; *) cible="$TRAD/packages/$nom/metadata.json" ;; esac
-    [ -f "$cible" ] || manquants+=("$nom")
-  done
+  while IFS='|' read -r type de vers url sha taille; do
+    case "$type" in argos|sbd) ;; *) continue ;; esac
+    voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
+    present "$type" "$de" "$sha" || manquants+=("$(basename "$url")")
+  done < "$catalogue"
   [ ${#manquants[@]} -eq 0 ] \
     || err "Modèles de traduction manquants (${manquants[*]}). Relancez l'installeur avec internet."
   echo "  Langues : $LANGUES ($(du -sh "$TRAD" | cut -f1))."
