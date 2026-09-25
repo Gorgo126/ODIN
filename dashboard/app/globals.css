@@ -19,7 +19,7 @@ a.carte:hover { background: var(--fond); }
 .progression { min-width: 12rem; text-align: right; }
 .erreur { color: #dc2626; margin-right: .5rem; }
 a.carte em { margin-left: .5rem; }
-.connexion { max-width: 22rem; margin-top: 18vh; }
+.connexion { max-width: 22rem; margin: 18vh auto 0; }
 .connexion form { display: flex; flex-direction: column; gap: .6rem; }
 .connexion input, .connexion button { font: inherit; padding: .6rem .8rem; border-radius: .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; }
 .connexion button { cursor: pointer; }
