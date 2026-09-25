@@ -1,0 +1,14 @@
+Wiphy phy0
+	Supported interface modes:
+		 * IBSS
+		 * managed
+		 * AP/VLAN
+		 * monitor
+	Band 1:
+		Capabilities: 0x1062
+	software interface modes (can always be added):
+		 * AP/VLAN
+		 * monitor
+	valid interface combinations:
+		 * #{ managed } <= 1, #{ AP } <= 1,
+		   total <= 2, #channels <= 1

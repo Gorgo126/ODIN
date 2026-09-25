@@ -1,0 +1,14 @@
+# DHCP and DNS of the Wi-Fi network only (bind-interfaces: no clash with systemd-resolved).
+[Unit]
+Description=ODIN : point d'accès Wi-Fi (DHCP et DNS)
+BindsTo=odin-point-acces-reseau.service
+After=odin-point-acces-reseau.service
+StartLimitIntervalSec=120
+StartLimitBurst=5
+OnFailure=odin-point-acces-echec.service
+
+[Service]
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=@ETC@/dnsmasq.conf
+ExecStartPost=-@SCRIPT@ etat --ecrire
+Restart=on-failure
+RestartSec=5

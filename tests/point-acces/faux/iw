@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fake iw: recorded outputs chosen by the test (FAUX_* variables)
+case "$*" in
+  dev) cat "${FAUX_IW_DEV:-/dev/null}" ;;
+  "phy "*" info") cat "${FAUX_IW_PHY:?}" ;;
+  "dev "*" link") echo "${FAUX_IW_LINK:-Not connected.}" ;;
+  "dev "*" scan") [ -n "${FAUX_IW_SCAN:-}" ] && cat "$FAUX_IW_SCAN" || exit 240 ;;
+  *) exit 1 ;;
+esac

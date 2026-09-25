@@ -1,0 +1,15 @@
+# hostapd of ODIN (the distribution's hostapd.service stays masked). Given up after 5 failures in
+# 2 minutes: odin-point-acces-echec.service then records « echec-demarrage ».
+[Unit]
+Description=ODIN : point d'accès Wi-Fi (hostapd)
+BindsTo=odin-point-acces-reseau.service
+After=odin-point-acces-reseau.service
+StartLimitIntervalSec=120
+StartLimitBurst=5
+OnFailure=odin-point-acces-echec.service
+
+[Service]
+ExecStart=/usr/sbin/hostapd @RUN@/hostapd.conf
+ExecStartPost=-@SCRIPT@ etat --ecrire
+Restart=on-failure
+RestartSec=5

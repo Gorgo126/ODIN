@@ -1,0 +1,7 @@
+phy#0
+	Interface wlp2s0
+		ifindex 3
+		wdev 0x1
+		addr 02:00:00:00:00:00
+		type managed
+		txpower 20.00 dBm

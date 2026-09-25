@@ -1,0 +1,8 @@
+phy#1
+	Interface wlx00c0ca
+		ifindex 5
+		type managed
+phy#0
+	Interface wlp2s0
+		ifindex 3
+		type managed

@@ -1,0 +1,7 @@
+# Started by OnFailure= once hostapd, dnsmasq or the network setup has given up.
+[Unit]
+Description=ODIN : échec du point d'accès Wi-Fi
+
+[Service]
+Type=oneshot
+ExecStart=@SCRIPT@ echec
