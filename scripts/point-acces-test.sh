@@ -103,7 +103,9 @@ verifier() {
   echo "2. Connexion"
   [ "$(connecter 'mauvais-mot-2-passe')" = non-associé ] && ok "refus avec un mauvais mot de passe" || ko "mauvais mot de passe accepté"
   sleep 3
-  local r; r=$(connecter); [ "$r" = connecté ] && ok "connexion avec le bon mot de passe" || { ko "connexion : $r"; return; }
+  # A second try: just after a radio moved to the namespace, the first association may time out
+  local r; r=$(connecter); [ "$r" = connecté ] || { sleep 3; r=$(connecter); }
+  [ "$r" = connecté ] && ok "connexion avec le bon mot de passe" || { ko "connexion : $r"; return; }
   echo "3. Bail et DNS"
   local ip routeur dns
   ip=$(sed -n 's/^ip=//p' /run/bail-telephone); routeur=$(sed -n 's/^router=//p' /run/bail-telephone)

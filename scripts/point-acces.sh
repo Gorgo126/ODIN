@@ -259,7 +259,9 @@ nm_actif() { systemctl is-active --quiet NetworkManager 2>/dev/null; }
 nm_liberer() {
   nm_actif || return 0
   mkdir -p "$(dirname "$NM_CONF")"
-  printf '# ODIN : interface du point d'"'"'accès Wi-Fi, laissée à scripts/point-acces.sh\n[keyfile]\nunmanaged-devices=interface-name:%s\n' "$INTERFACE" > "$NM_CONF"
+  # « += » adds to the list of the distribution (Ubuntu leaves everything but Wi-Fi unmanaged);
+  # « = » would replace it and hand Ethernet and Docker's bridges to NetworkManager
+  printf '# ODIN : interface du point d'"'"'accès Wi-Fi, laissée à scripts/point-acces.sh\n[keyfile]\nunmanaged-devices+=interface-name:%s\n' "$INTERFACE" > "$NM_CONF"
   nmcli general reload conf 2>/dev/null || systemctl reload NetworkManager 2>/dev/null
   nmcli device set "$INTERFACE" managed no 2>/dev/null
   return 0
