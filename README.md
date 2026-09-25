@@ -39,11 +39,12 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 
 | | Service | Ce qu'il fait |
 |---|---|---|
-| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de la bibliothèque et de vos livres, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
-| 📚 | **Bibliothèque** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
-| 📖 | **Livres** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. Aucun n'est encore proposé : le premier attend l'accord de son éditeur (voir Licences). |
-| 📁 | **Documents** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
-| 🗺️ | **Carte** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
+| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de l'encyclopédie et de la bibliothèque, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
+| 📚 | **Encyclopédie** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
+| 📖 | **Bibliothèque** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. Aucun n'est encore proposé : le premier attend l'accord de son éditeur (voir Licences). |
+| 📁 | **Documents personnels** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
+| 🗺️ | **Cartes** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
+| 🌍 | **Traduction** | Traduction de textes sur le serveur, sans internet : français et anglais inclus, 48 autres langues à ajouter en un clic (allemand, espagnol, arabe, ukrainien…). |
 | 🖥️ | **Tableau de bord** | L'état des services, la recherche, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
 | 🤖 | **Assistant IA** (option) | Sur une machine avec une carte graphique d'au moins 8 Go : il rédige une réponse à partir des passages trouvés, en citant ses sources. |
 
@@ -51,7 +52,7 @@ L'accès est protégé par **un mot de passe unique**, choisi lors de la premiè
 
 ### Contenus disponibles
 
-Ils s'installent depuis le tableau de bord (**Configuration → Bibliothèque**) :
+Ils s'installent depuis le tableau de bord (**Configuration → Encyclopédie**) :
 
 Wikipédia (sélection illustrée, complète, ou complète avec images) · Médecine · Mathématiques ·
 Physique · Chimie · Histoire · Géographie · Informatique · Changement climatique · Vikidia (8-13 ans) ·
@@ -80,7 +81,7 @@ C'est le cœur d'ODIN. Elle ne demande ni carte graphique ni modèle de langage.
    « eau potable ». Santé, eau, feu, froid et nourriture sont couverts ; la table s'enrichit sans
    toucher au code.
 2. **Elle cherche dans trois sources à la fois**, par le sens et par les mots : vos documents, les
-   packs de la bibliothèque et vos livres PDF.
+   packs de l'encyclopédie et les livres PDF de la bibliothèque.
 3. **Elle montre les meilleurs passages**, groupés par document, les mots cherchés surlignés, avec
    un lien vers l'article, la page du livre ou le document. Les résultats plus éloignés restent
    accessibles, repliés ; quand rien ne répond vraiment, elle le dit.
@@ -88,8 +89,28 @@ C'est le cœur d'ODIN. Elle ne demande ni carte graphique ni modèle de langage.
    important, perte de connaissance…), un bandeau en tête rappelle d'appeler les secours, adapté à ce
    qu'ODIN sait du réseau.
 
-Vos documents sont indexés tout seuls, dès que vous en déposez dans **Documents** : PDF, Word, texte,
+Vos documents sont indexés tout seuls, dès que vous en déposez dans **Documents personnels** : PDF, Word, texte,
 Markdown et HTML. Rien ne sort de la machine, et tout fonctionne sans internet.
+
+### La traduction
+
+La page **Traduction** traduit un texte (5 000 caractères au plus) entre les langues installées, avec
+détection automatique de la langue du texte. Elle tourne entièrement sur le serveur, sur le processeur,
+avec [LibreTranslate](https://libretranslate.com) et les modèles [Argos Translate](https://www.argosopentech.com).
+
+- **Français et anglais sont installés d'office** (158 Mo), et ne se désinstallent pas.
+- **Les autres langues sont des packs** : **Configuration → Traduction**, ou le lien « Ajouter des
+  langues » de la page. 48 langues sont proposées, de 133 Mo (norvégien) à 372 Mo (espagnol) chacune,
+  avec leur taille ; l'installation vérifie l'empreinte de chaque fichier, et une langue se
+  désinstalle aussi simplement. Une nouvelle langue est utilisable quelques secondes après, sans
+  redémarrer quoi que ce soit.
+- **Tout passe par l'anglais** : un texte allemand traduit en français passe par l'anglais, un peu
+  moins précis qu'une traduction directe. La qualité varie selon les langues ; aucune mesure n'est
+  publiée par les auteurs des modèles.
+- **Mémoire** : environ 120 Mo au repos, et 100 à 150 Mo de plus par langue source utilisée (1 Go avec
+  six langues).
+- La liste des langues proposées est dans [`catalogue/traduction.json`](catalogue/traduction.json)
+  (adresse, taille et empreinte de chaque modèle).
 
 ### L'assistant IA (option)
 
@@ -142,6 +163,7 @@ flowchart TB
     CA -->|"/documents"| F["FileBrowser<br/><sub>fichiers</sub>"]
     CA -->|"/tuiles"| T[("Cartes PMTiles<br/><sub>data/cartes</sub>")]
     D -->|"recherche avancée"| V["Vecteurs<br/><sub>llama.cpp · EmbeddingGemma</sub>"]
+    D -->|"traduction"| L["LibreTranslate<br/><sub>modèles Argos</sub>"]
     D -.->|"recherche · lecture"| K
     D -.->|"extraction pmtiles"| T
     D -.->|"index des documents"| I[("SQLite<br/><sub>data/assistant</sub>")]
@@ -154,6 +176,7 @@ flowchart TB
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
 | `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
+| `libretranslate` | `libretranslate/libretranslate:v1.9.6` | Traduction hors ligne (modèles Argos, sur le processeur). Sur un réseau Docker interne, sans aucune route vers internet : seul le tableau de bord le joint. Ses modèles sont installés par le tableau de bord et montés en lecture seule. |
 | `ollama` | `ollama/ollama:0.34.2` | **Option IA seulement** (`compose.ia.yml`), sur une machine équipée d'une carte graphique : modèle de langage de l'assistant. Absent de l'installation par défaut. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
@@ -170,7 +193,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 ├── compose.yml          # le fichier de déploiement (compose.ia.yml : option IA)
 ├── Caddyfile            # routage et authentification
 ├── .env                 # ports et dossier des données (modèle : .env.exemple)
-├── catalogue/           # contenus (packs.txt) et cartes (cartes.txt) proposés
+├── catalogue/           # contenus (packs.txt), cartes (cartes.txt) et langues (traduction.json) proposés
 ├── config/              # configuration de FileBrowser
 ├── dashboard/           # code du tableau de bord (Next.js)
 ├── scripts/             # ajout de contenus en ligne de commande, outils de test
@@ -180,6 +203,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── documents/       #   fichiers partagés
     ├── vecteurs/        #   modèle de la recherche avancée (EmbeddingGemma, 334 Mo)
     ├── assistant/       #   index de vos documents pour la recherche avancée (SQLite)
+    ├── traduction/      #   modèles de traduction (français et anglais : 158 Mo)
     └── config/          #   mot de passe (haché avec scrypt)
 ```
 
@@ -188,6 +212,9 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 - **Aucune ressource externe** : pas de CDN, pas de police téléchargée, pas d'analytique.
 - **La carte embarque tout** : style, polices des étiquettes et icônes sont dans l'image. Aucune tuile
   ni police n'est demandée à un serveur extérieur.
+- **La traduction ne peut rien télécharger** : LibreTranslate est sur un réseau Docker sans accès à
+  internet, et lit ses modèles en lecture seule. C'est le tableau de bord qui les installe, y compris
+  le découpage en phrases qu'il irait sinon chercher à la première traduction de chaque langue.
 - **Aucun service ne vérifie ses mises à jour** : le service de vecteurs lit son modèle sur le disque,
   FileBrowser tourne sans vérification de version, et Ollama (option IA) avec `OLLAMA_NO_CLOUD=true`.
 - **Chaque appel réseau d'ODIN a un délai.** Hors ligne, le catalogue répond « injoignable » en
@@ -205,7 +232,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 |---|---|
 | Système | Ubuntu 24.04 LTS ou Debian 12, architecture x86_64 |
 | Processeur | 4 cœurs |
-| Mémoire | 8 Go (la recherche avancée en utilise environ 0,5 Go) |
+| Mémoire | 8 Go (la recherche avancée en utilise environ 0,5 Go, la traduction de 0,1 à 1 Go selon les langues utilisées) |
 | Disque | 40 Go, plus la taille des contenus (de 80 Mo à plusieurs dizaines de Go par pack) |
 | Réseau | Une connexion internet **pendant l'installation seulement** |
 
@@ -216,14 +243,15 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 ```
 
 Le script installe Docker si besoin, récupère ODIN dans `/opt/odin`, démarre les services et
-télécharge le modèle de la recherche avancée (EmbeddingGemma, 334 Mo, empreinte vérifiée) et le fond de carte mondial (45 Mo). Aucun modèle de langage n'est installé par défaut. À la fin, il affiche
+télécharge le modèle de la recherche avancée (EmbeddingGemma, 334 Mo, empreinte vérifiée), les modèles
+de traduction français et anglais (158 Mo, empreintes vérifiées) et le fond de carte mondial (45 Mo). Aucun modèle de langage n'est installé par défaut. À la fin, il affiche
 les adresses où joindre ODIN.
 
 ### Première visite
 
 1. Depuis n'importe quel appareil du réseau, ouvrez **http://odin.local**, ou l'adresse IP affichée à la fin de l'installation.
 2. Choisissez le mot de passe qui protégera ODIN.
-3. Dans **Configuration**, installez les contenus et les cartes voulus tant que la connexion est disponible.
+3. Dans **Configuration**, installez les contenus, les cartes et les langues de traduction voulus tant que la connexion est disponible.
 4. Posez une question dans la barre de recherche, en langage courant : « comment rendre l'eau potable ? ».
 
 C'est prêt : vous pouvez débrancher internet.
@@ -258,12 +286,16 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
 | `DEPOT` | ce dépôt | Dépôt Git à cloner, pour une copie personnelle d'ODIN. |
 | `DONNEES` | `/opt/odin/data` | Dossier des données (chemin absolu), par exemple sur un gros disque de données. |
 
+Dans `/opt/odin/.env`, `TRADUCTION_LANGUES` (défaut `fr,en`) choisit les langues de traduction d'une
+**première** installation, par exemple `fr,en,de,es` ; ensuite, les langues se gèrent dans ODIN, et une
+mise à jour ne réinstalle que le français et l'anglais s'ils manquaient.
+
 Les ports se règlent dans `/opt/odin/.env`, comme le dossier des données (`DATA_DIR`, écrit par `DONNEES`).
 
 ### Disques
 
 ODIN s'installe dans `/opt/odin`, et Docker garde ses images sur le disque système (`/var/lib/docker`) :
-environ 2,5 Go sans l'option IA, 12 Go de plus avec elle. Tout le reste, et c'est le plus gros (packs,
+environ 3 Go sans l'option IA, 12 Go de plus avec elle. Tout le reste, et c'est le plus gros (packs,
 livres, cartes, documents, index), va dans le **dossier des données**. L'installeur vérifie la place
 libre avant de télécharger quoi que ce soit, et chaque ajout de contenu vérifie la sienne, en comptant
 les téléchargements déjà en cours. Après une mise à jour, il ne garde que l'image actuelle de chaque
@@ -324,3 +356,5 @@ licence est rappelée dans ODIN, là où le contenu s'affiche.
 | *Là où il n'y a pas de docteur* (Hesperian, 2019) | PDF de l'édition Hesperian, téléchargé pour l'instant depuis dokotoro.org (à remplacer par la source d'Hesperian) | [Licence ouverte Hesperian](https://hesperian.org/open-copyright-policy/) : usage **non commercial**, attribution, fichier non modifié. La distribution numérique demande l'accord écrit d'Hesperian, demandé en septembre 2026 : d'ici là, le livre n'est pas proposé par la version publiée d'ODIN. | Fiche du livre (origine du fichier, licence, restriction) |
 | EmbeddingGemma (Google), modèle de la recherche | Hugging Face (ggml-org) | [Conditions d'utilisation de Gemma](https://ai.google.dev/gemma/terms) : pas une licence libre ; [politique d'utilisation](https://ai.google.dev/gemma/prohibited_use_policy) à respecter | Ici |
 | Qwen3 (option IA) | Registre Ollama | Apache 2.0 | Page Assistant IA |
+| LibreTranslate (logiciel de traduction) | Image Docker officielle, non modifiée | [AGPL-3.0](https://github.com/LibreTranslate/LibreTranslate/blob/main/LICENSE) | Ici |
+| Modèles de traduction Argos | Index [argospm-index](https://github.com/argosopentech/argospm-index), découpage en phrases [MiniSBD](https://github.com/LibreTranslate/MiniSBD) | Propre à chaque modèle, indiquée dans le fichier README de son paquet (par exemple CC BY 4.0 pour le modèle français → anglais, dérivé d'OPUS-MT) | Ici |
