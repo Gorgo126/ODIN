@@ -359,7 +359,7 @@ installer() {
     # Nothing new started; a previous installation stays as it was, stopped
     [ -f "$ETC/parametres" ] && desinstaller_unites
     ecrire_etat indisponible "$DET_RAISON"
-    message_raison "$DET_RAISON" "$DET_IF"
+    echo "Point d'accès Wi-Fi indisponible : $(message_raison "$DET_RAISON" "$DET_IF")"
     return 0
   fi
   if [ ${#SSID} -gt 32 ] || [[ "$SSID" == *$'\n'* ]]; then echo "POINT_ACCES_SSID trop long (32 octets au plus)."; return 0; fi
@@ -402,7 +402,7 @@ installer() {
     echo "Réseau Wi-Fi : $SSID, mot de passe : $mdp (adresse : http://$ADRESSE)"
   else
     ecrire_etat indisponible echec-demarrage
-    message_raison echec-demarrage
+    echo "Point d'accès Wi-Fi indisponible : $(message_raison echec-demarrage)"
   fi
   return 0
 }
