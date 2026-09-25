@@ -27,7 +27,8 @@ const INACTIVITE = 30000;
 const SHA = /^[0-9a-f]{64}$/;
 const CODE = /^[a-z]{2,3}(-[a-z]{2,4})?$/;
 
-const etat = globalThis.__odinTraduction ??= { taches: new Map(), controles: new Map(), attendu: null, operations: 0 };
+// operations: installations and removals in progress; modifie: packages/ or minisbd/ changed since the last signal
+const etat = globalThis.__odinTraduction ??= { taches: new Map(), controles: new Map(), attendu: null, operations: 0, modifie: false };
 
 // Catalogue checked entry by entry: an invalid entry is ignored with a message in the logs
 export async function lireCatalogue() {
@@ -111,9 +112,10 @@ function executer(commande, args) {
   });
 }
 
-// One signal after the last of simultaneous operations (installations, removals)
+// One signal after the last of simultaneous operations (installations, removals), if one changed a model
 async function signaler(codes) {
-  if (--etat.operations > 0) return;
+  if (--etat.operations > 0 || !etat.modifie) return;
+  etat.modifie = false;
   etat.attendu = { depuis: Date.now(), langues: codes };
   await ecrireTexte(SIGNAL, `${Date.now()}\n`).catch((e) => console.error(`Traduction : signal de rechargement impossible : ${e.message}`));
 }
@@ -172,6 +174,7 @@ export async function installer(code) {
       } else {
         await fs.rm(travail, { recursive: true, force: true });
       }
+      await fs.rmdir(EN_COURS).catch(() => {});
       await signaler(await languesInstallees());
     });
   return t;
@@ -235,6 +238,7 @@ async function installerFichiers(l, fichiers, travail, t, controle) {
   // 3. Into place, one rename each. A folder of the same name (older version, leftover) is replaced.
   await fs.mkdir(PAQUETS, { recursive: true });
   await fs.mkdir(DECOUPAGE, { recursive: true });
+  etat.modifie = true;
   for (const { de, vers } of deplacer) {
     await fs.rm(vers, { recursive: true, force: true });
     await fs.rename(de, vers);
@@ -263,6 +267,7 @@ export async function desinstaller(code) {
     const autres = [];
     for (const x of langues) if (x.code !== code && (base.includes(x.code) || await estInstallee(x, modeles))) autres.push(x);
     await fs.mkdir(EN_COURS, { recursive: true });
+    etat.modifie = true;
     for (const f of l.modeles) {
       const d = modeles.get(f.sha256);
       if (!d) continue;
@@ -274,6 +279,7 @@ export async function desinstaller(code) {
     if (!autres.some((x) => x.decoupage === l.decoupage)) await fs.rm(fichierDecoupage(l.decoupage), { force: true });
     etat.taches.delete(code);
   } finally {
+    await fs.rmdir(EN_COURS).catch(() => {});
     await signaler(await languesInstallees());
   }
 }
@@ -295,5 +301,5 @@ export async function nettoyerTraduction() {
     console.error(`Traduction : langue ${l.code} incomplète (installation interrompue), retirée`);
     retire = true;
   }
-  if (retire) { etat.operations++; await signaler(await languesInstallees()); }
+  if (retire) { etat.operations++; etat.modifie = true; await signaler(await languesInstallees()); }
 }
