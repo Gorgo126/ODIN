@@ -94,6 +94,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
 - dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Dépendances : Next, React, et pour
   la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
+  Dépendances transitives figées par dashboard/package-lock.json (npm ci au build) ; poppler-utils figé à la version
+  exacte d'Alpine (=25.12.0-r0) : si Alpine la retire, le build échoue au lieu de changer en silence.
 - kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
 - vecteurs : llama.cpp (ghcr.io/ggml-org/llama.cpp:server-v0.4.1) sert EmbeddingGemma sur le processeur pour
   la recherche avancée et l'index (VECTEURS_URL=http://vecteurs:8080, /v1/embeddings), réseau interne seulement.
