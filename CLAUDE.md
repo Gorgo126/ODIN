@@ -478,5 +478,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 - multipass exec ne transmet pas l'entrée standard (un « cat > fichier » ou un « docker exec -i … < - » par un
   tube attend sans fin) : passer les fichiers par multipass transfer, puis docker cp ou une redirection sur la VM.
 - llama.cpp server prend par défaut la moitié des cœurs : -t $(nproc) dans le point d'entrée du service vecteurs.
+- Jamais de rm avec joker après un cd enchaîné par « ; » (« cd X; rm -f * » efface le dossier courant, donc le
+  dépôt, si le cd échoue). Chemin absolu, dossier créé d'abord, étapes liées par && :
+  S=<scratchpad>; mkdir -p "$S" && rm -f "$S"/* && cd "$S" && ...
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
