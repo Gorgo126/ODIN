@@ -26,7 +26,7 @@ phy_de() { iw dev "$1" info 2>/dev/null | awk '$1 == "wiphy" { print "phy" $2 }'
 if_de() { ip netns exec "$1" iw dev 2>/dev/null | awk '$1 == "Interface" { print $2; exit }'; }
 
 preparer() {
-  apt-get install -y -qq "linux-modules-extra-$(uname -r)" wpasupplicant iw >/dev/null || { echo "Paquets impossibles à installer."; exit 1; }
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "linux-modules-extra-$(uname -r)" wpasupplicant iw busybox-static >/dev/null 2>&1 || { echo "Paquets impossibles à installer."; exit 1; }
   modinfo mac80211_hwsim >/dev/null 2>&1 || { echo "mac80211_hwsim introuvable : test impossible."; exit 1; }
   # Loaded at boot as well, for the cold restart test (test machine only)
   echo mac80211_hwsim > /etc/modules-load.d/odin-test-hwsim.conf
@@ -64,19 +64,25 @@ connecter() {
   if ! dans wpa_cli -p "/run/wpa-$TEL" -i "$itf" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'; then
     echo "non-associé"; return 1
   fi
-  dans dhcpcd -4 -w -t 20 -C resolv.conf -C hostname "$itf" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
-  # DNS of the lease for the phone's resolver
-  for i in $(seq 10); do
-    dans dhcpcd -U -4 "$itf" 2>/dev/null | sed -n "s/^domain_name_servers='\?\([^' ]*\).*/nameserver \1/p" > "/etc/netns/$TEL/resolv.conf"
-    [ -s "/etc/netns/$TEL/resolv.conf" ] && break
-    sleep 0.5
-  done
+  # busybox udhcpc, once: lease applied, then what the server sent written to /run/bail-telephone
+  cat > "/run/udhcpc-$TEL.sh" <<'SCRIPT'
+#!/bin/sh
+[ "$1" = bound ] || exit 0
+ip -4 addr flush dev "$interface"
+ip addr add "$ip/$mask" dev "$interface"
+ip route replace default via "${router%% *}" dev "$interface"
+printf 'ip=%s\nrouter=%s\ndns=%s\n' "$ip" "${router%% *}" "${dns%% *}" > /run/bail-telephone
+echo "nameserver ${dns%% *}" > /etc/netns/telephone/resolv.conf
+SCRIPT
+  chmod +x "/run/udhcpc-$TEL.sh"
+  rm -f /run/bail-telephone
+  dans busybox udhcpc -i "$itf" -n -q -f -t 10 -T 2 -s "/run/udhcpc-$TEL.sh" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
   echo "connecté"
 }
 
 deconnecter() {
   local itf; itf=$(if_de "$TEL")
-  dans dhcpcd -k "$itf" >/dev/null 2>&1
+  pkill -x dhcpcd 2>/dev/null
   [ -f "/run/wpa-$TEL.pid" ] && kill "$(cat "/run/wpa-$TEL.pid")" 2>/dev/null
   rm -f "/run/wpa-$TEL.pid" "/run/wpa-$TEL.conf"
   dans ip -4 addr flush dev "$itf" 2>/dev/null
@@ -84,7 +90,7 @@ deconnecter() {
 }
 
 verifier() {
-  local itf adresse nom bail
+  local itf adresse nom
   itf=$(if_de "$TEL"); nom=$(hostname)
   adresse=$(sed -n 's/^  "adresse": "\(.*\)",/\1/p' "$ETAT")
   echo "1. Installation"
@@ -97,10 +103,9 @@ verifier() {
   sleep 3
   local r; r=$(connecter); [ "$r" = connecté ] && ok "connexion avec le bon mot de passe" || { ko "connexion : $r"; return; }
   echo "3. Bail et DNS"
-  bail=$(dans dhcpcd -U -4 "$itf" 2>/dev/null)
   local ip routeur dns
-  ip=$(sed -n "s/^ip_address='\?\([^' ]*\).*/\1/p" <<<"$bail"); routeur=$(sed -n "s/^routers='\?\([^' ]*\).*/\1/p" <<<"$bail")
-  dns=$(sed -n "s/^domain_name_servers='\?\([^' ]*\).*/\1/p" <<<"$bail")
+  ip=$(sed -n 's/^ip=//p' /run/bail-telephone); routeur=$(sed -n 's/^router=//p' /run/bail-telephone)
+  dns=$(sed -n 's/^dns=//p' /run/bail-telephone)
   local d=${ip##*.}
   [ "${ip%.*}" = "${adresse%.*}" ] && [ "$d" -ge 10 ] && [ "$d" -le 250 ] && ok "bail $ip dans la plage" || ko "bail $ip"
   [ "$routeur" = "$adresse" ] && ok "passerelle $routeur" || ko "passerelle $routeur"
