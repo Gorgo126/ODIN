@@ -104,8 +104,8 @@ export default async function Configuration() {
 
       <Panneau
         icone={iconeLivre}
-        titre="Bibliothèque"
-        sousTitre="Encyclopédies et ouvrages de référence au format ZIM"
+        titre="Encyclopédie"
+        sousTitre="Encyclopédies et wikis au format ZIM"
         resume={resume}
       >
         <h3>Contenu installé ({livres.length})</h3>
@@ -128,8 +128,8 @@ export default async function Configuration() {
 
       <Panneau
         icone={iconeLivreFerme}
-        titre="Livres"
-        sousTitre="Livres de référence au format PDF, lisibles hors ligne"
+        titre="Bibliothèque"
+        sousTitre="Ouvrages de référence au format PDF, lisibles hors ligne"
         resume={pluriel(pdf.filter((l) => l.installe).length, 'livre')}
       >
         <div className="grille">

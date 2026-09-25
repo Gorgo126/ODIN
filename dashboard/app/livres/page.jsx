@@ -4,6 +4,7 @@ import { octets } from '../../lib/format.mjs';
 import LienExterne from '../LienExterne';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Bibliothèque  ODIN' };
 
 const CATEGORIES = { sante: 'Santé', eau: 'Eau', energie: 'Énergie', agriculture: 'Agriculture', technique: 'Technique' };
 // Site a file came from (the address actually used, recorded when it was checked)
@@ -23,11 +24,11 @@ export default async function Livres() {
         </nav>
       </header>
 
-      <h1 className="titre-page">Livres</h1>
+      <h1 className="titre-page">Bibliothèque</h1>
 
       {livres.length === 0 && (catalogue.length === 0
         ? <p className="vide">Aucun livre n'est disponible pour l'instant.</p>
-        : <p className="vide">Aucun livre installé. Ajoutez-en depuis <a href="/configuration">Configuration</a>, section Livres.</p>)}
+        : <p className="vide">Aucun livre installé. Ajoutez-en depuis <a href="/configuration">Configuration</a>, section Bibliothèque.</p>)}
 
       {livres.map((l) => (
         <article key={l.id} id={l.id} className="fiche-livre">

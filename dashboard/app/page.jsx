@@ -9,12 +9,12 @@ import Sprite from './assistant/Sprite';
 export const dynamic = 'force-dynamic';
 
 const DESCRIPTIONS = {
-  assistant: "Il cherche dans vos documents, la bibliothèque et vos livres, et répond avec ce qu'il y trouve, en citant ses sources.",
+  assistant: "Il cherche dans vos documents personnels, l'encyclopédie et la bibliothèque, et répond avec ce qu'il y trouve, en citant ses sources.",
   // Card of the assistant while the AI option is not installed: it leads to the installation page
   assistantAbsent: "Option : un modèle de langage qui rédige les réponses à partir des passages trouvés. Demande une carte graphique de 8 Go au moins.",
-  bibliotheque: "Encyclopédies et ouvrages de référence au format ZIM, indexés en plein texte et consultables hors ligne.",
+  bibliotheque: "Encyclopédies et wikis au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
-  livres: "Livres de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
+  livres: "Ouvrages de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
   carte: "Cartes OpenStreetMap consultables hors ligne, jusqu'au niveau des rues pour les régions installées."
 };
 
@@ -87,7 +87,7 @@ export default async function Page() {
               <a key={s.id} href={option ? '/ia' : s.interne ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
                 <div className="service-tete">
                   <span className="service-icone">{perso ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}</span>
-                  <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Online' : option ? 'Non installé' : 'Offline'}</span>
+                  <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Actif' : option ? 'Non installé' : 'Offline'}</span>
                 </div>
                 <strong>{perso ? assistant.nom : s.nom}</strong>
                 <p>{option ? DESCRIPTIONS.assistantAbsent : DESCRIPTIONS[s.id]}</p>

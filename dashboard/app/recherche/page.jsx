@@ -51,7 +51,7 @@ export default async function Recherche({ searchParams }) {
 
         {requete && livres && livres.total > 0 && (
           <section className="bloc-resultats">
-            <h2>Dans les livres  {nombre(livres.total)} page{livres.total > 1 ? 's' : ''}</h2>
+            <h2>Dans la bibliothèque  {nombre(livres.total)} page{livres.total > 1 ? 's' : ''}</h2>
             {livres.resultats.map((r) => <ResultatLivre key={`${r.id}-${r.page}`} r={r} requete={requete} />)}
             {seulementLivres ? (
               <nav className="pagination">
@@ -59,7 +59,7 @@ export default async function Recherche({ searchParams }) {
                 <span>{start + PAR_PAGE < livres.total && <a href={page(start + PAR_PAGE)}>Suivantes</a>}</span>
               </nav>
             ) : livres.total > APERCU_LIVRES && (
-              <p className="tout-voir"><a href={page(0, true)}>Voir les {nombre(livres.total)} pages trouvées dans les livres</a></p>
+              <p className="tout-voir"><a href={page(0, true)}>Voir les {nombre(livres.total)} pages trouvées dans la bibliothèque</a></p>
             )}
           </section>
         )}

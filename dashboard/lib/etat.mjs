@@ -4,13 +4,13 @@ import { livresInstalles } from './livres.mjs';
 import { iaInstallee } from './assistant.mjs';
 
 export const SERVICES = [
-  { id: 'bibliotheque', nom: 'Bibliothèque', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
-  { id: 'documents', nom: 'Documents', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
+  { id: 'bibliotheque', nom: 'Encyclopédie', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
+  { id: 'documents', nom: 'Documents personnels', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
   // Pages of the dashboard itself: available as soon as one pack of their kind is installed.
   // The assistant is an option: without a model installed and enabled, its card leads to /ia
   { id: 'assistant', nom: 'Assistant IA', lien: '/assistant', interne: true },
-  { id: 'livres', nom: 'Livres', lien: '/livres', interne: true },
-  { id: 'carte', nom: 'Carte', lien: '/carte', interne: true }
+  { id: 'livres', nom: 'Bibliothèque', lien: '/livres', interne: true },
+  { id: 'carte', nom: 'Cartes', lien: '/carte', interne: true }
 ];
 
 const PRESENTS = { livres: livresInstalles, carte: installees, assistant: async () => (iaInstallee() ? [1] : []) };

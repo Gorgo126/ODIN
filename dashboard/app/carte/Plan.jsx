@@ -106,7 +106,7 @@ export default function Plan({ packs }) {
       <nav className="barre">
         <a href="/" className="accueil"> ODIN</a>
         <span className="sep"></span>
-        <span>Carte</span>
+        <span>Cartes</span>
         <a className="externe" href="/configuration">Gérer les cartes</a>
       </nav>
       {!packs.length && (
