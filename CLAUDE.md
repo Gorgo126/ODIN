@@ -446,7 +446,9 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /reche
 
 - kiwix-serve ajoute déjà --port=8080 ; tourne en UID 1001 ; boucle si library.xml est absent.
 - Next standalone ne copie pas public/ : le Dockerfile doit le faire.
-- download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries.
+- download.kiwix.org exige curl -L ; catalogue OPDS : library.kiwix.org/catalog/v2/entries (renvoie vers
+  opds.library.kiwix.org). Le filtre name ne prend qu'un nom : le catalogue entier est lu en une requête
+  (count=-1, ~450 Ko compressés) et gardé 1 h (lib/catalogue.mjs).
 - Le build arm64 émulé bloque GitHub Actions.
 - raw.githubusercontent.com garde un cache jusqu'à 5 minutes : tester avec l'identifiant du commit.
 - Ollama interroge ollama.com au démarrage puis toutes les 4 h (recommandations, cache cloud) :
