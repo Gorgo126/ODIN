@@ -161,7 +161,8 @@ SONDES=(
 portail() {
   local adresse s hote chemin statut corps r
   adresse=$(sed -n 's/^  "adresse": "\(.*\)",/\1/p' "$ETAT")
-  [ "$(connecter)" = connecté ] || { ko "téléphone non connecté"; return; }
+  # Same second try as verifier: a reconnection right after another one may time out
+  [ "$(connecter)" = connecté ] || { sleep 3; [ "$(connecter)" = connecté ]; } || { ko "téléphone non connecté"; return; }
   echo "6. Portail captif"
   echo "  avant « Continuer »"
   for s in "${SONDES[@]}"; do
