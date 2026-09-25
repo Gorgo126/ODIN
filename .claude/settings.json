@@ -8,7 +8,7 @@
       "Bash(multipass info:*)"
     ],
     "deny": [
-      "Bash(multipass delete nomad:*)",
+      "Bash(multipass delete odintest:*)",
       "Bash(multipass restore:*)",
       "Bash(rm -rf:*)"
     ]

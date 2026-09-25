@@ -29,7 +29,7 @@ export const CONSTANTES = {
   temperature: 0.4,
 
   // Best raw cosine per source, decided before any call to the language model. Calibrated on
-  // tests/documents and on the packs installed on nomad (lot 3): documents 0.40–0.72 when the answer
+  // tests/documents and on the packs installed on odintest (lot 3): documents 0.40–0.72 when the answer
   // is there, 0.21–0.39 when it is close; wikis 0.53–0.64 against 0.27–0.37; books 0.43–0.66
   // against 0.02–0.18.
   seuils: {

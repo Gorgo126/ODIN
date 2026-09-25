@@ -1,5 +1,5 @@
 {
-  "_lisezmoi": "Recherche avancée, sur les packs de nomad (WikiMed, Wikipédia chimie et maths, Wikivoyage), le livre « Là où il n'y a pas de docteur » et les documents personnels. attendu : titres acceptés (sans la parenthèse finale), « livre:debut-fin » (une page du livre dans cet intervalle), « doc:début du titre » (document personnel). aucun : rien ne doit sortir en « Meilleurs passages ». Commande en tête de dashboard/assistant/evaluation-recherche.mjs.",
+  "_lisezmoi": "Recherche avancée, sur les packs de odintest (WikiMed, Wikipédia chimie et maths, Wikivoyage), le livre « Là où il n'y a pas de docteur » et les documents personnels. attendu : titres acceptés (sans la parenthèse finale), « livre:debut-fin » (une page du livre dans cet intervalle), « doc:début du titre » (document personnel). aucun : rien ne doit sortir en « Meilleurs passages ». Commande en tête de dashboard/assistant/evaluation-recherche.mjs.",
   "questions": [
     { "q": "je me suis brûlé la main avec de l'eau bouillante", "attendu": ["Brûlure", "livre:162-167"] },
     { "q": "comment soigner une brûlure", "attendu": ["Brûlure", "livre:162-167"] },
