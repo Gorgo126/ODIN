@@ -1,10 +1,11 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-// Language names in French, from the browser itself (no data to download)
-const noms = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['fr'], { type: 'language' }) : null;
+// Language names in French: from the catalogue, else from the browser itself (no data to download)
+const intl = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['fr'], { type: 'language' }) : null;
+let catalogue = {};
 const nom = (code) => {
-  const n = noms?.of(code) || code;
+  const n = catalogue[code] || intl?.of(code) || code;
   return n.charAt(0).toUpperCase() + n.slice(1);
 };
 
@@ -17,7 +18,8 @@ async function appel(action, corps) {
   return d;
 }
 
-export default function Traducteur({ initiales, erreurInitiale, limite }) {
+export default function Traducteur({ noms, initiales, rechargementInitial, erreurInitiale, limite }) {
+  catalogue = noms || {};
   const [liste, setListe] = useState(initiales);
   const [source, setSource] = useState('auto');
   const [cible, setCible] = useState(initiales?.some((l) => l.code === 'fr') ? 'fr' : initiales?.[0]?.code || '');
@@ -26,6 +28,8 @@ export default function Traducteur({ initiales, erreurInitiale, limite }) {
   const [detectee, setDetectee] = useState(null);
   const [erreur, setErreur] = useState(erreurInitiale);
   const [occupe, setOccupe] = useState(false);
+  // LibreTranslate reloads its models after a language was added or removed: shown, never an error
+  const [recharge, setRecharge] = useState(rechargementInitial);
 
   const codes = useMemo(() => (liste || []).map((l) => l.code).sort((a, b) => nom(a).localeCompare(nom(b), 'fr')), [liste]);
   const cibles = codes.filter((c) => c !== source);
@@ -33,13 +37,22 @@ export default function Traducteur({ initiales, erreurInitiale, limite }) {
   async function recharger() {
     setErreur(null);
     try {
-      const l = await appel('languages');
+      const { langues: l, rechargement } = await appel('languages');
+      setRecharge(rechargement);
+      if (!l) return;
       setListe(l);
-      if (!cible) setCible(l.some((x) => x.code === 'fr') ? 'fr' : l[0]?.code || '');
+      if (!cible || !l.some((x) => x.code === cible)) setCible(l.some((x) => x.code === 'fr') ? 'fr' : l[0]?.code || '');
+      if (source !== 'auto' && !l.some((x) => x.code === source)) setSource('auto');
     } catch (e) {
       setErreur(e.message);
     }
   }
+
+  useEffect(() => {
+    if (!recharge) return;
+    const t = setInterval(recharger, 2000);
+    return () => clearInterval(t);
+  });
 
   async function traduire() {
     const q = texte.trim();
@@ -74,7 +87,10 @@ export default function Traducteur({ initiales, erreurInitiale, limite }) {
     if (v === cible) setCible(codes.find((c) => c !== v) || '');
   }
 
+  const bandeau = recharge && <p className="traduction-rechargement">Rechargement des langues…</p>;
+
   if (!liste) {
+    if (recharge) return <div className="traduction-indisponible">{bandeau}</div>;
     return (
       <div className="traduction-indisponible">
         <p className="erreur">{erreur}</p>
@@ -85,6 +101,7 @@ export default function Traducteur({ initiales, erreurInitiale, limite }) {
 
   return (
     <div className="traduction">
+      {bandeau}
       <div className="traduction-langues">
         <select value={source} onChange={(e) => changerSource(e.target.value)} aria-label="Langue du texte">
           <option value="auto">{detectee ? `Détection : ${nom(detectee)}` : 'Détection automatique'}</option>

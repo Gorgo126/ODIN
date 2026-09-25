@@ -109,24 +109,38 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
 - filebrowser : FileBrowser Quantum (gtstef/filebrowser), noauth, config/filebrowser.yaml.
 - libretranslate : traduction hors ligne (libretranslate/libretranslate:v1.9.6, CPU, modèles Argos). Réseau Docker
   « traduction » en internal: true, partagé avec le dashboard seul : aucun port publié, absent de Caddy, et aucune
-  route vers internet. Modèles dans ${DATA_DIR}/traduction (packages/, minisbd/), montés en lecture seule sur
-  /home/libretranslate/.local/share/argos-translate (utilisateur 1032). LT_DISABLE_WEB_UI, LT_DISABLE_FILES_TRANSLATION,
-  LT_API_KEYS=false, LT_UPDATE_MODELS=false, LT_THREADS=1 (chaque processus charge sa copie des modèles),
-  LT_CHAR_LIMIT = TRADUCTION_LIMITE (même limite dans la route du dashboard). Healthcheck Python sur /languages
-  (l'image n'a pas curl) ; la carte d'accueil et la page font le même test (le dashboard ne lit pas l'état Docker).
-  Langues : TRADUCTION_LANGUES de .env, seule source (install.sh et LT_LOAD_ONLY de compose.yml). LT_LOAD_ONLY ne sert
-  qu'aux téléchargements (désactivés) : LibreTranslate sert les modèles présents sur le disque. Une langue sans modèle
-  est simplement absente de /languages ; avec moins de 2 modèles, il tenterait de tout télécharger (hors ligne :
-  message « normal if you're offline », appels Argos sans délai). D'où install.sh qui retire les modèles hors liste
-  et refuse de continuer s'il en manque.
-  Toutes les paires passent par l'anglais (xx↔en, pivot automatique d'Argos : fr→de = fr→en→de, moins précis).
-  install.sh : catalogue/traduction.txt (URL, taille, SHA-256 figés), téléchargement vérifié, installation par
-  install_from_path d'Argos dans l'image du service elle-même (docker compose run, réseau interne), archives effacées.
-  Dashboard : lib/traduction.mjs, /api/traduction/{languages,detect,translate}, page /traduction.
-  Ajouter une langue : ajouter au catalogue ses lignes argos xx→en et en→xx (index argospm-index, empreinte calculée
-  sur le fichier téléchargé) et sa ligne sbd (MiniSBD, releases v0.0.1), l'ajouter à TRADUCTION_LANGUES dans .env,
-  relancer install.sh (puis docker compose up -d libretranslate si seul .env a changé), vérifier une traduction
-  depuis cette langue hors ligne. Une langue sans modèle MiniSBD n'est pas prise en charge (Argos se replie sur en).
+  route vers internet. Modèles dans ${DATA_DIR}/traduction (packages/, minisbd/), en lecture seule pour lui
+  (/home/libretranslate/.local/share/argos-translate, UID 1032), en écriture pour le dashboard (/traduction).
+  Vérifié : ni Argos ni LibreTranslate n'y écrivent (index.json et verrous MiniSBD seulement pour un téléchargement).
+  LT_DISABLE_WEB_UI, LT_DISABLE_FILES_TRANSLATION, LT_API_KEYS=false, LT_UPDATE_MODELS=false, LT_THREADS=1 (chaque
+  processus charge sa copie des modèles), LT_CHAR_LIMIT = TRADUCTION_LIMITE (même limite dans la route du dashboard).
+  Healthcheck Python sur /languages (pas de curl dans l'image) ; carte d'accueil et page font le même test.
+  LibreTranslate sert les modèles présents sur le disque ; LT_LOAD_ONLY ne servirait qu'à un téléchargement. Avec
+  moins de 2 modèles, il tenterait de tout télécharger : install.sh démarre donc le dashboard seul, lui fait installer
+  fr et en, et seulement ensuite le reste.
+  Packs de langues (lib/traduction-packs.mjs, catalogue/traduction.json : 49 langues de l'index Argos, xx→en et
+  en→xx, modèle MiniSBD utilisé, code de l'API quand il diffère : pb → pt-BR, zh → zh-Hans, zt → zh-Hant). Base fr et
+  en, jamais désinstallables. Le dashboard télécharge (reprise, 30 s d'inactivité, 3 essais avant le premier octet),
+  vérifie l'empreinte, décompresse (unzip de BusyBox) dans .en-cours/ du même volume, écrit odin-sha256 (un modèle
+  installé est reconnu par l'empreinte de son archive, pas par son dossier), rend lisible par tous (chmod), puis
+  renomme d'un coup dans packages/. .en-cours/ est vidé au démarrage du dashboard, et une langue à moitié présente
+  est retirée : une installation interrompue ne laisse rien. Un modèle MiniSBD partagé (tr.onnx : tr et az) reste
+  tant qu'une langue installée s'en sert.
+  Rechargement sans socket Docker, sur le modèle de Kiwix (qui relit library.xml, --monitorLibrary) : le dashboard
+  écrit .recharger, une fois après la dernière de plusieurs opérations simultanées ; le point d'entrée du service
+  (compose.yml) le lit toutes les 2 s et envoie HUP à gunicorn (pid dans /tmp/gunicorn.pid par GUNICORN_CMD_ARGS),
+  qui démarre un nouveau processus serveur (relecture des modèles) avant d'arrêter l'ancien. Ce point d'entrée
+  transmet SIGTERM à gunicorn (docker stop immédiat) et se termine avec lui (restart: unless-stopped le relance).
+  /api/traduction/languages rend { langues, rechargement } : « Rechargement des langues… » sur /traduction tant
+  que LibreTranslate ne sert pas les langues installées (60 s au plus), jamais une erreur.
+  TRADUCTION_LANGUES (.env, défaut fr,en) : langues de la première installation seulement (aucun modèle présent) ;
+  ensuite le disque fait foi, install.sh ne garantit que fr et en, une langue désinstallée ne revient jamais seule.
+  Toutes les paires passent par l'anglais (pivot automatique d'Argos : fr→de = fr→en→de, moins précis).
+  Dashboard : lib/traduction.mjs, /api/traduction/{languages,detect,translate}, /api/traduction/packs[/<code>],
+  page /traduction (lien « Ajouter des langues » vers /configuration#traduction), panneau Traduction.
+  Ajouter une langue au catalogue : ses modèles xx→en et en→xx de l'index argospm-index, empreinte et taille calculées
+  sur les fichiers, son modèle MiniSBD (même correspondance que MiniSBDSentencizer d'Argos, anglais à défaut), son nom
+  français ; puis tester une traduction depuis cette langue hors ligne.
 - Cartes : packs PMTiles (fonds Protomaps, données OSM) dans data/cartes/<id>.pmtiles, servis par
   Caddy sur /tuiles/* (file_server, requêtes Range, derrière l'authentification). Catalogue :
   catalogue/cartes.txt (id|ouest,sud,est,nord ou -|zoom max|libellé). Un pack = pmtiles extract
@@ -506,7 +520,7 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /tradu
   dépôt, si le cd échoue). Chemin absolu, dossier créé d'abord, étapes liées par && :
   S=<scratchpad>; mkdir -p "$S" && rm -f "$S"/* && cd "$S" && ...
 - LibreTranslate/Argos téléchargent au premier usage le découpeur de phrases MiniSBD de chaque langue source
-  (~/.local/share/argos-translate/minisbd/<code>.onnx) : il n'est pas dans les paquets Argos. install.sh le pose
-  (lignes sbd du catalogue). Un modèle manquant ne se voit qu'hors ligne : tester une traduction depuis CHAQUE langue.
+  (~/.local/share/argos-translate/minisbd/<code>.onnx) : il n'est pas dans les paquets Argos. Chaque pack de langue le
+  pose (champ decoupage du catalogue). Un modèle manquant ne se voit qu'hors ligne : tester une traduction depuis CHAQUE langue.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

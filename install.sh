@@ -256,111 +256,22 @@ modele_vecteurs() {
 }
 modele_vecteurs || echo "  Modèle non installé : la recherche marche par mots-clés seulement. Relancez l'installeur avec internet."
 
-msg "Modèles de traduction"
-# LibreTranslate (Argos) never downloads anything itself: its network is internal and its models are
-# mounted read-only. Everything is fetched here, from catalogue/traduction.txt (pinned URL, size and
-# SHA-256): translation models xx→en and en→xx, and the MiniSBD sentence splitter of each language,
-# which LibreTranslate would otherwise fetch at the first translation from that language.
-# Languages: TRADUCTION_LANGUES of .env, also read by compose.yml. Missing models stop the installer.
+msg "Langues de la traduction"
+# The models are installed by the dashboard (language packs, catalogue/traduction.json), which checks and
+# unpacks them; LibreTranslate never downloads anything (internal network, read-only models).
+# TRADUCTION_LANGUES: languages of a first installation only (when no model is present yet); afterwards
+# the disk decides, and each run only guarantees French and English (a language removed from the
+# dashboard never comes back by itself).
+if grep -qx 'TRADUCTION_LANGUES=fr,en,nl,de,es,it' "$CIBLE/.env"; then
+  # Default written by the previous installer, not a choice of the owner
+  sed -i 's/^TRADUCTION_LANGUES=fr,en,nl,de,es,it$/TRADUCTION_LANGUES=fr,en/' "$CIBLE/.env"
+fi
 grep -q '^TRADUCTION_LANGUES=' "$CIBLE/.env" \
-  || printf '# Traduction hors ligne : langues (modèles téléchargés par install.sh, voir catalogue/traduction.txt)\nTRADUCTION_LANGUES=fr,en,nl,de,es,it\n' >> "$CIBLE/.env"
+  || printf '# Traduction hors ligne : langues de la première installation (ensuite, packs de langues dans ODIN)\nTRADUCTION_LANGUES=fr,en\n' >> "$CIBLE/.env"
 grep -q '^TRADUCTION_LIMITE=' "$CIBLE/.env" \
   || printf '# Traduction hors ligne : taille maximale d'"'"'un texte, en caractères\nTRADUCTION_LIMITE=5000\n' >> "$CIBLE/.env"
-TRAD="$DATA/traduction"
 LANGUES=$(sed -n 's/^TRADUCTION_LANGUES=//p' "$CIBLE/.env" | tail -1 | tr -d ' ')
-# UID of the « libretranslate » user of the image
-UID_TRADUCTION=1032
-modeles_traduction() {
-  local catalogue="$CIBLE/catalogue/traduction.txt" type de vers url sha taille nom cle f l besoin_mo=0
-  local garder=() installer=() manquants=()
-  voulue() { case ",$LANGUES," in *",$1,"*) return 0 ;; esac; return 1; }
-  # An installed Argos model is recognised by the SHA-256 of its archive, written in its folder at
-  # installation (odin-sha256): the folder name inside the archive does not follow the file name
-  present() {
-    if [ "$1" = argos ]; then grep -qxF "$3" "$TRAD"/packages/*/odin-sha256 2>/dev/null
-    else [ -f "$TRAD/minisbd/$2.onnx" ]; fi
-  }
-  # Every pair goes through English (Argos pivots, fr→de = fr→en→de)
-  voulue en || err "TRADUCTION_LANGUES doit contenir en (toutes les traductions passent par l'anglais)."
-  for l in ${LANGUES//,/ }; do
-    grep -q "^sbd|$l|" "$catalogue" || err "Langue $l absente de catalogue/traduction.txt : retirez-la de TRADUCTION_LANGUES dans $CIBLE/.env."
-  done
-  mkdir -p "$TRAD/packages" "$TRAD/minisbd" "$TRAD/.telechargements"
-  chown -R "$UID_TRADUCTION:$UID_TRADUCTION" "$TRAD"
-
-  # Place: archive and installed copy side by side, for what is still missing
-  while IFS='|' read -r type de vers url sha taille; do
-    case "$type" in argos|sbd) ;; *) continue ;; esac
-    voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
-    nom=$(basename "$url")
-    present "$type" "$de" "$sha" || besoin_mo=$(( besoin_mo + taille * 2 / 1048576 ))
-  done < "$catalogue"
-  if [ "$besoin_mo" -gt 0 ]; then
-    [ "$(libre_mo "$DATA")" -ge $(( besoin_mo + 512 )) ] \
-      || err "Place insuffisante pour les modèles de traduction : il faut $(( besoin_mo + 512 )) Mo libres dans $DATA."
-  fi
-
-  while IFS='|' read -r type de vers url sha taille; do
-    case "$type" in argos|sbd) ;; *) continue ;; esac
-    voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
-    nom=$(basename "$url")
-    if [ "$type" = argos ]; then garder+=("$sha"); else garder+=("$de.onnx"); fi
-    present "$type" "$de" "$sha" && continue
-    f="$TRAD/.telechargements/$nom"
-    if ! { [ -f "$f" ] && echo "$sha  $f" | sha256sum -c --quiet - >/dev/null 2>&1; }; then
-      echo "  $nom"
-      # A stalled transfer stops after 60 s; a partial file is resumed on the next run
-      if ! curl -fL --progress-bar --connect-timeout 15 --speed-limit 1024 --speed-time 60 -C - -o "$f.part" "$url"; then
-        echo "  Téléchargement impossible : $nom"; continue
-      fi
-      if ! echo "$sha  $f.part" | sha256sum -c --quiet - >/dev/null 2>&1; then
-        rm -f "$f.part"; echo "  Empreinte incorrecte : $nom supprimé."; continue
-      fi
-      mv "$f.part" "$f"
-    fi
-    if [ "$type" = argos ]; then installer+=("/traduction/.telechargements/$nom" "$sha"); else install -m 0644 "$f" "$TRAD/minisbd/$de.onnx" && rm -f "$f"; fi
-  done < "$catalogue"
-  chown -R "$UID_TRADUCTION:$UID_TRADUCTION" "$TRAD"
-
-  # Installed by Argos itself, in the image of the service (same version), on its internal network
-  if [ ${#installer[@]} -gt 0 ]; then
-    ( cd "$CIBLE" && docker compose pull -q libretranslate \
-      && docker compose run --rm --no-deps -T --entrypoint /app/venv/bin/python \
-        -e ARGOS_PACKAGES_DIR=/traduction/packages -v "$TRAD:/traduction" libretranslate \
-        -c '
-import sys, zipfile
-from argostranslate import package, settings
-a = sys.argv[1:]
-for chemin, sha in zip(a[::2], a[1::2]):
-    racines = {n.split("/")[0] for n in zipfile.ZipFile(chemin).namelist()}
-    if len(racines) != 1: sys.exit(f"{chemin} : archive inattendue")
-    package.install_from_path(chemin)
-    (settings.package_data_dir / racines.pop() / "odin-sha256").write_text(sha + "\n")
-' "${installer[@]}" ) \
-      || err "Installation des modèles de traduction impossible."
-    rm -f "$TRAD"/.telechargements/*.argosmodel
-  fi
-
-  # Models of languages removed from TRADUCTION_LANGUES, or replaced by a newer version: removed, so
-  # that the languages served are exactly those of TRADUCTION_LANGUES
-  for f in "$TRAD"/packages/* "$TRAD"/minisbd/*.onnx; do
-    [ -e "$f" ] || continue
-    nom=$(basename "$f")
-    case "$nom" in *.onnx) cle=$nom ;; *) cle=$(cat "$f/odin-sha256" 2>/dev/null) ;; esac
-    printf '%s\n' "${garder[@]}" | grep -qxF "$cle" && continue
-    rm -rf "${f:?}"; echo "  Retiré : $nom"
-  done
-
-  while IFS='|' read -r type de vers url sha taille; do
-    case "$type" in argos|sbd) ;; *) continue ;; esac
-    voulue "$de" && { [ "$vers" = - ] || voulue "$vers"; } || continue
-    present "$type" "$de" "$sha" || manquants+=("$(basename "$url")")
-  done < "$catalogue"
-  [ ${#manquants[@]} -eq 0 ] \
-    || err "Modèles de traduction manquants (${manquants[*]}). Relancez l'installeur avec internet."
-  echo "  Langues : $LANGUES ($(du -sh "$TRAD" | cut -f1))."
-}
-modeles_traduction
+mkdir -p "$DATA/traduction"
 
 msg "Démarrage des services"
 cd "$CIBLE"
@@ -381,6 +292,48 @@ if [ -n "$(docker ps -q --filter 'name=^ollama$')" ]; then
 fi
 # --- End of migration ---
 docker compose pull
+# The dashboard first, alone: it installs the translation models before LibreTranslate starts, so
+# that LibreTranslate never starts without them (it would try to download them)
+docker compose up -d dashboard
+docker exec -i -e LANGUES="$LANGUES" dashboard node - <<'JS' || err "Langues de la traduction non installées (français et anglais au moins). Relancez l'installeur avec internet."
+const base = 'http://localhost:3000';
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const get = (c) => fetch(base + c, { signal: AbortSignal.timeout(30000) }).then((r) => r.json());
+(async () => {
+  let liste;
+  for (let i = 0; i < 60 && !Array.isArray(liste); i++) liste = await get('/api/traduction/packs').catch(() => pause(2000));
+  if (!Array.isArray(liste)) throw new Error('tableau de bord injoignable');
+  const voulues = new Set(liste.filter((l) => l.base).map((l) => l.code));
+  // TRADUCTION_LANGUES only when no model is installed yet
+  if (!liste.some((l) => l.installee)) {
+    for (const c of process.env.LANGUES.split(',').filter(Boolean)) {
+      if (!liste.some((l) => l.code === c)) throw new Error(`langue ${c} absente de catalogue/traduction.json`);
+      voulues.add(c);
+    }
+  }
+  const manquantes = liste.filter((l) => voulues.has(l.code) && !l.installee);
+  if (!manquantes.length) return console.log(`  Déjà installées : ${liste.filter((l) => l.installee).map((l) => l.code).join(', ')}.`);
+  // The internet probe gives its first result a few seconds after the start of the dashboard
+  for (let i = 0; i < 30 && !(await get('/api/liaison').catch(() => ({}))).dernierTest; i++) await pause(1000);
+  for (const l of manquantes) {
+    const r = await fetch(`${base}/api/traduction/packs/${l.code}`, { method: 'POST' }).then((x) => x.json());
+    if (r.erreur) throw new Error(`${l.nom} : ${r.erreur}`);
+    console.log(`  ${l.nom}...`);
+  }
+  // No total delay: the dashboard stops a stalled download after 30 s
+  for (;;) {
+    await pause(3000);
+    liste = await get('/api/traduction/packs');
+    const encours = liste.filter((l) => voulues.has(l.code) && l.tache?.etat === 'en cours');
+    const erreur = liste.find((l) => voulues.has(l.code) && l.tache?.etat === 'erreur');
+    if (erreur) throw new Error(`${erreur.nom} : ${erreur.tache.erreur}`);
+    if (!encours.length) break;
+  }
+  const absentes = liste.filter((l) => voulues.has(l.code) && !l.installee);
+  if (absentes.length) throw new Error(`non installées : ${absentes.map((l) => l.nom).join(', ')}`);
+  console.log(`  Installées : ${liste.filter((l) => l.installee).map((l) => l.code).join(', ')}.`);
+})().catch((e) => { console.error('  ' + e.message); process.exit(1); });
+JS
 docker compose up -d --remove-orphans
 
 # --- Migration: former assistant (Open WebUI + synchro). To be removed after v1. ---

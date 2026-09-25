@@ -455,3 +455,7 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .traduction-indisponible { margin-top: 1.2rem; display: flex; flex-direction: column; align-items: flex-start; gap: .6rem; }
 .traduction-indisponible button { padding: .45rem 1rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
 @media (max-width: 640px) { .traduction-zones { grid-template-columns: 1fr; } .traduction textarea { min-height: 9rem; } }
+.traduction-tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .6rem; }
+.traduction-tete .bouton { display: inline-flex; padding: .4rem .8rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); color: inherit; text-decoration: none; font-family: var(--mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+.traduction-tete .bouton:hover { border-color: var(--or); color: var(--or); }
+.traduction-rechargement { margin: 0; padding: .5rem .8rem; border: 1px solid var(--or); color: var(--or); font-family: var(--mono); font-size: .8rem; }

@@ -1,0 +1,1272 @@
+{
+ "_": [
+  "Langues de la traduction hors ligne. Chaque langue : ses modèles Argos xx→en et en→xx (index argospm-index, relevé le 2026-09-25, versions compatibles avec LibreTranslate v1.9.6), et le modèle MiniSBD de découpage en phrases utilisé pour cette langue source (releases v0.0.1). Empreintes et tailles calculées sur les fichiers téléchargés. Aucune mesure de qualité : l'index n'en donne pas. Paires directes sans l'anglais (pt↔es) non reprises."
+ ],
+ "base": [
+  "fr",
+  "en"
+ ],
+ "decoupage": {
+  "ar": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ar.onnx",
+   "sha256": "44a1847101e1adf667d4b9e1c7a0178d0af016ce33d8e5fc58aea1340c26835f",
+   "taille": 181459
+  },
+  "bg": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/bg.onnx",
+   "sha256": "deb5c80eb0d8a2d1f11d6e13ac6385ae492320e480effe162b47d78755f5e4c2",
+   "taille": 180111
+  },
+  "ca": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ca.onnx",
+   "sha256": "23cd5d6b0528c0ccddc77bc0b1160ab5169cf2bf46e61c48b25a3718983b059d",
+   "taille": 182270
+  },
+  "cs": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/cs.onnx",
+   "sha256": "e7f118124fed59b3d07203c030dc3b3ff676882531a633364da22fbf78c95f10",
+   "taille": 183759
+  },
+  "da": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/da.onnx",
+   "sha256": "3a7593d774f854900248ddd65468b95f0fc8244d6484648546057cd3e3da87b0",
+   "taille": 178110
+  },
+  "de": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/de.onnx",
+   "sha256": "00320fe47a79269bf4a85b4e3aa9a4b367fcc2528af23aa41cbad0203b35d1e7",
+   "taille": 189791
+  },
+  "el": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/el.onnx",
+   "sha256": "1039c155b3bed5efb9824a28ffbf297dfe2d81135508172c4a50fe3bf696e97f",
+   "taille": 183945
+  },
+  "en": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/en.onnx",
+   "sha256": "6fa9f3a3b201687bd43e329b2b0736789efc97b37883b5b759b31988dca9f353",
+   "taille": 188043
+  },
+  "es": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/es.onnx",
+   "sha256": "9774dd5ed1bd2d0566fa8d12ee59fd1d2c57b97127d004e03aa2b7b1cc6b2652",
+   "taille": 193234
+  },
+  "et": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/et.onnx",
+   "sha256": "4ff771c2a6b3a71e871ab9b8a73e14f9da72010dd452213dd0f200ae82622b0b",
+   "taille": 182796
+  },
+  "eu": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/eu.onnx",
+   "sha256": "2906031dfd3e6f581d649fdee1b12e49a5cc6687e94cd29bc6652e3d77e6b2f1",
+   "taille": 177154
+  },
+  "fa": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/fa.onnx",
+   "sha256": "c4ad2f9221ee600aaa3817d34e5287a917774be2430cb76c305e5fa1e9db01d7",
+   "taille": 183356
+  },
+  "fi": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/fi.onnx",
+   "sha256": "cf273a1395d7e60a00d0ce4a3fe2d403fe424ab0a0f56866b97f24dc8154a35d",
+   "taille": 189321
+  },
+  "fr": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/fr.onnx",
+   "sha256": "f9392ffd67104d9d633c9254e5095048ce64da6a04212d3dc02940425f8c3af4",
+   "taille": 193461
+  },
+  "ga": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ga.onnx",
+   "sha256": "fe7628940f842acdff1a95502572959c39e7adfeb179c8700bed007070ae9eae",
+   "taille": 177703
+  },
+  "gl": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/gl.onnx",
+   "sha256": "946e05fd52090674089f9bd72e86ba8f1bec770775f72fc0b8cf855225ca07f3",
+   "taille": 181918
+  },
+  "he": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/he.onnx",
+   "sha256": "33f23c01c140dad455a74159bf4288e0e429d57335fecf3594f5f4653173b9a0",
+   "taille": 184715
+  },
+  "hi": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/hi.onnx",
+   "sha256": "16924ea9912aec3d6759dbf0652a82508a8e3ec840b20941b30d264eba1798d1",
+   "taille": 178129
+  },
+  "hu": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/hu.onnx",
+   "sha256": "bb654e8c296c820b11add875f69e240a8e2b3024a201cf7194089d78e9618c28",
+   "taille": 177603
+  },
+  "id": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/id.onnx",
+   "sha256": "10d29d9261c0a0a50334754d33d0272df71eba1522ef174b337e7869d364c80e",
+   "taille": 191396
+  },
+  "it": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/it.onnx",
+   "sha256": "ada440b5097f2099a6e9cf0673674805f8f95236a02910466c54f6afd8dd218f",
+   "taille": 182756
+  },
+  "ja": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ja.onnx",
+   "sha256": "5ef874606b0afe24cc799b737ba1d9c09259e80ddee7646fc557a8f9e0e1017c",
+   "taille": 698618
+  },
+  "ko": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ko.onnx",
+   "sha256": "a8b8789c7056d535d276489dcda539f313069ed37d7b2779ee9f9e43db842adb",
+   "taille": 305683
+  },
+  "ky": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ky.onnx",
+   "sha256": "a778b5785413331208aaa04d2527a82a388fab832a635a22b593809274a81b53",
+   "taille": 179615
+  },
+  "lt": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/lt.onnx",
+   "sha256": "d7de76b4be3a3e2f2a3f0b26300db67d98f22f5f81f151f98cc7d022fd4b9246",
+   "taille": 178284
+  },
+  "lv": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/lv.onnx",
+   "sha256": "014ce50e62c8f98d3eb53a5e94a0a8baeaedd88bae94840f6fe7329588fdd8de",
+   "taille": 179326
+  },
+  "nb": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/nb.onnx",
+   "sha256": "e2e7a8936d6890567378d1ead9c4b1ba48bb0b84fda07569de19b39e3a02ca82",
+   "taille": 178634
+  },
+  "nl": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/nl.onnx",
+   "sha256": "b04ea4f625abd5ee3097f1a54490dc95bca0a6ef1920c38c1239784e6892aaf7",
+   "taille": 181569
+  },
+  "pl": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/pl.onnx",
+   "sha256": "884e77a008668f67df61e44836ade2ef16764a0ff922d3b7b30c3249c5896fcc",
+   "taille": 183035
+  },
+  "pt": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/pt.onnx",
+   "sha256": "db0a8c8f273fde33b902aa660356549986de7b83f881e8538c49dceb1feb1f2f",
+   "taille": 182290
+  },
+  "ro": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ro.onnx",
+   "sha256": "c7fdd00e0d663134fcfc768f7664407c4c775ebf04b33f7fe1b0431be5e14ca0",
+   "taille": 180275
+  },
+  "ru": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ru.onnx",
+   "sha256": "53c65ef031698d99fd0c736275eeb3c37f4694613c5c0d4423745741b0843138",
+   "taille": 181514
+  },
+  "sk": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/sk.onnx",
+   "sha256": "5120818d2a661f82bcbcb2a0a5d6934a227eeadafe498867ba80e6ada4080731",
+   "taille": 182704
+  },
+  "sl": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/sl.onnx",
+   "sha256": "d40c20286b7883147b2f4c53e65bc8405a3bb28e0c17d8eed9f7ea64ae979e64",
+   "taille": 179743
+  },
+  "sq": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/sq.onnx",
+   "sha256": "38f7a91b56bb1bf81f6ab774c42c8984948a5cd7270f6aba4600686eb0bfaadb",
+   "taille": 179457
+  },
+  "sv": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/sv.onnx",
+   "sha256": "d71e501161222d5908900798962a82228224e4c5e8b40fd2b3418280fa6accf9",
+   "taille": 176889
+  },
+  "th": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/th.onnx",
+   "sha256": "62b94ddf5af61ddde4e99dbb4087be71135e26b897e898e5bcb8679842691450",
+   "taille": 879969
+  },
+  "tr": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/tr.onnx",
+   "sha256": "d569f9893e2d13f4950fc0faa4393a8ffa80c3b7838fbaf789e3f0b14ebc36cc",
+   "taille": 180717
+  },
+  "uk": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/uk.onnx",
+   "sha256": "e4ef6e40816766834f7a7f39b068e733fe842e70babfdab699950ef01131a158",
+   "taille": 186172
+  },
+  "ur": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/ur.onnx",
+   "sha256": "859d912cc12461f5a6bf230d3c002ea0ee57f22da7823b90b17a20ef57894d2f",
+   "taille": 179384
+  },
+  "vi": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/vi.onnx",
+   "sha256": "d2b3b1e87464ab65ce6195de45fc545ee4df667c84fff246cb177e9fc71e6cc3",
+   "taille": 973908
+  },
+  "zh-hans": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/zh-hans.onnx",
+   "sha256": "b2a6e45ebb43df44ac3c8e4100ea1cb30ec8319c5698b678ed3f203e5edc5d0e",
+   "taille": 616442
+  },
+  "zh-hant": {
+   "url": "https://github.com/LibreTranslate/MiniSBD/releases/download/v0.0.1/zh-hant.onnx",
+   "sha256": "ca42ad9655f982aa372e7a4f5e1b04dea43b8fd27c85fc0520190da44206d108",
+   "taille": 624497
+  }
+ },
+ "langues": [
+  {
+   "code": "ar",
+   "nom": "Arabe",
+   "decoupage": "ar",
+   "modeles": [
+    {
+     "de": "ar",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ar_en-1_0.argosmodel",
+     "sha256": "bc98cd4e27ca1cebfae9b7086b2ebc635e4dbed45e7cb5f0891cb7d22feacfad",
+     "taille": 81869670
+    },
+    {
+     "de": "en",
+     "vers": "ar",
+     "url": "https://argos-net.com/v1/translate-en_ar-1_0.argosmodel",
+     "sha256": "e2a6e84337f7ebbb55f9dc61dcba3a861c0d786ae5a46fa198fd8d6473f5c775",
+     "taille": 88502631
+    }
+   ]
+  },
+  {
+   "code": "az",
+   "nom": "Azerbaïdjanais",
+   "decoupage": "tr",
+   "remarque": "découpage des phrases selon le turc (pas de modèle propre)",
+   "modeles": [
+    {
+     "de": "az",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-az_en-1_5.argosmodel",
+     "sha256": "6d5c5d44d268433aaa33b75ac0e50b857bb20350652dcf5b5dbbe10e07990981",
+     "taille": 120826770
+    },
+    {
+     "de": "en",
+     "vers": "az",
+     "url": "https://argos-net.com/v1/translate-en_az-1_5.argosmodel",
+     "sha256": "04599eef1e4beda939a800735203e2b973cfe44d6452564617dfa1dbcde306fd",
+     "taille": 124622164
+    }
+   ]
+  },
+  {
+   "code": "bg",
+   "nom": "Bulgare",
+   "decoupage": "bg",
+   "modeles": [
+    {
+     "de": "bg",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-bg_en-1_9.argosmodel",
+     "sha256": "a9fd00e8d67fbe6dd9cf07012a284d51916f2d0480a4bfe8add9ba7fd4375055",
+     "taille": 72511292
+    },
+    {
+     "de": "en",
+     "vers": "bg",
+     "url": "https://argos-net.com/v1/translate-en_bg-1_9.argosmodel",
+     "sha256": "28401fbb5f94e1ce8a54e3005beea9d5f08767d67e3e0900940e08722cfc275a",
+     "taille": 72324211
+    }
+   ]
+  },
+  {
+   "code": "bn",
+   "nom": "Bengali",
+   "decoupage": "hi",
+   "remarque": "découpage des phrases selon le hindi (pas de modèle propre)",
+   "modeles": [
+    {
+     "de": "bn",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-bn_en-1_9.argosmodel",
+     "sha256": "1fdc080e676a930bae436b82bf856077191b1497c086d3d3d15cf63a7ad476fe",
+     "taille": 70704005
+    },
+    {
+     "de": "en",
+     "vers": "bn",
+     "url": "https://argos-net.com/v1/translate-en_bn-1_9.argosmodel",
+     "sha256": "2b70f590df0170315323442816391552519b6f0d3aa6c2d1184b562a682465a7",
+     "taille": 70958134
+    }
+   ]
+  },
+  {
+   "code": "ca",
+   "nom": "Catalan",
+   "decoupage": "ca",
+   "modeles": [
+    {
+     "de": "ca",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ca_en-1_7.argosmodel",
+     "sha256": "d1fd06e9f3d919440b05470b3268b8c9077f15519f2a375e19d78825020c8771",
+     "taille": 75431251
+    },
+    {
+     "de": "en",
+     "vers": "ca",
+     "url": "https://argos-net.com/v1/translate-en_ca-1_9.argosmodel",
+     "sha256": "67a1ef9e3bab7e1b39b7a75d30aa18beb251489a895b12d8be61c14eab6fca18",
+     "taille": 72211311
+    }
+   ]
+  },
+  {
+   "code": "cs",
+   "nom": "Tchèque",
+   "decoupage": "cs",
+   "modeles": [
+    {
+     "de": "cs",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-cs_en-1_9_6.argosmodel",
+     "sha256": "f1683b1ac5e826c7e3db2b0ea5d73191cdd695d6523b112363d8a769203dcb62",
+     "taille": 71354355
+    },
+    {
+     "de": "en",
+     "vers": "cs",
+     "url": "https://argos-net.com/v1/translate-en_cs-1_9_6.argosmodel",
+     "sha256": "f2f5b93fc5a5aa3aa6bece99e0fa9f80487bb9a2ea4e0c3def58d6a4af37c81f",
+     "taille": 67275814
+    }
+   ]
+  },
+  {
+   "code": "da",
+   "nom": "Danois",
+   "decoupage": "da",
+   "modeles": [
+    {
+     "de": "da",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-da_en-1_9.argosmodel",
+     "sha256": "cf0e4ddc78a6cc4c9093fcd8b5f22285fc5d0a8fe8650940cdc913da6295c585",
+     "taille": 69084740
+    },
+    {
+     "de": "en",
+     "vers": "da",
+     "url": "https://argos-net.com/v1/translate-en_da-1_9.argosmodel",
+     "sha256": "58c22c1b2f78cdfcb1777cccd88c7959c9eef57647a00440148574d6626d6393",
+     "taille": 67523692
+    }
+   ]
+  },
+  {
+   "code": "de",
+   "nom": "Allemand",
+   "decoupage": "de",
+   "modeles": [
+    {
+     "de": "de",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-de_en-1_3.argosmodel",
+     "sha256": "becc2b0011f8249fcb89be9ecb75ba0d876b1fab93c28ee6ff0420936897d637",
+     "taille": 150512831
+    },
+    {
+     "de": "en",
+     "vers": "de",
+     "url": "https://argos-net.com/v1/translate-en_de-1_3.argosmodel",
+     "sha256": "6cd847f0c06c9c66013e6b0932e07fd54a6d90894659c02bf6c5247b72fb25b1",
+     "taille": 150508297
+    }
+   ]
+  },
+  {
+   "code": "el",
+   "nom": "Grec",
+   "decoupage": "el",
+   "modeles": [
+    {
+     "de": "el",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-el_en-1_9.argosmodel",
+     "sha256": "51fa664c561a25d48150ab1d334e2f43e43c082c37bc82222b7c98804614563c",
+     "taille": 72161252
+    },
+    {
+     "de": "en",
+     "vers": "el",
+     "url": "https://argos-net.com/v1/translate-en_el-1_9.argosmodel",
+     "sha256": "ac5a359363b14490a2c6614e6c5ae4a58a8bbbc739b17a4cb3616fe46f2c329b",
+     "taille": 69660890
+    }
+   ]
+  },
+  {
+   "code": "en",
+   "nom": "Anglais",
+   "decoupage": "en",
+   "modeles": []
+  },
+  {
+   "code": "eo",
+   "nom": "Espéranto",
+   "decoupage": "en",
+   "remarque": "découpage des phrases selon l'anglais (pas de modèle propre)",
+   "modeles": [
+    {
+     "de": "eo",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-eo_en-1_5.argosmodel",
+     "sha256": "56cd5977acfc7626bc99f2d1d60c5016f5102d6118403fa2f87933778a188b5d",
+     "taille": 119504066
+    },
+    {
+     "de": "en",
+     "vers": "eo",
+     "url": "https://argos-net.com/v1/translate-en_eo-1_5.argosmodel",
+     "sha256": "b6c13a02fce1fe93fd4a79fdbd68418469e411ed3c82c93365aef6fd222cccc5",
+     "taille": 124626527
+    }
+   ]
+  },
+  {
+   "code": "es",
+   "nom": "Espagnol",
+   "decoupage": "es",
+   "modeles": [
+    {
+     "de": "es",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-es_en-1_9.argosmodel",
+     "sha256": "c54df2b62fceaf54a3ce5d97db6bf56efd7940063329f6778f4212d2acb370d4",
+     "taille": 285208831
+    },
+    {
+     "de": "en",
+     "vers": "es",
+     "url": "https://argos-net.com/v1/translate-en_es-1_0.argosmodel",
+     "sha256": "d698d0ef87ad70d5d184b7fa6965905bf4368f09a2bb9ffb165a79bac96af0c4",
+     "taille": 87503191
+    }
+   ]
+  },
+  {
+   "code": "et",
+   "nom": "Estonien",
+   "decoupage": "et",
+   "modeles": [
+    {
+     "de": "et",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-et_en-1_9.argosmodel",
+     "sha256": "385c288fa814f60734a0668672f205b71e1e81c5a5d4862b96a41dba649618f0",
+     "taille": 156230482
+    },
+    {
+     "de": "en",
+     "vers": "et",
+     "url": "https://argos-net.com/v1/translate-en_et-1_9.argosmodel",
+     "sha256": "a9497b139efb09d59861e11219e7be4b2fc884b878d700945080a038889cda88",
+     "taille": 156422931
+    }
+   ]
+  },
+  {
+   "code": "eu",
+   "nom": "Basque",
+   "decoupage": "eu",
+   "modeles": [
+    {
+     "de": "eu",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-eu_en-1_9.argosmodel",
+     "sha256": "8660002a61a6fb23c67f4b454bf615ecc95557acdf93086b20b785734b374271",
+     "taille": 75734576
+    },
+    {
+     "de": "en",
+     "vers": "eu",
+     "url": "https://argos-net.com/v1/translate-en_eu-1_9.argosmodel",
+     "sha256": "f49b7a2586485072766961b75956d32b884099c231d64ae0775d29480080dabb",
+     "taille": 75768884
+    }
+   ]
+  },
+  {
+   "code": "fa",
+   "nom": "Persan",
+   "decoupage": "fa",
+   "modeles": [
+    {
+     "de": "fa",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-fa_en-1_5.argosmodel",
+     "sha256": "ee79b584708fefff1cf61181fcb89b9c207b3bfeb2287c5610c3399dd034074c",
+     "taille": 118419119
+    },
+    {
+     "de": "en",
+     "vers": "fa",
+     "url": "https://argos-net.com/v1/translate-en_fa-1_5.argosmodel",
+     "sha256": "9960466e7c3ea1732ef8a2260e8f25581498e9b4c3319b442ee1ea8ba0264466",
+     "taille": 124013736
+    }
+   ]
+  },
+  {
+   "code": "fi",
+   "nom": "Finnois",
+   "decoupage": "fi",
+   "modeles": [
+    {
+     "de": "fi",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-fi_en-1_9.argosmodel",
+     "sha256": "7be1ad3a02c160ac1a2a33697b59a20ae49cbfe92f4cb34fd6185841a7bd00fe",
+     "taille": 69019776
+    },
+    {
+     "de": "en",
+     "vers": "fi",
+     "url": "https://argos-net.com/v1/translate-en_fi-1_9.argosmodel",
+     "sha256": "172c32485b89233983d1bd4d9e73fc22924ec0cb59bae4c97e299fdd4f083e0e",
+     "taille": 69132412
+    }
+   ]
+  },
+  {
+   "code": "fr",
+   "nom": "Français",
+   "decoupage": "fr",
+   "modeles": [
+    {
+     "de": "fr",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-fr_en-1_9.argosmodel",
+     "sha256": "3b3052fee6bb1e8e8e632a26a723eb2a2c7710dfe73ba61ffd9b83e85d4f14c1",
+     "taille": 66585033
+    },
+    {
+     "de": "en",
+     "vers": "fr",
+     "url": "https://argos-net.com/v1/translate-en_fr-1_9.argosmodel",
+     "sha256": "3a65ed83364f4e7b06e30f9dd823db1934899ed3ce839e63f46dc7b09dc797b4",
+     "taille": 65472327
+    }
+   ]
+  },
+  {
+   "code": "ga",
+   "nom": "Irlandais",
+   "decoupage": "ga",
+   "modeles": [
+    {
+     "de": "ga",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ga_en-1_1.argosmodel",
+     "sha256": "1c38c173a9e885fc4bd1fc9c683a2d213eba810b77dad46c3152f640fab7a7ee",
+     "taille": 95546270
+    },
+    {
+     "de": "en",
+     "vers": "ga",
+     "url": "https://argos-net.com/v1/translate-en_ga-1_1.argosmodel",
+     "sha256": "32dbf8e9b02de42bdbd7c1b1ce550f1a819c28afcbae3ec523aff43cbbd25b37",
+     "taille": 98857193
+    }
+   ]
+  },
+  {
+   "code": "gl",
+   "nom": "Galicien",
+   "decoupage": "gl",
+   "modeles": [
+    {
+     "de": "gl",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-gl_en-1_9.argosmodel",
+     "sha256": "2bf8e715366e906260ba1ef77f1f935555e0dcc40f013add9a8801767f1aa34e",
+     "taille": 75843745
+    },
+    {
+     "de": "en",
+     "vers": "gl",
+     "url": "https://argos-net.com/v1/translate-en_gl-1_9.argosmodel",
+     "sha256": "e920c7c8e9f7a810d08518c8741f871a5647a2a8a8f686957fdc255e27553083",
+     "taille": 75779528
+    }
+   ]
+  },
+  {
+   "code": "he",
+   "nom": "Hébreu",
+   "decoupage": "he",
+   "modeles": [
+    {
+     "de": "he",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-he_en-1_5.argosmodel",
+     "sha256": "ff8ac0ce734a82f8508ff39eaa90c110f66a2df3a93f03cf6ca72c4a60093470",
+     "taille": 115704948
+    },
+    {
+     "de": "en",
+     "vers": "he",
+     "url": "https://argos-net.com/v1/translate-en_he-1_5.argosmodel",
+     "sha256": "f4b75e20bd51ccef54f2e09d684f40b7f70e3682a6f17ae42dc9d496bbce4d17",
+     "taille": 125594693
+    }
+   ]
+  },
+  {
+   "code": "hi",
+   "nom": "Hindi",
+   "decoupage": "hi",
+   "modeles": [
+    {
+     "de": "hi",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-hi_en-1_1.argosmodel",
+     "sha256": "f99eadf297073c0f5a320df5d634ebb73e9ab0b819404edf7bd0a0daf6b1ce43",
+     "taille": 102381771
+    },
+    {
+     "de": "en",
+     "vers": "hi",
+     "url": "https://argos-net.com/v1/translate-en_hi-1_1.argosmodel",
+     "sha256": "60470a003a9c7339db8c060ed8eafc7cf999ba90dfa5dceebd8d0a4f75f1d3f0",
+     "taille": 106752178
+    }
+   ]
+  },
+  {
+   "code": "hu",
+   "nom": "Hongrois",
+   "decoupage": "hu",
+   "modeles": [
+    {
+     "de": "hu",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-hu_en-1_9.argosmodel",
+     "sha256": "aa47290c64ba26a59dff60da464a4eb4466841241594b4dd023ab597b9f6faba",
+     "taille": 71809926
+    },
+    {
+     "de": "en",
+     "vers": "hu",
+     "url": "https://argos-net.com/v1/translate-en_hu-1_9.argosmodel",
+     "sha256": "63cd48e94fce5041fb0b3ef6394900a5f4ea014f90f9509e57bf10d79d8bbb10",
+     "taille": 67859271
+    }
+   ]
+  },
+  {
+   "code": "id",
+   "nom": "Indonésien",
+   "decoupage": "id",
+   "modeles": [
+    {
+     "de": "id",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-id_en-1_9.argosmodel",
+     "sha256": "b494f6109dd7ceae32cb44cc721a14039abce938dc773a70087e73301ef4fed4",
+     "taille": 68650073
+    },
+    {
+     "de": "en",
+     "vers": "id",
+     "url": "https://argos-net.com/v1/translate-en_id-1_9.argosmodel",
+     "sha256": "fe5773201222806cfc802a094c5758ada6c25e10dbdd306d0c46bf200aac25fd",
+     "taille": 68010209
+    }
+   ]
+  },
+  {
+   "code": "it",
+   "nom": "Italien",
+   "decoupage": "it",
+   "modeles": [
+    {
+     "de": "it",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-it_en-1_0.argosmodel",
+     "sha256": "d2dd23b8b702f612b8127f07c7a0391f5f2a8b93344e6ddc9dd93c81824e85cb",
+     "taille": 87190224
+    },
+    {
+     "de": "en",
+     "vers": "it",
+     "url": "https://argos-net.com/v1/translate-en_it-1_0.argosmodel",
+     "sha256": "dde2180001a47904ecbbd688a41e35db8a040e4fd5b52e4f29b4bb499516ab32",
+     "taille": 87660780
+    }
+   ]
+  },
+  {
+   "code": "ja",
+   "nom": "Japonais",
+   "decoupage": "ja",
+   "modeles": [
+    {
+     "de": "ja",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ja_en-1_1.argosmodel",
+     "sha256": "623e3477959a815eb0a5ef53e09079ae8f1f9d3bbcd230473baf28c03fb83335",
+     "taille": 117155716
+    },
+    {
+     "de": "en",
+     "vers": "ja",
+     "url": "https://argos-net.com/v1/translate-en_ja-1_1.argosmodel",
+     "sha256": "16300cc4eaa85320520cabcf433b63d01be40ef6966251de72043a083408f716",
+     "taille": 120470284
+    }
+   ]
+  },
+  {
+   "code": "ko",
+   "nom": "Coréen",
+   "decoupage": "ko",
+   "modeles": [
+    {
+     "de": "ko",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ko_en-1_1.argosmodel",
+     "sha256": "6da8f3db6ca40f42b1875570a1c06856f6e17c7ef62845d85de217ba548c1471",
+     "taille": 118852077
+    },
+    {
+     "de": "en",
+     "vers": "ko",
+     "url": "https://argos-net.com/v1/translate-en_ko-1_1.argosmodel",
+     "sha256": "e03d8e65e6d44525ec5808c3409fcf8728c76c2c76925372b6d3dc3278de17fc",
+     "taille": 120789009
+    }
+   ]
+  },
+  {
+   "code": "ky",
+   "nom": "Kirghiz",
+   "decoupage": "ky",
+   "modeles": [
+    {
+     "de": "ky",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ky_en-1_4.argosmodel",
+     "sha256": "3fd9eeb55989b000a5e75a8f2120140fa1f40cd2106b8fb247eab32506520e15",
+     "taille": 146483387
+    },
+    {
+     "de": "en",
+     "vers": "ky",
+     "url": "https://argos-net.com/v1/translate-en_ky-1_4.argosmodel",
+     "sha256": "0dfcd45f516e86799771a8f5998888b18f267cb18886682ef3e91036ea593d8d",
+     "taille": 162834659
+    }
+   ]
+  },
+  {
+   "code": "lt",
+   "nom": "Lituanien",
+   "decoupage": "lt",
+   "modeles": [
+    {
+     "de": "lt",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-lt_en-1_9.argosmodel",
+     "sha256": "8ae06df7e47a344c9e58edfd92156333d7e4e69ede9adb7a77c17bcfa498dac7",
+     "taille": 71408160
+    },
+    {
+     "de": "en",
+     "vers": "lt",
+     "url": "https://argos-net.com/v1/translate-en_lt-1_9.argosmodel",
+     "sha256": "d15e1f3cc1042adcc7907234b3a9e6fd19fee20e9f3de6ff5515a31f0b59bedc",
+     "taille": 67740148
+    }
+   ]
+  },
+  {
+   "code": "lv",
+   "nom": "Letton",
+   "decoupage": "lv",
+   "modeles": [
+    {
+     "de": "lv",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-lv_en-1_9.argosmodel",
+     "sha256": "a61c1b467ce51f5449496fc6a4e01fba098a1a3b1f1dafcafb12a512a3aef485",
+     "taille": 71393221
+    },
+    {
+     "de": "en",
+     "vers": "lv",
+     "url": "https://argos-net.com/v1/translate-en_lv-1_9.argosmodel",
+     "sha256": "c95a467af846f67531685c57ff42f10548fc2eaf5e7c59f50c05e95a6e00ce73",
+     "taille": 68206333
+    }
+   ]
+  },
+  {
+   "code": "ms",
+   "nom": "Malais",
+   "decoupage": "en",
+   "remarque": "découpage des phrases selon l'anglais (pas de modèle propre)",
+   "modeles": [
+    {
+     "de": "ms",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ms_en-1_9.argosmodel",
+     "sha256": "4582268f79c733749a58566f5d796cf7749000633fddf406b3c23e808ebcb3b0",
+     "taille": 68979493
+    },
+    {
+     "de": "en",
+     "vers": "ms",
+     "url": "https://argos-net.com/v1/translate-en_ms-1_9.argosmodel",
+     "sha256": "c09e2aa67cb1067ca52f71665f38e16a4b4566154a7fe11b18bf77d9dc6d1c7d",
+     "taille": 69068181
+    }
+   ]
+  },
+  {
+   "code": "nb",
+   "nom": "Norvégien (bokmål)",
+   "decoupage": "nb",
+   "modeles": [
+    {
+     "de": "nb",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-nb_en-1_9.argosmodel",
+     "sha256": "ee2e3b3541abecb51566b095d3409d97c61b920c9e37956d211fb8b9e9e7d027",
+     "taille": 67407741
+    },
+    {
+     "de": "en",
+     "vers": "nb",
+     "url": "https://argos-net.com/v1/translate-en_nb-1_9.argosmodel",
+     "sha256": "57968230195e64e07ed44f3becc9222b9c7f23e88b6cebaeba3d4b56d3d140fc",
+     "taille": 66218935
+    }
+   ]
+  },
+  {
+   "code": "nl",
+   "nom": "Néerlandais",
+   "decoupage": "nl",
+   "modeles": [
+    {
+     "de": "nl",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-nl_en-1_8.argosmodel",
+     "sha256": "f49ac90c5812e0cb86a2858f4cfa61accec8709612728e6f805f0771c9a91e0e",
+     "taille": 69944805
+    },
+    {
+     "de": "en",
+     "vers": "nl",
+     "url": "https://argos-net.com/v1/translate-en_nl-1_8.argosmodel",
+     "sha256": "91406f040619fb519e16af9c304709e9f3195297e626eec6924d62c7c981a33b",
+     "taille": 71504559
+    }
+   ]
+  },
+  {
+   "code": "pb",
+   "nom": "Portugais (Brésil)",
+   "api": "pt-BR",
+   "decoupage": "pt",
+   "modeles": [
+    {
+     "de": "pb",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-pb_en-1_9.argosmodel",
+     "sha256": "578e9c504595ac85f8e8e0b31e4f53c84e38e7638db8c3c8df384d05eac2671b",
+     "taille": 69447841
+    },
+    {
+     "de": "en",
+     "vers": "pb",
+     "url": "https://argos-net.com/v1/translate-en_pb-1_9.argosmodel",
+     "sha256": "1d1cd5e9540c6b38c258bed002a42d3b311b8a189acb74feaa311ef30d175c5b",
+     "taille": 66179201
+    }
+   ]
+  },
+  {
+   "code": "pl",
+   "nom": "Polonais",
+   "decoupage": "pl",
+   "modeles": [
+    {
+     "de": "pl",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-pl_en-1_9.argosmodel",
+     "sha256": "07eda9edbd6ae5121df7c1d7bd847030423269b8c5056f1c222495c4a81e1721",
+     "taille": 71696499
+    },
+    {
+     "de": "en",
+     "vers": "pl",
+     "url": "https://argos-net.com/v1/translate-en_pl-1_9.argosmodel",
+     "sha256": "85d865369326b6d8220876fbd7bc552fa5ec8b99e81161fab4a26f78187cedbc",
+     "taille": 67294886
+    }
+   ]
+  },
+  {
+   "code": "pt",
+   "nom": "Portugais",
+   "decoupage": "pt",
+   "modeles": [
+    {
+     "de": "pt",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-pt_en-1_9.argosmodel",
+     "sha256": "ae76df6f650895c16f2b582065014fab496755ca846ecb19fae81d51f332a38e",
+     "taille": 69447231
+    },
+    {
+     "de": "en",
+     "vers": "pt",
+     "url": "https://argos-net.com/v1/translate-en_pt-1_9.argosmodel",
+     "sha256": "0c5350a2fa5b923de1346edc0d42e08e38bab2e33cede3a0b9a48eb4281ad8a9",
+     "taille": 66179184
+    }
+   ]
+  },
+  {
+   "code": "ro",
+   "nom": "Roumain",
+   "decoupage": "ro",
+   "modeles": [
+    {
+     "de": "ro",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ro_en-1_9.argosmodel",
+     "sha256": "21dba44a9a2455d385264ff103e9eaa5bfc6c0b83eef69e6d1df4c497bcd00af",
+     "taille": 70545301
+    },
+    {
+     "de": "en",
+     "vers": "ro",
+     "url": "https://argos-net.com/v1/translate-en_ro-1_9.argosmodel",
+     "sha256": "bf8909d2b1e734f73ef4e892fd53c68fa4a96853b5b786b16da596a5ed258003",
+     "taille": 71049078
+    }
+   ]
+  },
+  {
+   "code": "ru",
+   "nom": "Russe",
+   "decoupage": "ru",
+   "modeles": [
+    {
+     "de": "ru",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ru_en-1_9.argosmodel",
+     "sha256": "e9ba8bf722d10a4a4c39f74289d5938fd47eac08dbe4ed0afd22d89445a5c3ac",
+     "taille": 156239112
+    },
+    {
+     "de": "en",
+     "vers": "ru",
+     "url": "https://argos-net.com/v1/translate-en_ru-1_9.argosmodel",
+     "sha256": "591d743ae103752b88ffc38785c50421320f4eff93c8967e0d3d2e14d4e27811",
+     "taille": 195746693
+    }
+   ]
+  },
+  {
+   "code": "sk",
+   "nom": "Slovaque",
+   "decoupage": "sk",
+   "modeles": [
+    {
+     "de": "sk",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-sk_en-1_9.argosmodel",
+     "sha256": "864f50eec15c0bb2978130cec3457d16ae5645a2737d58a3c290dcb63aa0eae5",
+     "taille": 71441991
+    },
+    {
+     "de": "en",
+     "vers": "sk",
+     "url": "https://argos-net.com/v1/translate-en_sk-1_9.argosmodel",
+     "sha256": "937a73ea56435772a60623959b4f3873dbe65c3de7446f3462919a32c62fd788",
+     "taille": 71114489
+    }
+   ]
+  },
+  {
+   "code": "sl",
+   "nom": "Slovène",
+   "decoupage": "sl",
+   "modeles": [
+    {
+     "de": "sl",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-sl_en-1_9.argosmodel",
+     "sha256": "dc7d0b60329aaa941067bb14068f977e4cf10b86c336a36bb6b14e912d49371d",
+     "taille": 71989365
+    },
+    {
+     "de": "en",
+     "vers": "sl",
+     "url": "https://argos-net.com/v1/translate-en_sl-1_9.argosmodel",
+     "sha256": "19bd9c6188f5a36722aac4ed1601b4824b10081efa25fff39de50f1879c37f57",
+     "taille": 69632517
+    }
+   ]
+  },
+  {
+   "code": "sq",
+   "nom": "Albanais",
+   "decoupage": "sq",
+   "modeles": [
+    {
+     "de": "sq",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-sq_en-1_9.argosmodel",
+     "sha256": "3cdafddb8067bc056d7495639830d1551d2c2a892d27531a8aac789cd0b15884",
+     "taille": 70457340
+    },
+    {
+     "de": "en",
+     "vers": "sq",
+     "url": "https://argos-net.com/v1/translate-en_sq-1_9.argosmodel",
+     "sha256": "4d58f26f3e223cc0d35e784e00d496a552c355ba74fe4bee45f7e337561ad312",
+     "taille": 69657647
+    }
+   ]
+  },
+  {
+   "code": "sv",
+   "nom": "Suédois",
+   "decoupage": "sv",
+   "modeles": [
+    {
+     "de": "sv",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-sv_en-1_5.argosmodel",
+     "sha256": "b4afa5e9ad1834e80bf3f87c74f497bab118d358dbf174320d3e5acdfcdae2f8",
+     "taille": 94928329
+    },
+    {
+     "de": "en",
+     "vers": "sv",
+     "url": "https://argos-net.com/v1/translate-en_sv-1_5.argosmodel",
+     "sha256": "d697224b443d212a04d24eb2ea0b615cb663eb24d4d21b70979673507b4d1e49",
+     "taille": 107585048
+    }
+   ]
+  },
+  {
+   "code": "sw",
+   "nom": "Swahili",
+   "decoupage": "en",
+   "remarque": "découpage des phrases selon l'anglais (pas de modèle propre)",
+   "modeles": [
+    {
+     "de": "sw",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-sw_en-1_11.argosmodel",
+     "sha256": "2db0e60b4af88a60a540469190c2fd549d9d007389e93259f74c27817c3b5448",
+     "taille": 75702951
+    },
+    {
+     "de": "en",
+     "vers": "sw",
+     "url": "https://argos-net.com/v1/translate-en_sw-1_11.argosmodel",
+     "sha256": "994bf9e19f00dd1566ad59e95879a7ea24de19f7b4fc89ab0dcce860580353f2",
+     "taille": 75782172
+    }
+   ]
+  },
+  {
+   "code": "th",
+   "nom": "Thaï",
+   "decoupage": "th",
+   "modeles": [
+    {
+     "de": "th",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-th_en-1_9.argosmodel",
+     "sha256": "b6642c07389b156f568aa08c64140243bc1b1926f82df2559a2eae08316f84ce",
+     "taille": 71737116
+    },
+    {
+     "de": "en",
+     "vers": "th",
+     "url": "https://argos-net.com/v1/translate-en_th-1_9.argosmodel",
+     "sha256": "b0fd94eceb04b967b91c2c7d8d1f7b5493c25362e43027a52649242385d0b2a3",
+     "taille": 66978916
+    }
+   ]
+  },
+  {
+   "code": "tl",
+   "nom": "Tagalog",
+   "decoupage": "en",
+   "remarque": "découpage des phrases selon l'anglais (pas de modèle propre)",
+   "modeles": [
+    {
+     "de": "tl",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-tl_en-1_9.argosmodel",
+     "sha256": "fa5638666100e86aaba09095b990ad5ab1209f6636efe00924aa14e06458dc7c",
+     "taille": 71472754
+    },
+    {
+     "de": "en",
+     "vers": "tl",
+     "url": "https://argos-net.com/v1/translate-en_tl-1_9.argosmodel",
+     "sha256": "0915f9e7ae617b085c88bc3ac9213e4915008fd2dbb423fcfcd3724f77c5d86b",
+     "taille": 69282709
+    }
+   ]
+  },
+  {
+   "code": "tr",
+   "nom": "Turc",
+   "decoupage": "tr",
+   "modeles": [
+    {
+     "de": "tr",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-tr_en-1_5.argosmodel",
+     "sha256": "15217905586561fac843efb5730aabff9a1534d5a9aa3f6ebcc0f9641394ac2d",
+     "taille": 120561223
+    },
+    {
+     "de": "en",
+     "vers": "tr",
+     "url": "https://argos-net.com/v1/translate-en_tr-1_5.argosmodel",
+     "sha256": "2d553a00880a0c21dea5b1c375535659e6bf18c9bf2ce9847c2a2fd2ff50316a",
+     "taille": 124742526
+    }
+   ]
+  },
+  {
+   "code": "uk",
+   "nom": "Ukrainien",
+   "decoupage": "uk",
+   "modeles": [
+    {
+     "de": "uk",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-uk_en-1_9.argosmodel",
+     "sha256": "374fd797fd403875c241d018398c77f239b092c6ba5ed7488320838fa1532850",
+     "taille": 76077099
+    },
+    {
+     "de": "en",
+     "vers": "uk",
+     "url": "https://argos-net.com/v1/translate-en_uk-1_4.argosmodel",
+     "sha256": "037ebc690c0f7287bff01b09006f76707d7089134205a91ef3d823a3c73811e3",
+     "taille": 119889246
+    }
+   ]
+  },
+  {
+   "code": "ur",
+   "nom": "Ourdou",
+   "decoupage": "ur",
+   "modeles": [
+    {
+     "de": "ur",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-ur_en-1_9.argosmodel",
+     "sha256": "0d722bb7c4686a58ad1361202b192294cb939518d6f851741e68b36bb2e56d73",
+     "taille": 69679858
+    },
+    {
+     "de": "en",
+     "vers": "ur",
+     "url": "https://argos-net.com/v1/translate-en_ur-1_9.argosmodel",
+     "sha256": "5ca67bf37de95941e0eb8b6ad07db197023d13290ab5bd61851d3edc31f0a859",
+     "taille": 69226461
+    }
+   ]
+  },
+  {
+   "code": "vi",
+   "nom": "Vietnamien",
+   "decoupage": "vi",
+   "modeles": [
+    {
+     "de": "vi",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-vi_en-1_9.argosmodel",
+     "sha256": "ebd51b7189b13eccb9238a5777de1d343008c4c05284a8b89610242364433953",
+     "taille": 65895840
+    },
+    {
+     "de": "en",
+     "vers": "vi",
+     "url": "https://argos-net.com/v1/translate-en_vi-1_9.argosmodel",
+     "sha256": "86957101aa4099aa9a1a7492e41987d938d3cf0fdaf4fb684c0797a9d567dd16",
+     "taille": 67770159
+    }
+   ]
+  },
+  {
+   "code": "zh",
+   "nom": "Chinois (simplifié)",
+   "api": "zh-Hans",
+   "decoupage": "zh-hans",
+   "modeles": [
+    {
+     "de": "zh",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-zh_en-1_9.argosmodel",
+     "sha256": "62e7af5a3a48b530e47b7b3e5c78c2de79073ecd815750d2bf3ab35b4a67da2d",
+     "taille": 74481402
+    },
+    {
+     "de": "en",
+     "vers": "zh",
+     "url": "https://argos-net.com/v1/translate-en_zh-1_9.argosmodel",
+     "sha256": "433e7c4f034d87fbe2353161e05f18646d7999452f801a4e1f0378522b9850ab",
+     "taille": 70743021
+    }
+   ]
+  },
+  {
+   "code": "zt",
+   "nom": "Chinois (traditionnel)",
+   "api": "zh-Hant",
+   "decoupage": "zh-hant",
+   "modeles": [
+    {
+     "de": "zt",
+     "vers": "en",
+     "url": "https://argos-net.com/v1/translate-zt_en-1_9.argosmodel",
+     "sha256": "a9ea826d801f059dd47f1f47b6c1dc9d762519a80ea3afd2a982130a42a25486",
+     "taille": 74498034
+    },
+    {
+     "de": "en",
+     "vers": "zt",
+     "url": "https://argos-net.com/v1/translate-en_zt-1_9.argosmodel",
+     "sha256": "b97b6532196c4421240c0788cb711cc1fe5e5ecbde553c937193d13e5c67826c",
+     "taille": 70743045
+    }
+   ]
+  }
+ ]
+}

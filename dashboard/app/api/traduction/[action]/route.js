@@ -1,4 +1,5 @@
 import { langues, detecter, traduire, LIMITE, ErreurTraduction } from '../../../../lib/traduction.mjs';
+import { rechargement } from '../../../../lib/traduction-packs.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +16,19 @@ async function repondre(f) {
   }
 }
 
-// GET /api/traduction/languages
+// GET /api/traduction/languages: { langues, rechargement }. While LibreTranslate reloads its models
+// after an installation, rechargement is true, and an unreachable service is not an error.
 export async function GET(_requete, { params }) {
   const { action } = await params;
   if (action !== 'languages') return erreur('Action inconnue.', 404);
-  return repondre(() => langues());
+  try {
+    const l = await langues();
+    return Response.json({ langues: l, rechargement: await rechargement(l.map((x) => x.code)) });
+  } catch (e) {
+    if (await rechargement(null)) return Response.json({ langues: null, rechargement: true });
+    if (e instanceof ErreurTraduction) return erreur(e.message, e.statut);
+    return erreur('Erreur interne de la traduction.', 500);
+  }
 }
 
 // POST /api/traduction/detect { q } and /api/traduction/translate { q, source, target }

@@ -47,6 +47,8 @@ services:
       - ./catalogue:/catalogue:ro
       - ${DATA_DIR}/documents:/documents:ro
       - ${DATA_DIR}/assistant:/assistant
+      # Translation models: written here (language packs), read-only for libretranslate
+      - ${DATA_DIR}/traduction:/traduction
     restart: unless-stopped
 
   kiwix:
@@ -84,13 +86,39 @@ services:
 
   libretranslate:
     # Offline translation (Argos models on the CPU). Its network is internal: it can never reach internet,
-    # only the dashboard reaches it. Models are downloaded, checked and installed by install.sh
-    # (catalogue/traduction.txt) and mounted read-only: nothing can be fetched at start or first use.
-    # LT_LOAD_ONLY only matters for downloads, disabled here; the languages served are the models on disk.
+    # only the dashboard reaches it. Models are downloaded, checked and unpacked by the dashboard
+    # (language packs, catalogue/traduction.json) and mounted read-only here: nothing can be fetched at
+    # start or first use. The languages served are the models on disk; LT_LOAD_ONLY would only limit a
+    # download, disabled here (and impossible on this network).
     image: libretranslate/libretranslate:v1.9.6
     container_name: libretranslate
+    # Entry point of the image, plus the watch of .recharger (written by the dashboard after a language
+    # was added or removed): gunicorn reloads its worker on HUP, which reads the models again, the old
+    # worker serving until the new one is ready. docker stop: SIGTERM forwarded to gunicorn at once.
+    # gunicorn gone: the loop ends with it, the container stops and restart: unless-stopped restarts it.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        S=/home/libretranslate/.local/share/argos-translate/.recharger
+        P=/tmp/gunicorn.pid
+        lu() { cat "$$S" 2>/dev/null; }
+        vu=$$(lu)
+        ./scripts/entrypoint.sh & E=$$!
+        arret() { if [ -s "$$P" ]; then kill -TERM "$$(cat "$$P")"; else kill -TERM "$$E"; fi 2>/dev/null; }
+        trap arret TERM INT
+        while kill -0 "$$E" 2>/dev/null; do
+          sleep 2 & wait $$!
+          n=$$(lu)
+          if [ "$$n" != "$$vu" ] && [ -s "$$P" ]; then
+            vu=$$n
+            kill -HUP "$$(cat "$$P")" && echo "ODIN : modèles modifiés, rechargement"
+          fi
+        done
+        wait "$$E"
     environment:
-      - LT_LOAD_ONLY=${TRADUCTION_LANGUES:-fr,en,nl,de,es,it}
+      - GUNICORN_CMD_ARGS=--pid /tmp/gunicorn.pid
+      - LT_LOAD_ONLY=fr,en
       - LT_CHAR_LIMIT=${TRADUCTION_LIMITE:-5000}
       - LT_DISABLE_WEB_UI=true
       - LT_DISABLE_FILES_TRANSLATION=true
