@@ -53,8 +53,9 @@ EOF
     ;;
   journal)
     # One line per blocked source/destination, container IPs replaced by their names
-    noms=$(docker ps -q | xargs -r docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} {{.Name}}' \
-      | awk '$1 != "" { gsub("/", "", $2); printf "s/ %s / %s /;", $1, $2 }')
+    # A container on several networks (the dashboard) has one address per network: each one mapped
+    noms=$(docker ps -q | xargs -r docker inspect -f '{{.Name}} {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' \
+      | awk '{ n = $1; gsub("/", "", n); for (i = 2; i <= NF; i++) printf "s/ %s / %s /;", $i, n }')
     journalctl -k -b --no-pager | grep -o 'ODIN-HL.*' \
       | sed -E 's/.*(ODIN-HL[0-9]*( dns)?) .*SRC=([^ ]+) DST=([^ ]+).*DPT=([0-9]+).*/\1 \3 -> \4:\5/' \
       | sed -E "s/ -> / -> /;${noms}" \
