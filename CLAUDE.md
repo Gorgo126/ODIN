@@ -445,6 +445,12 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /tradu
   avant-fusion-main. Vérifié après la fusion sur VM vierge depuis main : installation complète, pas de
   LIVRES_NON_PUBLIES dans .env, « Aucun livre n'est disponible », contrôle hors ligne (15 pages, licence sous
   l'article, aucune requête vers un autre hôte ; journal : sonde et NTP seulement).
+- Fusion dans main le 2026-09-25 (traduction) : 4d4c757 (image figée par ede7f5e). Main d'avant : 306def3fdad2146481fda1f966240de4fd583a98.
+  Snapshot nomad : avant-fusion-traduction. Vérifié avant sur VM vierge (dev 76d0f8f) : installation en 158 s, fr et en
+  seuls (158 Mo), LibreTranslate sans téléchargement ; allemand installé, traduit, désinstallé depuis le panneau ; relance
+  de l'installeur : rien de cassé, l'allemand ne revient pas, données et mot de passe inchangés ; pack climat,
+  recherche, lecteur, documents, assistant → /ia. Premier téléchargement du pack : 3 ETIMEDOUT (miroir Kiwix), bon au
+  second essai.
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
