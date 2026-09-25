@@ -45,7 +45,7 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 | 📁 | **Documents personnels** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Cartes** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
 | 🌍 | **Traduction** | Traduction de textes sur le serveur, sans internet : français et anglais inclus, 48 autres langues à ajouter en un clic (allemand, espagnol, arabe, ukrainien…). |
-| 🖥️ | **Tableau de bord** | L'état des services, la recherche, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. |
+| 🖥️ | **Tableau de bord** | L'état des services, la recherche, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. La page **État du serveur** montre disque, mémoire, conteneurs, versions et la place prise par chaque contenu. |
 | 🤖 | **Assistant IA** (option) | Sur une machine avec une carte graphique d'au moins 8 Go : il rédige une réponse à partir des passages trouvés, en citant ses sources. |
 
 L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite.
@@ -112,6 +112,25 @@ avec [LibreTranslate](https://libretranslate.com) et les modèles [Argos Transla
 - La liste des langues proposées est dans [`catalogue/traduction.json`](catalogue/traduction.json)
   (adresse, taille et empreinte de chaque modèle).
 
+### L'état du serveur
+
+Un bandeau discret en bas de l'accueil résume l'état du serveur : disque, mémoire, conteneurs en bonne
+santé, version installée. Il passe à l'orange si le disque dépasse 85 %, au rouge au-delà de 95 % ou
+si un conteneur est arrêté, redémarre en boucle ou échoue à son test de santé. Un clic ouvre la page
+**État du serveur** (`/sante`) :
+
+- **Système** : disque, mémoire, charge, durée depuis le démarrage.
+- **Conteneurs** : état, santé, image et version de chaque service.
+- **Versions** : commit installé (écrit par l'installeur : après une mise à jour faite à la main par
+  `git pull`, il peut être ancien), image du tableau de bord, Docker.
+- **Espace occupé**, du plus gros au plus petit : encyclopédie, livres, cartes, langues, modèles de
+  l'assistant (option IA), vos documents, et le reste du disque. Chaque contenu retirable a son bouton
+  « Désinstaller », le même que dans Configuration.
+
+Le tableau de bord n'a pas accès au socket Docker : il lit l'état des conteneurs à travers un relais
+filtré (`socket-proxy`) qui ne laisse passer que la liste des conteneurs et les informations générales
+de Docker, en lecture seule.
+
 ### L'assistant IA (option)
 
 Sur une machine qui a la carte graphique pour cela, la page **Assistant IA** installe un modèle de
@@ -164,6 +183,7 @@ flowchart TB
     CA -->|"/tuiles"| T[("Cartes PMTiles<br/><sub>data/cartes</sub>")]
     D -->|"recherche avancée"| V["Vecteurs<br/><sub>llama.cpp · EmbeddingGemma</sub>"]
     D -->|"traduction"| L["LibreTranslate<br/><sub>modèles Argos</sub>"]
+    D -->|"état des conteneurs"| P["socket-proxy<br/><sub>lecture seule, filtré</sub>"]
     D -.->|"recherche · lecture"| K
     D -.->|"extraction pmtiles"| T
     D -.->|"index des documents"| I[("SQLite<br/><sub>data/assistant</sub>")]
@@ -177,6 +197,7 @@ flowchart TB
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
 | `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
 | `libretranslate` | `libretranslate/libretranslate:v1.9.6` | Traduction hors ligne (modèles Argos, sur le processeur). Sur un réseau Docker interne, sans aucune route vers internet : seul le tableau de bord le joint. Ses modèles sont installés par le tableau de bord et montés en lecture seule. |
+| `socket-proxy` | `wollomatic/socket-proxy:1.13.1` (empreinte figée) | Relais du socket Docker pour la page État du serveur. Seules deux lectures passent (liste des conteneurs, informations de Docker) ; tout le reste est refusé, y compris le détail d'un conteneur (ses variables d'environnement) et ses journaux. Réseau interne, seul le tableau de bord peut s'y connecter. |
 | `ollama` | `ollama/ollama:0.34.2` | **Option IA seulement** (`compose.ia.yml`), sur une machine équipée d'une carte graphique : modèle de langage de l'assistant. Absent de l'installation par défaut. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
@@ -204,7 +225,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── vecteurs/        #   modèle de la recherche avancée (EmbeddingGemma, 334 Mo)
     ├── assistant/       #   index de vos documents pour la recherche avancée (SQLite)
     ├── traduction/      #   modèles de traduction (français et anglais : 158 Mo)
-    └── config/          #   mot de passe (haché avec scrypt)
+    └── config/          #   mot de passe (haché avec scrypt), version installée
 ```
 
 ### Hors ligne par conception
@@ -356,5 +377,6 @@ licence est rappelée dans ODIN, là où le contenu s'affiche.
 | *Là où il n'y a pas de docteur* (Hesperian, 2019) | PDF de l'édition Hesperian, téléchargé pour l'instant depuis dokotoro.org (à remplacer par la source d'Hesperian) | [Licence ouverte Hesperian](https://hesperian.org/open-copyright-policy/) : usage **non commercial**, attribution, fichier non modifié. La distribution numérique demande l'accord écrit d'Hesperian, demandé en septembre 2026 : d'ici là, le livre n'est pas proposé par la version publiée d'ODIN. | Fiche du livre (origine du fichier, licence, restriction) |
 | EmbeddingGemma (Google), modèle de la recherche | Hugging Face (ggml-org) | [Conditions d'utilisation de Gemma](https://ai.google.dev/gemma/terms) : pas une licence libre ; [politique d'utilisation](https://ai.google.dev/gemma/prohibited_use_policy) à respecter | Ici |
 | Qwen3 (option IA) | Registre Ollama | Apache 2.0 | Page Assistant IA |
+| socket-proxy (relais Docker filtré) | Image Docker officielle, non modifiée | [MIT](https://github.com/wollomatic/socket-proxy/blob/main/LICENSE) | Ici |
 | LibreTranslate (logiciel de traduction) | Image Docker officielle, non modifiée | [AGPL-3.0](https://github.com/LibreTranslate/LibreTranslate/blob/main/LICENSE) | Ici |
 | Modèles de traduction Argos | Index [argospm-index](https://github.com/argosopentech/argospm-index), découpage en phrases [MiniSBD](https://github.com/LibreTranslate/MiniSBD) | Propre à chaque modèle, indiquée dans le fichier README de son paquet (par exemple CC BY 4.0 pour le modèle français → anglais, dérivé d'OPUS-MT) | Ici |

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { octets } from '../lib/format.mjs';
 import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { suppressionCarte, supprimer } from '../lib/suppressions.mjs';
 
 const GROS = 1e9;
 const ENORME = 50e9;
@@ -55,6 +56,12 @@ export default function PacksCartes({ liaisonInitiale }) {
     charger();
   }
 
+  async function desinstaller(p) {
+    const r = await supprimer(suppressionCarte({ ...p, taille: p.surDisque }));
+    if (r && !r.ok) alert(r.erreur);
+    if (r) charger();
+  }
+
   function installer(p, taille) {
     if (taille >= ENORME && !confirm(`${p.libelle} : ${octets(taille)} à télécharger. Réservez-le à un très grand disque et à une connexion rapide : cela peut prendre plusieurs jours. Continuer ?`)) return;
     if (p.extraction && taille >= GROS && !confirm(`${p.libelle} (${octets(taille)}) est extrait du fichier mondial. Si la connexion est coupée pendant l'extraction, il faudra tout recommencer. Continuer ?`)) return;
@@ -88,9 +95,7 @@ export default function PacksCartes({ liaisonInitiale }) {
           action = (
             <span>
               <em>Installé  {octets(p.surDisque)}</em>
-              {!p.protege && (
-                <button onClick={() => confirm(`Supprimer la carte « ${p.libelle} » ?`) && envoyer(p.id, 'DELETE')}>Supprimer</button>
-              )}
+              {suppressionCarte(p) && <button onClick={() => desinstaller(p)}>Supprimer</button>}
             </span>
           );
         } else {

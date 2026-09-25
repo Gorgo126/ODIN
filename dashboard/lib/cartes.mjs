@@ -5,6 +5,7 @@ import { telechargerFlux } from './telechargements.mjs';
 import { reserver, liberer, disquePlein } from './espace.mjs';
 import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
+import { invaliderEspace } from './espace-cache.mjs';
 
 const DOSSIER = '/cartes';
 const CATALOGUE = '/catalogue/cartes.txt';
@@ -214,7 +215,7 @@ export async function demarrer(id) {
       t.etat = 'erreur';
       t.erreur = disquePlein(err) || (err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?' : err.message);
     })
-    .finally(() => { etat.controles.delete(id); liberer(`carte:${id}`); });
+    .finally(() => { etat.controles.delete(id); liberer(`carte:${id}`); invaliderEspace(); });
   return t;
 }
 
@@ -231,6 +232,7 @@ export async function supprimer(id) {
   if (!(await lirePacks()).some((p) => p.id === id)) throw new Error('Pack inconnu');
   await fs.rm(fichier(id), { force: true });
   etat.taches.delete(id);
+  invaliderEspace();
 }
 
 // Installed packs, for the map page. The version parameter defeats browser caches after a reinstall.

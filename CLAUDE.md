@@ -161,6 +161,48 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   Glyphes et sprites Protomaps (basemaps-assets, commit figé, empreinte vérifiée) téléchargés au build
   de l'image dans public/ressources-carte/.
 
+- socket-proxy : wollomatic/socket-proxy:1.13.1 figé par tag ET digest (sha256:3935b709…7002, index multi-arch),
+  pour /sante. Choisi plutôt que tecnativa/docker-socket-proxy parce qu'il filtre par expression régulière : seuls
+  GET /containers/json et GET /info passent (-allowGET, ^…$ ajoutés par l'outil). Avec tecnativa, CONTAINERS=1
+  ouvrirait aussi l'inspection (variables d'environnement) et les journaux. -allowfrom=dashboard : filtre sur le nom
+  d'hôte, un autre conteneur du réseau reçoit 403. Réseau « sante » en internal: true, partagé avec le dashboard
+  seul ; aucun port, absent de Caddy. Socket monté en :ro, ce qui n'empêche AUCUNE requête (connect() n'écrit pas
+  le fichier) : seule la liste blanche protège. user 0:0 sans aucune capacité (cap_drop ALL, read_only,
+  no-new-privileges) : le socket appartient à root et le groupe docker n'a pas le même numéro partout.
+  Vérifié sur nomad (2026-09-25) : inspection, logs, top, /images, /version → 403 ; POST stop/restart, DELETE → 405 ;
+  chemins détournés (../, %2F) → 403 ; conteneur tiers sur le réseau → 403.
+- État du serveur (lib/sante.mjs, /api/sante, page /sante, bandeau app/BandeauSante.jsx en bas de l'accueil, 30 s ;
+  page 10 s). RAM, charge, uptime lus dans /proc du conteneur : Docker ne les virtualise pas, ce sont ceux de l'hôte
+  (vérifié : mêmes valeurs que la VM). Disque : statfs('/data'), comme la jauge. Conteneurs du projet Compose du
+  dashboard (label com.docker.compose.project de son propre conteneur, trouvé par son hostname). /containers/json
+  n'a NI nombre de redémarrages NI date de démarrage (seulement dans l'inspection, refusée) : « Depuis » vient du
+  texte Status (« Up 3 hours »), et les redémarrages ne sont pas affichés. Santé : champ Health (API Docker ≥ 1.52),
+  sinon le texte Status ; ignorée pour un conteneur arrêté (Docker garde le dernier résultat). Image affichée
+  « image remplacée depuis le démarrage » quand le tag pointe maintenant vers une autre image (cas de caddy sur nomad
+  le 2026-09-25 : conteneur sur de23def33b17 = caddy:2-alpine, alors que caddy:2.11.4-alpine est une autre image).
+  Niveau : rouge si disque > 95 %, conteneur arrêté, en redémarrage ou unhealthy ; orange si disque > 85 % ou relais
+  injoignable (délai 2 s : la page s'affiche avec « état des conteneurs indisponible »). Seuils du disque 85/95
+  partout (niveauDisque de lib/format.mjs, jauge de l'accueil comprise). Lectures partagées 2 s entre les clients.
+  Version : data/config/version ({commit, branche, installe}), écrit par CHAQUE passage de install.sh après le clone ;
+  un git pull seul (nomad) ne le met pas à jour : la version affichée est celle du dernier passage de l'installeur,
+  « Inconnu » sur une installation antérieure. L'image du dashboard (tag = commit) est affichée à côté.
+  Espace par contenu (lib/espace-contenus.mjs, état dans lib/espace-cache.mjs, /api/sante/espace ; POST = recalculer) :
+  calcul en arrière-plan, jamais attendu par une requête, un seul à la fois (relancé une fois s'il a été invalidé
+  pendant), gardé 10 min, invalidé à la fin de chaque téléchargement (fini, échoué, annulé) et à chaque suppression.
+  Taille en blocs (comme statfs), liens symboliques jamais suivis (Mes documents). Fichiers partiels listés « en
+  cours ». « Autre / système » = disque utilisé moins les catégories. Modèles Ollama seulement avec OLLAMA_URL.
+  Mes documents n'est pas surveillé : 10 min ou « Recalculer ».
+- Suppressions : une seule définition (lib/suppressions.mjs : route, méthode, confirmation, éléments non retirables :
+  fond de carte, fr et en), utilisée par Configuration (Packs, Livres, PacksCartes, PacksTraduction, InstallationIA) et
+  /sante ; le serveur la joint aux éléments de /api/sante/espace. Aucune route de suppression propre à /sante.
+- Désinstallation des ZIM (DELETE /api/packs/<id> : annule un téléchargement en cours, sinon désinstalle, comme
+  livres et cartes). Fichiers du pack = son nom ET sa variante (fichiersPack : deux packs partagent
+  wikipedia_fr_all). Livres retirés de library.xml d'abord (même verrou que l'inscription), puis fichiers, puis taille
+  mémorisée (tailles.json, réécrite à la prochaine lecture du catalogue en ligne). Un téléchargement du même pack en
+  cours est annulé et attendu d'abord. L'assistant relit le catalogue Kiwix dès que la date de library.xml change
+  (assistant/wikis.mjs). Un ZIM hors catalogue ou d'une autre variante que celle du catalogue (medecine nopic sur
+  nomad) n'est pas désinstallable depuis ODIN.
+
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
 Une montée de version se fait volontairement, une image à la fois, après test sur nomad puis hors ligne.
 Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
@@ -412,7 +454,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage), /configuration, /traduction, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Disques (lot 7)
@@ -445,6 +487,12 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /tradu
   avant-fusion-main. Vérifié après la fusion sur VM vierge depuis main : installation complète, pas de
   LIVRES_NON_PUBLIES dans .env, « Aucun livre n'est disponible », contrôle hors ligne (15 pages, licence sous
   l'article, aucune requête vers un autre hôte ; journal : sonde et NTP seulement).
+- Fusion dans main le 2026-09-25 (traduction) : 4d4c757 (image figée par ede7f5e). Main d'avant : 306def3fdad2146481fda1f966240de4fd583a98.
+  Snapshot nomad : avant-fusion-traduction. Vérifié avant sur VM vierge (dev 76d0f8f) : installation en 158 s, fr et en
+  seuls (158 Mo), LibreTranslate sans téléchargement ; allemand installé, traduit, désinstallé depuis le panneau ; relance
+  de l'installeur : rien de cassé, l'allemand ne revient pas, données et mot de passe inchangés ; pack climat,
+  recherche, lecteur, documents, assistant → /ia. Premier téléchargement du pack : 3 ETIMEDOUT (miroir Kiwix), bon au
+  second essai.
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
@@ -533,5 +581,8 @@ Pages : / (liaison monde, services, recherche, stockage), /configuration, /tradu
   (on_starting) ; au HUP, gunicorn relit ces arguments, perd l'application (« No application module specified »), le
   maître s'arrête et le conteneur redémarre en entier. Pour relire les modèles : SIGTERM au worker. Pas de fichier pid
   non plus (--pid) : il survit à un kill -9 du maître et bloque le démarrage suivant (« Already running »).
+- Miroirs Kiwix : download.kiwix.org renvoie vers un miroir choisi par lb.download.kiwix.org ; le 2026-09-25,
+  ftp.nluug.nl ne répondait plus qu'en IPv6 depuis nomad. La VM a l'IPv6, pas les conteneurs : curl sur la VM
+  passe, le dashboard échoue (UND_ERR_CONNECT_TIMEOUT). Tester avec curl -4 avant de chercher dans ODIN.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

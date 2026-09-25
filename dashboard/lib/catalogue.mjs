@@ -23,6 +23,14 @@ async function memoriser(id, taille) {
   await ecrireJson(MESURES, m).catch(() => {});
 }
 
+// Uninstalled pack: its last size is forgotten too
+export async function oublierTaille(id) {
+  const m = await dernieresTailles();
+  if (!(id in m)) return;
+  delete m[id];
+  await ecrireJson(MESURES, m).catch(() => {});
+}
+
 const decoder = (s) => s
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
   .replace(/&apos;/g, "'").replace(/&amp;/g, '&');

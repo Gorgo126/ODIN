@@ -459,3 +459,41 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
 .traduction-tete .bouton { display: inline-flex; padding: .4rem .8rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); color: inherit; text-decoration: none; font-family: var(--mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
 .traduction-tete .bouton:hover { border-color: var(--or); color: var(--or); }
 .traduction-rechargement { margin: 0; padding: .5rem .8rem; border: 1px solid var(--or); color: var(--or); font-family: var(--mono); font-size: .8rem; }
+
+/* Server health: status strip of the home page and /sante. Neutral by default; orange and red only
+   when something needs attention (lib/sante.mjs). */
+:root { --alerte: #f97316; --critique: #ef4444; }
+.bandeau-etat { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin: 2.5rem 0 1rem; padding: .55rem .8rem; border: 1px solid var(--bord); box-shadow: var(--creux); font-family: var(--mono); font-size: .72rem; letter-spacing: .05em; color: inherit; text-decoration: none; opacity: .75; }
+.bandeau-etat:hover { opacity: 1; border-color: var(--or); }
+.bandeau-etat strong { font-weight: 600; }
+.bandeau-etat-alerte { color: var(--alerte); border-color: var(--alerte); opacity: 1; }
+.bandeau-etat-critique { color: var(--critique); border-color: var(--critique); opacity: 1; }
+.sante-raisons { font-family: var(--mono); font-size: .8rem; padding: .6rem .8rem; border: 1px solid currentColor; }
+.sante-alerte { color: var(--alerte); }
+.sante-critique { color: var(--critique); }
+.sante-indisponible { font-family: var(--mono); font-size: .85rem; color: var(--or); }
+.sante-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .6rem; margin-top: .6rem; }
+.sante-chiffres .carte { margin: 0; display: flex; flex-direction: column; gap: .3rem; }
+.sante-tableau { overflow-x: auto; border: 1px solid var(--bord); box-shadow: var(--creux); }
+.sante-tableau table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .78rem; }
+.sante-tableau th, .sante-tableau td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--bord); white-space: nowrap; }
+.sante-tableau th { font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: .68rem; opacity: .7; }
+.sante-tableau tr.sante-mal td { color: var(--critique); }
+.sante-tableau td.sante-image { white-space: normal; overflow-wrap: anywhere; min-width: 7rem; }
+.sante-espace-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.sante-espace-tete button { padding: .35rem .8rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
+.sante-note { font-size: .78rem; opacity: .6; margin: .3rem 0 .8rem; }
+.sante-categorie-tete { display: flex; justify-content: space-between; gap: 1rem; font-family: var(--mono); }
+.sante-categorie-tete a { color: inherit; text-decoration: none; }
+.sante-categorie-tete a:hover { color: var(--or); }
+.sante-categorie-tete span { color: var(--or); white-space: nowrap; }
+.sante-categorie ul { list-style: none; margin: .6rem 0 0; padding: 0; }
+.sante-categorie li { display: grid; grid-template-columns: 1fr auto 7.5rem; align-items: center; gap: .8rem; padding: .3rem 0; border-top: 1px solid var(--bord); font-size: .85rem; }
+.sante-element { min-width: 0; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.sante-taille { font-family: var(--mono); font-size: .78rem; opacity: .8; white-space: nowrap; }
+.sante-categorie li button { padding: .25rem .5rem; font-size: .7rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
+@media (max-width: 520px) {
+  .sante-categorie li { grid-template-columns: 1fr auto; }
+  .sante-categorie li button, .sante-fixe { grid-column: 1 / -1; }
+  .sante-fixe { display: none; }
+}

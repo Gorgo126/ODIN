@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../lib/format.mjs';
 import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { suppressionLivre, supprimer } from '../lib/suppressions.mjs';
 
 const CATEGORIES = { sante: 'Santé', eau: 'Eau', energie: 'Énergie', agriculture: 'Agriculture', technique: 'Technique' };
 
@@ -33,6 +34,12 @@ export default function Livres({ liaisonInitiale }) {
     const r = await fetch(`/api/livres/${id}`, { method });
     if (!r.ok) alert((await r.json()).erreur);
     charger();
+  }
+
+  async function desinstaller(l) {
+    const r = await supprimer(suppressionLivre(l));
+    if (r && !r.ok) alert(r.erreur);
+    if (r) charger();
   }
 
   if (!livres) return <p>Chargement du catalogue</p>;
@@ -67,7 +74,7 @@ export default function Livres({ liaisonInitiale }) {
                 Installé  vérifié{l.fiche?.verifie?.source === 'miroir' ? ' (miroir)' : ''}
               </em>
               <a href={`/livres/${l.id}`} className="bouton bouton-lire">Lire</a>
-              <button onClick={() => confirm(`Désinstaller « ${l.titre} » ?`) && envoyer(l.id, 'DELETE')}>Désinstaller</button>
+              <button onClick={() => desinstaller(l)}>Désinstaller</button>
             </span>
           );
         } else {

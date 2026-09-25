@@ -3,6 +3,7 @@
 // the first articles. Internal network only; every call has a delay. Node's http module, not
 // fetch: see http.mjs.
 
+import { promises as fs } from 'fs';
 import { lire } from './http.mjs';
 
 const KIWIX = process.env.KIWIX_URL || 'http://kiwix:8080';
@@ -20,10 +21,16 @@ const decoder = (s) => s
 const texte = (html) => decoder(html.replace(/<sup\b[\s\S]*?<\/sup>/gi, '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 
 // Installed books with a full-text index, from the local OPDS catalogue (kept one minute)
-let catalogue = { quand: 0, livres: [] };
-// A pack installed or removed is seen within a minute; a removed one is seen at once (see below)
+let catalogue = { quand: 0, livres: [], version: 0 };
+// Date of library.xml, written by the dashboard when a pack is installed or uninstalled: a change
+// reads the catalogue again at once. kiwix-serve may take a moment to reload it: a removed pack
+// that it still lists is caught by the search below (catalogue read again).
+const BIBLIOTHEQUE = process.env.KIWIX_BIBLIOTHEQUE || '/data/library.xml';
+const versionBibliotheque = () => fs.stat(BIBLIOTHEQUE).then((s) => s.mtimeMs, () => 0);
+
 export async function livresIndexes(relire = false) {
-  if (!relire && Date.now() - catalogue.quand < 60000) return catalogue.livres;
+  const version = await versionBibliotheque();
+  if (!relire && version === catalogue.version && Date.now() - catalogue.quand < 60000) return catalogue.livres;
   const r = await lire(`${KIWIX}/kiwix/catalog/v2/entries?count=1000`, DELAI);
   if (!r.ok) throw new Error(`catalogue Kiwix : ${r.statut}`);
   const xml = r.texte;
@@ -35,7 +42,7 @@ export async function livresIndexes(relire = false) {
     guide: /medic|sant[ée]|docteur|secours|soins/i.test(`${e.match(/<title>([^<]*)/)?.[1] || ''} ${e.match(/<summary>([^<]*)/)?.[1] || ''}`),
     contenu: e.match(/type="text\/html" href="\/kiwix\/content\/([^"/]+)"/)?.[1]
   })).filter((l) => l.id && l.index && l.contenu);
-  catalogue = { quand: Date.now(), livres };
+  catalogue = { quand: Date.now(), livres, version };
   return livres;
 }
 

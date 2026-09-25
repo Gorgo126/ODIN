@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { octets } from '../lib/format.mjs';
 import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { suppressionZim, supprimer } from '../lib/suppressions.mjs';
 
 export default function Packs({ liaisonInitiale }) {
   const [packs, setPacks] = useState(null);
@@ -43,6 +44,14 @@ export default function Packs({ liaisonInitiale }) {
     charger();
   }
 
+  async function desinstaller(p) {
+    const r = await supprimer(suppressionZim({ id: p.id, libelle: p.libelle, taille: p.installe }));
+    if (!r) return;
+    if (!r.ok) alert(r.erreur);
+    charger();
+    router.refresh();
+  }
+
   if (!packs) return <p>Chargement du catalogue</p>;
 
   return (
@@ -65,7 +74,12 @@ export default function Packs({ liaisonInitiale }) {
             </div>
           );
         } else if (p.installation === 'installe') {
-          action = <em>Installé</em>;
+          action = (
+            <span>
+              <em>Installé</em>
+              <button onClick={() => desinstaller(p)}>Désinstaller</button>
+            </span>
+          );
         } else {
           action = (
             <span>
@@ -73,6 +87,7 @@ export default function Packs({ liaisonInitiale }) {
               <button disabled={!enLigne || !p.disponible} title={enLigne ? undefined : HORS_LIAISON} onClick={() => installer(p.id)}>
                 {t?.etat === 'erreur' ? 'Réessayer' : p.installation === 'maj' ? 'Mettre à jour' : p.installation === 'autre' ? 'Remplacer' : 'Installer'}
               </button>
+              {p.installation === 'maj' && <button onClick={() => desinstaller(p)}>Désinstaller</button>}
               {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
             </span>
           );

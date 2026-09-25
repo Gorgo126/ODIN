@@ -2,6 +2,7 @@ import { etatServices } from '../lib/etat.mjs';
 import BarreRecherche from './BarreRecherche';
 import Stockage from './Stockage';
 import CarteLiaison from './CarteLiaison';
+import BandeauSante from './BandeauSante';
 import { liaison } from '../lib/liaison.mjs';
 import { reglagesAssistant } from '../lib/assistant.mjs';
 import Sprite from './assistant/Sprite';
@@ -114,6 +115,8 @@ export default async function Page() {
         <h2>Connectivité externe</h2>
         <CarteLiaison initiale={etatLiaison} />
       </section>
+
+      <BandeauSante />
     </main>
   );
 }

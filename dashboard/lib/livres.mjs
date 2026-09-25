@@ -6,6 +6,7 @@ import { reserver, liberer, disquePlein } from './espace.mjs';
 import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { extrairePages } from './extraction.mjs';
+import { invaliderEspace } from './espace-cache.mjs';
 
 // Book packs (PDF): unlike ZIM packs, every piece of metadata, size and SHA-256 included,
 // comes from our own catalogue, so a book can be described and checked offline.
@@ -274,6 +275,7 @@ async function lancer(id) {
       t.extraction = false;
       etat.controles.delete(id);
       liberer(`livre:${id}`);
+      invaliderEspace();
     });
   return t;
 }
@@ -291,4 +293,5 @@ export async function supprimer(id) {
   if (!(await lireFiche(id))) throw new Error('Livre non installé');
   await fs.rm(dossierLivre(id), { recursive: true, force: true });
   etat.taches.delete(id);
+  invaliderEspace();
 }
