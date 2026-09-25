@@ -1,4 +1,5 @@
-:root { color-scheme: light dark; --bord: #8883; --fond: #8881; }
+/* Dark only: native controls (lists, scrollbars, fields) follow the theme, whatever the system setting */
+:root { color-scheme: dark; --bord: #8883; --fond: #8881; }
 * { box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 0 auto; padding: 2rem 1rem 4rem; line-height: 1.5; }
 h1 { font-size: 1.6rem; }
@@ -61,10 +62,9 @@ a.carte.resultat em { display: block; margin: .15rem 0 .3rem; }
 .article .references, .article ol.references { font-size: .85em; }
 .article sup { line-height: 0; }
 .article details > summary { cursor: pointer; }
-@media (prefers-color-scheme: dark) {
-  .article img { background: #fff; border-radius: 2px; }
-  .article img[class*="mwe-math"] { background: none; filter: invert(1); }
-}
+/* Wikipedia images and formulas are drawn for a light page */
+.article img { background: #fff; border-radius: 2px; }
+.article img[class*="mwe-math"] { background: none; filter: invert(1); }
 .entete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .entete h1 { margin: 0; }
 .entete .deconnexion { float: none; }
@@ -130,6 +130,19 @@ input, .recherche input, .connexion input { box-shadow: var(--creux); }
 .stockage-rempli { -webkit-mask: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px); mask: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px); }
 
 .barre { border-bottom: 1px solid color-mix(in srgb, var(--or) 40%, transparent); }
+/* Native lists: opaque theme colours (a translucent background gives a white list on Windows) */
+:root { --fond-liste: color-mix(in srgb, #888 7%, Canvas); }
+select { background-color: var(--fond-liste); color: CanvasText; }
+select option, select optgroup { background-color: var(--fond-liste); color: CanvasText; }
+select option:checked { background-color: var(--or); color: #111; }
+/* Customizable lists (Chrome, Edge 135+): the open list is drawn by the page, in the theme */
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  ::picker(select) { background: var(--fond-liste); color: CanvasText; border: 1px solid var(--bord); box-shadow: var(--relief); padding: .2rem 0; }
+  select option { padding: .35rem .7rem; font-family: var(--mono); font-size: .85rem; }
+  select option:hover, select option:focus-visible { background-color: color-mix(in srgb, var(--or) 30%, var(--fond-liste)); color: CanvasText; outline: none; }
+  select option:checked { background-color: var(--or); color: #111; }
+}
 /* === FIN THEME 90 === */
 .entete-liens { display: flex; gap: 1.2rem; font-size: .8rem; font-family: var(--mono, inherit); text-transform: uppercase; letter-spacing: .08em; }
 .entete-liens a { color: inherit; text-decoration: none; opacity: .65; }
