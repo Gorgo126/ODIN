@@ -144,6 +144,7 @@ export async function installer(code) {
   const modeles = await modelesInstalles();
   const fichiers = l.modeles.filter((f) => !modeles.has(f.sha256)).map((f) => ({ ...f, type: 'modele' }));
   if (!(await existe(fichierDecoupage(l.decoupage)))) fichiers.push({ ...decoupage[l.decoupage], type: 'decoupage', code: l.decoupage });
+  if (!fichiers.length) return { etat: 'termine', recu: 0, total: 0, erreur: null };
   const t = { etat: 'en cours', recu: 0, total: fichiers.reduce((s, f) => s + f.taille, 0), erreur: null };
   const c = new AbortController();
   etat.taches.set(code, t);
