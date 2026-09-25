@@ -155,14 +155,6 @@ services:
       retries: 3
     restart: unless-stopped
 
-networks:
-  # No route to internet (internal): LibreTranslate and the dashboard only
-  traduction:
-    internal: true
-  # No route to internet (internal): the socket proxy and the dashboard only
-  sante:
-    internal: true
-
   socket-proxy:
     # Read-only window on Docker for the /sante page: the dashboard never gets the Docker socket. Only
     # GET /containers/json (list, state, health, image) and GET /info pass; everything else, including
@@ -197,6 +189,14 @@ networks:
       timeout: 5s
       retries: 3
     restart: unless-stopped
+
+networks:
+  # No route to internet (internal): LibreTranslate and the dashboard only
+  traduction:
+    internal: true
+  # No route to internet (internal): the socket proxy and the dashboard only
+  sante:
+    internal: true
 
 volumes:
   caddy_data:
