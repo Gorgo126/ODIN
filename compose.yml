@@ -93,26 +93,28 @@ services:
     image: libretranslate/libretranslate:v1.9.6
     container_name: libretranslate
     # Entry point of the image, plus the watch of .recharger (written by the dashboard after a language
-    # was added or removed): gunicorn reloads its worker on HUP, which reads the models again, the old
-    # worker serving until the new one is ready. docker stop: SIGTERM forwarded to gunicorn at once.
-    # gunicorn gone: the loop ends with it, the container stops and restart: unless-stopped restarts it.
-    # The master is found in /proc (the gunicorn child of the image's entry point): no pid file, which
-    # could outlive a killed master, and no GUNICORN_CMD_ARGS, which makes gunicorn lose its application
-    # on HUP (« No application module specified », master gone).
+    # was added or removed): the server process (gunicorn worker) is stopped gracefully, the gunicorn
+    # master starts a new one at once, which reads the models again; the port stays open, a request
+    # waits during that start. Never HUP: the gunicorn_conf.py of the image rewrites sys.argv at start,
+    # and on HUP gunicorn loses its application (« No application module specified ») and stops.
+    # docker stop: SIGTERM forwarded to gunicorn at once. gunicorn gone: the loop ends with it, the
+    # container stops and restart: unless-stopped restarts it. Processes found in /proc (no pid file,
+    # which would outlive a killed master).
     entrypoint:
       - bash
       - -c
       - |
         S=/home/libretranslate/.local/share/argos-translate/.recharger
         lu() { cat "$$S" 2>/dev/null; }
-        maitre() {
+        # gunicorn processes whose parent is $$1: the master (child of the entry point), its workers
+        enfants() {
           local d pp
           for d in /proc/[0-9]*; do
             read -r _ _ _ pp _ < "$$d/stat" 2>/dev/null || continue
-            [ "$$pp" = "$$E" ] && grep -qa gunicorn "$$d/cmdline" 2>/dev/null && { echo "$${d#/proc/}"; return 0; }
+            [ "$$pp" = "$$1" ] && grep -qa gunicorn "$$d/cmdline" 2>/dev/null && echo "$${d#/proc/}"
           done
-          return 1
         }
+        maitre() { local m; m=$$(enfants "$$E" | head -1); [ -n "$$m" ] && echo "$$m"; }
         vu=$$(lu)
         ./scripts/entrypoint.sh & E=$$!
         arret() { local m; if m=$$(maitre); then kill -TERM "$$m"; else kill -TERM "$$E"; fi 2>/dev/null; }
@@ -122,7 +124,8 @@ services:
           n=$$(lu)
           if [ "$$n" != "$$vu" ] && m=$$(maitre); then
             vu=$$n
-            kill -HUP "$$m" && echo "ODIN : modèles modifiés, rechargement"
+            w=$$(enfants "$$m")
+            [ -n "$$w" ] && kill -TERM $$w && echo "ODIN : modèles modifiés, nouveau processus serveur"
           fi
         done
         wait "$$E"
