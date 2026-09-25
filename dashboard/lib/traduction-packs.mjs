@@ -6,6 +6,7 @@ import { telechargerFlux } from './telechargements.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { reserver, liberer, disquePlein } from './espace.mjs';
 import { ecrireTexte, lireJson } from './fichiers.mjs';
+import { invaliderEspace } from './espace-cache.mjs';
 
 // Language packs of the offline translation. The dashboard downloads, checks and unpacks the Argos
 // models into the folder shared with LibreTranslate (read-only on its side), then writes the signal
@@ -94,6 +95,22 @@ export async function languesInstallees() {
   return r;
 }
 
+// Folders and files of each installed language, for the space used (/sante). A MiniSBD model shared
+// by two languages (tr.onnx: tr and az) is counted once, with the language of that code if installed.
+export async function fichiersLangues() {
+  const [{ base, langues }, modeles] = await Promise.all([lireCatalogue(), modelesInstalles()]);
+  const installees = [];
+  for (const l of langues) if (await estInstallee(l, modeles)) installees.push(l);
+  const decoupages = new Set();
+  const ordre = [...installees].sort((a, b) => (b.code === b.decoupage) - (a.code === a.decoupage));
+  const liste = ordre.map((l) => {
+    const chemins = l.modeles.map((f) => path.join(PAQUETS, modeles.get(f.sha256)));
+    if (!decoupages.has(l.decoupage)) { decoupages.add(l.decoupage); chemins.push(fichierDecoupage(l.decoupage)); }
+    return { code: l.code, nom: l.nom, base: base.includes(l.code), chemins };
+  });
+  return { langues: liste, enCours: EN_COURS };
+}
+
 // SHA-256 of a file, streamed
 function empreinte(fichier) {
   return new Promise((resolve, reject) => {
@@ -176,6 +193,7 @@ export async function installer(code) {
       }
       await fs.rmdir(EN_COURS).catch(() => {});
       await signaler(await languesInstallees());
+      invaliderEspace();
     });
   return t;
 }
@@ -281,6 +299,7 @@ export async function desinstaller(code) {
   } finally {
     await fs.rmdir(EN_COURS).catch(() => {});
     await signaler(await languesInstallees());
+    invaliderEspace();
   }
 }
 

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../lib/format.mjs';
 import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { suppressionLangue, supprimer } from '../lib/suppressions.mjs';
 
 // Language packs of the offline translation, like the ZIM packs: size, install, progress, remove
 export default function PacksTraduction({ liaisonInitiale }) {
@@ -30,6 +31,12 @@ export default function PacksTraduction({ liaisonInitiale }) {
     charger();
   }
 
+  async function desinstaller(l) {
+    const r = await supprimer(suppressionLangue(l));
+    if (r && !r.ok) alert(r.erreur);
+    if (r) charger();
+  }
+
   if (!langues) return <p>Chargement des langues</p>;
   if (!langues.length) return <p className="vide">Aucune langue dans le catalogue.</p>;
 
@@ -48,13 +55,13 @@ export default function PacksTraduction({ liaisonInitiale }) {
               <button onClick={() => confirm('Annuler le téléchargement ?') && envoyer(l.code, 'DELETE')}>Annuler</button>
             </div>
           );
-        } else if (l.base) {
+        } else if (!suppressionLangue(l)) {
           action = <em>Incluse</em>;
         } else if (l.installee) {
           action = (
             <span>
               <em>Installée</em>
-              <button onClick={() => confirm(`Désinstaller « ${l.nom} » ?`) && envoyer(l.code, 'DELETE')}>Désinstaller</button>
+              <button onClick={() => desinstaller(l)}>Désinstaller</button>
             </span>
           );
         } else {

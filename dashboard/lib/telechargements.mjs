@@ -6,6 +6,7 @@ import { lirePacks, infos, oublierTaille } from './catalogue.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { ecrireTexte } from './fichiers.mjs';
 import { reserver, liberer, disquePlein } from './espace.mjs';
+import { invaliderEspace } from './espace-cache.mjs';
 
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
@@ -75,7 +76,7 @@ export async function demarrer(id) {
         : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?'
         : err.message);
     })
-    .finally(() => { controles.delete(id); fins.delete(id); liberer(`zim:${id}`); });
+    .finally(() => { controles.delete(id); fins.delete(id); liberer(`zim:${id}`); invaliderEspace(); });
   fins.set(id, fin);
   return t;
 }
@@ -106,6 +107,7 @@ export async function supprimer(id) {
     taches.delete(id);
   } finally {
     retraits.delete(id);
+    invaliderEspace();
   }
 }
 

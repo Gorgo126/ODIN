@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../../lib/format.mjs';
 import { useLiaison, HORS_LIAISON } from '../useLiaison';
 import DateLocale from '../DateLocale';
+import { suppressionModeleIA, supprimer } from '../../lib/suppressions.mjs';
 
 const go = (mo) => `${Math.round(mo / 1024)} Go`;
 const FABRICANTS = { nvidia: 'NVIDIA', amd: 'AMD', intel: 'Intel', autre: 'Autre' };
@@ -58,6 +59,15 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
     }
   }
 
+  async function desinstaller(x) {
+    setErreur(null);
+    setOccupe('desinstaller');
+    const r = await supprimer(suppressionModeleIA(x));
+    if (r && !r.ok) setErreur(r.erreur);
+    setOccupe(null);
+    charger();
+  }
+
   const m = e.materiel;
   const actif = e.modeles.find((x) => x.actif);
   const installe = e.modeles.find((x) => x.installe);
@@ -106,7 +116,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
               <div className="ia-actions">
                 <button disabled={!!occupe} onClick={() => action({ action: 'activer', actif: !x.actif })}>{x.actif ? 'Désactiver' : 'Activer'}</button>
                 <button disabled={!!occupe} onClick={() => action({ action: 'tester' })}>{occupe === 'tester' ? 'Test en cours…' : 'Tester'}</button>
-                <button disabled={!!occupe} onClick={() => action({ action: 'desinstaller', id: x.id }, `Désinstaller ${x.libelle} ? ${octets(x.taille)} seront libérés.`)}>Désinstaller</button>
+                <button disabled={!!occupe} onClick={() => desinstaller(x)}>Désinstaller</button>
               </div>
             );
           } else {

@@ -3,6 +3,7 @@ import { lireJson, ecrireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
 import { espaceDisque } from './etat.mjs';
 import { reserver, liberer, disquePlein } from './espace.mjs';
+import { invaliderEspace } from './espace-cache.mjs';
 
 // AI option: a language model on a graphics card, installed from the « Assistant IA » page.
 // install.sh detects the hardware (data/config/materiel.json) and runs Ollama only when a card can
@@ -57,10 +58,19 @@ async function sonder() {
   try {
     const r = await fetch(`${url()}/api/tags`, { signal: AbortSignal.timeout(3000), cache: 'no-store' });
     if (!r.ok) return { joignable: false, installes: [] };
-    return { joignable: true, installes: ((await r.json()).models || []).map((m) => ({ tag: m.name, digest: m.digest || '' })) };
+    return { joignable: true, installes: ((await r.json()).models || []).map((m) => ({ tag: m.name, digest: m.digest || '', taille: m.size || 0 })) };
   } catch {
     return { joignable: false, installes: [] };
   }
+}
+
+// Models of the catalogue installed in Ollama, with their size on disk (/sante)
+export async function modelesInstallesIA() {
+  const [modeles, moteur] = await Promise.all([catalogue(), sonder()]);
+  return modeles.flatMap((m) => {
+    const i = moteur.installes.find((x) => x.tag === m.tag);
+    return i ? [{ id: m.id, libelle: m.libelle, taille: i.taille || m.taille }] : [];
+  });
 }
 
 export async function etat() {
@@ -198,7 +208,7 @@ export async function installer(id) {
       t.etat = raison === 'annule' ? 'annule' : 'erreur';
       t.erreur = message(err, raison);
     })
-    .finally(() => { etatTache.controle = null; liberer('ia'); });
+    .finally(() => { etatTache.controle = null; liberer('ia'); invaliderEspace(); });
   return t;
 }
 
@@ -258,4 +268,5 @@ export async function desinstaller(id) {
   const choix = await lireJson(ETAT, {});
   if (choix.modele === id) await ecrireJson(ETAT, {}, 1);
   if (etatTache.tache?.id === id) etatTache.tache = null;
+  invaliderEspace();
 }

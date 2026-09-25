@@ -36,9 +36,12 @@ services:
       # Offline translation (service « libretranslate », internal network): same limit as LT_CHAR_LIMIT
       - TRADUCTION_URL=http://libretranslate:5000
       - TRADUCTION_LIMITE=${TRADUCTION_LIMITE:-5000}
+      # Server health (/sante): containers read through the filtered socket proxy, internal network only
+      - DOCKER_URL=http://socket-proxy:2375
     networks:
       - default
       - traduction
+      - sante
     volumes:
       - ${DATA_DIR}/zim:/data
       - ${DATA_DIR}/config:/config
@@ -156,6 +159,44 @@ networks:
   # No route to internet (internal): LibreTranslate and the dashboard only
   traduction:
     internal: true
+  # No route to internet (internal): the socket proxy and the dashboard only
+  sante:
+    internal: true
+
+  socket-proxy:
+    # Read-only window on Docker for the /sante page: the dashboard never gets the Docker socket. Only
+    # GET /containers/json (list, state, health, image) and GET /info pass; everything else, including
+    # the inspection of a container (its environment variables) and its logs, is refused (403). Only
+    # the host name « dashboard » may connect. Internal network, no published port, not in Caddy.
+    # The :ro mount does not stop requests on the socket: the allowlist does. Root without any
+    # capability: the socket belongs to root, and the docker group has no fixed number across hosts.
+    image: wollomatic/socket-proxy:1.13.1@sha256:3935b709275e4ec35d6ed5a5c4a1f0d01ed31eec5e7234efc3357ecd47689002
+    container_name: socket-proxy
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    command:
+      - -listenip=0.0.0.0
+      - -allowfrom=dashboard
+      - -allowGET=(/v1\.[0-9]+)?/(containers/json|info)
+      - -allowhealthcheck
+      - -watchdoginterval=600
+      - -stoponwatchdog
+      - -shutdowngracetime=5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - sante
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   caddy_data:

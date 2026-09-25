@@ -97,6 +97,11 @@ DATA=$(dossier_donnees)
 mkdir -p "$DATA"/{zim,vecteurs,config,documents,filebrowser,cartes,livres,assistant}
 [ -f "$DATA/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$DATA/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE" "$DATA"
+# Version installed, shown by /sante (« commit installé »). Written by every run of this installer
+# only: a plain git pull leaves the previous one.
+printf '{"commit":"%s","branche":"%s","installe":"%s"}\n' "$(depot rev-parse --short HEAD)" "$BRANCHE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > "$DATA/config/version"
+[ "$UTILISATEUR" != "root" ] && chown "$UTILISATEUR:$UTILISATEUR" "$DATA/config/version"
 MONTAGE=$(df -P "$DATA" | awk 'NR==2 {print $6}')
 echo "  $DATA (système de fichiers monté sur $MONTAGE)"
 if [ "$MONTAGE" = "/" ] && [ -n "${DONNEES:-}" ]; then
@@ -409,7 +414,7 @@ nettoyer_images() {
   local utilisees repo id ref garde avant apres
   avant=$(libre_mo "$RACINE_DOCKER")
   utilisees=$(docker ps -aq | xargs -r docker inspect --format '{{.Image}}' | sort -u)
-  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama libretranslate/libretranslate; do
+  for repo in ghcr.io/gorgo126/odin-dashboard ghcr.io/ggml-org/llama.cpp ghcr.io/kiwix/kiwix-serve gtstef/filebrowser caddy ollama/ollama libretranslate/libretranslate wollomatic/socket-proxy; do
     garde=""
     # Most recent first
     while read -r id ref; do
