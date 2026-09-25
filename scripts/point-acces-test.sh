@@ -64,8 +64,10 @@ connecter() {
   if ! dans wpa_cli -p "/run/wpa-$TEL" -i "$itf" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'; then
     echo "non-associé"; return 1
   fi
-  # busybox udhcpc, once: lease applied, then what the server sent written to /run/bail-telephone
-  cat > "/run/udhcpc-$TEL.sh" <<'SCRIPT'
+  # busybox udhcpc, once: lease applied, then what the server sent written to /run/bail-telephone.
+  # Its script outside /run, which is mounted noexec
+  mkdir -p /var/lib/odin-test
+  cat > "/var/lib/odin-test/udhcpc-$TEL.sh" <<'SCRIPT'
 #!/bin/sh
 [ "$1" = bound ] || exit 0
 ip -4 addr flush dev "$interface"
@@ -74,9 +76,9 @@ ip route replace default via "${router%% *}" dev "$interface"
 printf 'ip=%s\nrouter=%s\ndns=%s\n' "$ip" "${router%% *}" "${dns%% *}" > /run/bail-telephone
 echo "nameserver ${dns%% *}" > /etc/netns/telephone/resolv.conf
 SCRIPT
-  chmod +x "/run/udhcpc-$TEL.sh"
+  chmod +x "/var/lib/odin-test/udhcpc-$TEL.sh"
   rm -f /run/bail-telephone
-  dans busybox udhcpc -i "$itf" -n -q -f -t 10 -T 2 -s "/run/udhcpc-$TEL.sh" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
+  dans busybox udhcpc -i "$itf" -n -q -f -t 10 -T 2 -s "/var/lib/odin-test/udhcpc-$TEL.sh" >/dev/null 2>&1 || { echo "associé, pas de bail DHCP"; return 1; }
   echo "connecté"
 }
 
@@ -133,7 +135,7 @@ verifier() {
 nettoyer() {
   deconnecter >/dev/null 2>&1
   ip netns del "$TEL" 2>/dev/null; ip netns del "$BOX" 2>/dev/null
-  rm -rf "/etc/netns/$TEL" /etc/modules-load.d/odin-test-hwsim.conf /etc/modprobe.d/odin-test-hwsim.conf
+  rm -rf "/etc/netns/$TEL" /var/lib/odin-test /etc/modules-load.d/odin-test-hwsim.conf /etc/modprobe.d/odin-test-hwsim.conf
   echo "Nettoyé (hwsim reste chargé jusqu'au prochain redémarrage)."
 }
 
