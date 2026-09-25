@@ -501,7 +501,7 @@ fi
 POINT_ACCES_FIN=""
 if [ "$POINT_ACCES" = 1 ]; then
   # dnsmasq-base, not dnsmasq: the full package starts a system service on port 53
-  if apt-get install -y -qq iw hostapd dnsmasq-base qrencode rfkill >/dev/null; then
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iw hostapd dnsmasq-base qrencode rfkill >/dev/null 2>&1; then
     sortie=$(bash "$CIBLE/scripts/point-acces.sh" installer 2>&1) || true
     POINT_ACCES_FIN=$(tail -1 <<<"$sortie")
     sed 's/^/  /' <<<"$sortie"

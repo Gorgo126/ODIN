@@ -56,7 +56,8 @@ connecter() {
   dans ip link set "$itf" up
   printf 'ctrl_interface=/run/wpa-%s\nnetwork={\n  ssid="%s"\n  psk="%s"\n  key_mgmt=WPA-PSK\n}\n' "$TEL" "$ssid" "$mdp" > "/run/wpa-$TEL.conf"
   dans wpa_supplicant -B -i "$itf" -c "/run/wpa-$TEL.conf" -P "/run/wpa-$TEL.pid" >/dev/null
-  for i in $(seq 20); do
+  # Up to 30 s: after a wrong password, the next association takes longer
+  for i in $(seq 60); do
     dans wpa_cli -p "/run/wpa-$TEL" -i "$itf" status 2>/dev/null | grep -q '^wpa_state=COMPLETED' && break
     sleep 0.5
   done
@@ -89,6 +90,7 @@ verifier() {
   done
   echo "2. Connexion"
   [ "$(connecter 'mauvais-mot-2-passe')" = non-associé ] && ok "refus avec un mauvais mot de passe" || ko "mauvais mot de passe accepté"
+  sleep 3
   local r; r=$(connecter); [ "$r" = connecté ] && ok "connexion avec le bon mot de passe" || { ko "connexion : $r"; return; }
   echo "3. Bail et DNS"
   bail=$(dans dhcpcd -U -4 "$itf" 2>/dev/null)
