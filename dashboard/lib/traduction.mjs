@@ -4,7 +4,7 @@ const URL_TRADUCTION = process.env.TRADUCTION_URL || 'http://libretranslate:5000
 // Same value as LT_CHAR_LIMIT of the service (TRADUCTION_LIMITE of .env)
 export const LIMITE = Number(process.env.TRADUCTION_LIMITE) || 5000;
 
-export const INJOIGNABLE = 'Le service de traduction ne répond pas. Au démarrage du serveur, il lui faut environ une minute ; sinon, voir docker compose logs libretranslate.';
+export const INJOIGNABLE = 'Le service de traduction ne répond pas. Au démarrage du serveur, il lui faut quelques secondes ; sinon, voir docker compose logs libretranslate.';
 
 export class ErreurTraduction extends Error {
   constructor(message, statut) { super(message); this.statut = statut; }

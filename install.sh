@@ -480,7 +480,7 @@ docker exec dashboard node -e 'fetch("http://localhost:3000/api/assistant/index"
   || echo "  Indexation des documents : elle démarrera d'elle-même dans les 5 minutes."
 
 msg "Traduction"
-# Its healthcheck asks /languages; the models load in about a minute
+# Its healthcheck asks /languages (ready in a few seconds; models load at the first translation)
 etat_traduction() { docker inspect -f '{{.State.Health.Status}}' libretranslate 2>/dev/null; }
 for _ in $(seq 90); do [ "$(etat_traduction)" = healthy ] && break; sleep 2; done
 if [ "$(etat_traduction)" = healthy ]; then
