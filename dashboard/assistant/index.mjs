@@ -17,8 +17,11 @@ import { CONSTANTES } from './constantes.mjs';
 
 // « Comment faire ? »: the best passages, PAR_ARTICLE at most from one article, so that an article
 // whose keywords match every paragraph cannot take all the places given to the embeddings
-// An article matched by a whole keyword gets its paragraphs embedded first
-const exactsDabord = (passages) => [...passages.filter((p) => p.motCleExact), ...passages.filter((p) => !p.motCleExact)];
+// An article matched by a whole keyword (complete match) gets its paragraphs embedded first
+const exactsDabord = (passages) => {
+  const complet = (p) => p.motCle?.niveau === 'complet';
+  return [...passages.filter(complet), ...passages.filter((p) => !complet(p))];
+};
 
 function unParArticle(passages, n) {
   const vus = new Map();
