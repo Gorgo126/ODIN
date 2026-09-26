@@ -102,7 +102,8 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
 1. Préparer en ligne (VM vierge ci-dessus) : mot de passe, un petit pack (climat), un PDF dans
    Documents.
 2. Couper : sudo /opt/odin/scripts/hors-ligne.sh couper (persiste au redémarrage).
-3. Redémarrer à froid (multipass stop test, puis multipass start test), puis vérifier : 5 conteneurs, connexion,
+3. Redémarrer à froid (multipass stop test, puis multipass start test), puis vérifier : conteneurs en marche (plus
+   dashboard-droits, arrêté après son passage : normal), connexion,
    accueil, recherche, lecteur, /encyclopedie, dépôt d'un document,
    page Configuration (« Catalogue injoignable » en moins de 3 s, boutons désactivés).
 4. Navigateur, outils de développement ouverts (onglet Réseau) : aucune requête vers un autre hôte
@@ -123,6 +124,23 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   Après toute modification du Caddyfile : docker compose restart caddy (up -d ne le relit pas).
 - Authentification unique : forward_auth vers /api/auth/verifier du dashboard. Mot de passe choisi à la
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
+- dashboard en non-root (2026-09-26) : USER node (uid 1000, comme le premier utilisateur de l'hôte, propriétaire de
+  data/), cap_drop ALL, no-new-privileges ; seul dossier de l'image où il écrit : .next/cache (créé au build pour node).
+  Écrit dans /config (auth, réglages, liaison, guides, état IA, demande du point d'accès), /data (ZIM, .part,
+  library.xml), /cartes, /livres, /assistant (index.db), /traduction (packs, chmod, unzip), /messages (mur), /tmp ;
+  /documents et /catalogue en lecture seule. docker exec dashboard … tourne donc en node (id → uid=1000) : les scripts
+  qui s'en servent (install.sh, ajouter.sh, banc-recherche.sh) n'écrivent que par l'API ou dans /tmp.
+  Service ponctuel « droits » (conteneur dashboard-droits, même image, dashboard/droits.sh) : root avec CAP_CHOWN et
+  DAC_READ_SEARCH seulement, sans réseau, lecture seule ; le dashboard l'attend (depends_on
+  service_completed_successfully), il rend à node ce qui ne lui appartient pas dans ses volumes (find ! -user/! -group,
+  chown -h, -xdev ; jamais de chown -R), puis s'arrête (« Terminé » sur /sante, label odin.ponctuel ; un échec y est
+  critique). Relancé par chaque docker compose up (installeur, mise à jour par git pull) ; pas au redémarrage de la
+  machine (restart: "no") : rien de ce qui tourne alors ne crée de fichier root. Pourquoi un service et pas un point
+  d'entrée root + setpriv : docker exec prend l'utilisateur du conteneur, qui est aussi celui du processus 1 ; avec un
+  point d'entrée root, docker exec dashboard id répondrait root. Mesuré sur odintest (118 éléments, 1,3 Go de ZIM,
+  158 Mo de langues) : 0,09 s, 1 fichier corrigé (liaison.json, écrit en root), puis 0 ; /connexion en 200 0,9 s après
+  up. Simulé (dossier root:root, fichiers 600, sous-dossier 700, lien vers un fichier système) : 4 éléments rendus,
+  lien non suivi, node lit et écrit ensuite. Le workflow épingle les deux lignes image: (dashboard et droits).
 - dashboard : Next.js 15 (app router, output standalone) dans dashboard/. Dépendances : Next, React, et pour
   la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
   Dépendances transitives figées par dashboard/package-lock.json (npm ci au build) ; poppler-utils figé à la version
@@ -207,7 +225,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
 
 - socket-proxy : wollomatic/socket-proxy:1.13.1 figé par tag ET digest (sha256:3935b709…7002, index multi-arch),
   pour /sante. Choisi plutôt que tecnativa/docker-socket-proxy parce qu'il filtre par expression régulière : seuls
-  GET /containers/json et GET /info passent (-allowGET, ^…$ ajoutés par l'outil). Avec tecnativa, CONTAINERS=1
+  GET /containers/json et GET /version passent (-allowGET, ^…$ ajoutés par l'outil ; /info remplacé par /version le
+  2026-09-26 : seule la version de Docker servait, /info expose aussi chemins, nom d'hôte, registres). Avec tecnativa, CONTAINERS=1
   ouvrirait aussi l'inspection (variables d'environnement) et les journaux. -allowfrom=dashboard : filtre sur le nom
   d'hôte, un autre conteneur du réseau reçoit 403. Réseau « sante » en internal: true, partagé avec le dashboard
   seul ; aucun port, absent de Caddy. Socket monté en :ro, ce qui n'empêche AUCUNE requête (connect() n'écrit pas
@@ -412,8 +431,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   desinstaller la retire) : retirée à chaque arrêt, NM prenait la carte au démarrage suivant pendant ~10 s, assez
   pour rejoindre un réseau Wi-Fi enregistré (vu au lot 2 : journal de NM, « unmanaged -> unavailable »).
   État : ${DATA}/config/point-acces.json (etat actif|inactif|indisponible, raison, interface, ssid, motDePasse, adresse,
-  noms [<nom>.lan, <nom>.local si avahi], canal, pays, maj), 640 au propriétaire de data/config : le conteneur
-  dashboard tourne en root (vérifié le 2026-09-25) et le lira au lot 2 ; à revoir si l'image passe en non-root.
+  noms [<nom>.lan, <nom>.local si avahi], canal, pays, maj), 640 au propriétaire de data/config (ubuntu, uid 1000) : lisible
+  par le dashboard, qui tourne en node (uid 1000) depuis le 2026-09-26 (vérifié : /api/point-acces lit l'état).
   QR codes point-acces-wifi.svg et point-acces-adresse.svg (qrencode) à côté. « actif » écrit par ExecStartPost de
   hostapd et dnsmasq quand les deux tournent et que la carte est en mode AP ; un service dans son ExecStartPost n'est
   pas « active » : attendre « active » faisait s'attendre les deux (10 s perdues, état jamais écrit au démarrage).
@@ -986,13 +1005,22 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
 État relevé dans le code le 2026-09-26 (dev 669ec4d) ; lot A (délais, liens de la carte, empreintes) fait le même jour.
 
 - Dashboard en root alors qu'il répond à des requêtes non authentifiées (mur de messages : /messages, GET et POST
-  /api/messages) ; évaluer le passage en non-root. À FAIRE. Preuve : dashboard/Dockerfile n'a aucune ligne USER
+  /api/messages) ; évaluer le passage en non-root. FAIT (lot B, 2026-09-26, bb8267b) : node, uid 1000, aucune
+  capacité (voir l'entrée « dashboard en non-root » d'Architecture). Vérifié sur odintest après git pull sans
+  installeur, image locale puis image publiée : docker exec dashboard id → uid=1000, processus 1 Uid 1000 et CapEff 0 ;
+  mur, dépôt par FileBrowser puis indexation et recherche avancée (6 s), recherche par mots-clés, pack voyage installé
+  (5 s) et désinstallé, carte Luxembourg, langue allemand (traduction de→fr) installée puis retirée, articles vérifiés,
+  réglages, banc de recherche 34/34, état du point d'accès lu ; aucune erreur EACCES/EPERM dans les journaux.
+  Socket-proxy (restreint au strict nécessaire) : GET /containers/json et GET /version seulement ; /info, inspection,
+  /images → 403, POST /containers/create → 405 ; jamais de création de conteneur, d'exec ni d'accès aux volumes.
+  ÉTAT D'AVANT (pour mémoire) : Preuve : dashboard/Dockerfile n'a aucune ligne USER
   (dernière étape FROM node:24.21.0-alpine3.23, CMD node server.js) ; docker exec dashboard id → uid=0(root).
-- Piège lié : un dossier de data/ créé par Docker lors d'une mise à jour sans installeur (git pull + docker compose up)
-  est en root:root 755 (constaté sur odintest pour data/messages) ; un dashboard non root ne pourrait pas y écrire. Il
-  faudra un chown au démarrage (point d'entrée) ou dans l'installeur, pour chaque volume où le dashboard écrit (config,
-  cartes, livres, assistant, traduction, messages). À FAIRE (avec le point précédent). Preuve : seul install.sh
-  fait chown -R "$UTILISATEUR" "$CIBLE" "$DATA", et le Dockerfile n'a pas de point d'entrée (CMD node server.js).
+- Piège lié, TRAITÉ par le service « droits » : un dossier de data/ créé par Docker lors d'une mise à jour sans installeur (git pull + docker compose up)
+  est en root:root 755 (constaté sur odintest pour data/messages) ; un dashboard non root ne pourrait pas y écrire.
+  FAIT (lot B) : dashboard/droits.sh, avant chaque démarrage du dashboard par docker compose up, sur config, zim,
+  cartes, livres, assistant, traduction et messages ; seulement ce qui est mal attribué. NON TESTÉ : VM vierge (prévu
+  avec le mur et le lot A), vraie création d'un dossier par Docker sur odintest (data/ n'y est jamais supprimé :
+  simulé sur un dossier temporaire).
 - Téléchargements de packs et de modèles : délai d'inactivité (ni échec trop tôt, ni attente sans fin). FAIT
   (lot A, 2026-09-26, 86d4fc5). Livres : lib/livres.mjs passe inactivite: INACTIVITE (30 s, celle des packs ZIM) à
   telechargerFlux, message « Connexion perdue : aucune donnée reçue depuis 30 s ». Cartes : lib/cartes.mjs,
