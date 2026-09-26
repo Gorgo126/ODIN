@@ -42,6 +42,21 @@ function rapportAuTerme(titre, terme) {
 
 // Words of several queries: each one on its own (motsRequete keeps 8 words of 200 characters), then
 // together, 16 at most
+// Occurrences of a query word in a normalized text, counted as the BM25 below counts them: the whole
+// word, or its start from 5 letters on (« eau » finds « eau » but not « eaux » ; « brulu » finds
+// « brulure »). Never inside a word: « sonne » must not find « personne ». Shared by the book and
+// « Comment faire ? » sources, so that every source picks its candidates the same way.
+const LETTRE = /[\p{L}\p{N}]/u;
+export function occurrences(texte, m, max = 10) {
+  let k = 0;
+  for (let i = texte.indexOf(m); i !== -1 && k < max; i = texte.indexOf(m, i + 1)) {
+    if (i > 0 && LETTRE.test(texte[i - 1])) continue;
+    if (m.length < 5 && LETTRE.test(texte[i + m.length] || '')) continue;
+    k++;
+  }
+  return k;
+}
+
 export const termes = (requetes) => [...new Set(requetes.filter(Boolean).flatMap((r) => motsRequete(r)))].slice(0, 16);
 
 // Long paragraphs (encyclopedias, books) are cut at a sentence end: every character costs time for

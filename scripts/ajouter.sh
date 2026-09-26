@@ -44,7 +44,7 @@ IFS='|' read -r _ nom var libelle <<< "$(packs | awk -F'|' -v id="$1" '$1==id')"
 
 choix=$(choisir "$nom" "$var") || true
 if [ -z "$choix" ]; then
-  echo "Variante  $var  introuvable pour $nom. Disponibles :"
+  echo "Variante « $var » introuvable pour $nom. Disponibles :"
   variantes "$nom" | cut -f1 | sed 's/^/  /'
   exit 1
 fi

@@ -93,8 +93,8 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
 
 Un seul compose.yml écrit à la main, aucun orchestrateur.
 
-- caddy : façade unique, port ${HTTP_PORT}:80. Routes /documents  filebrowser,
-  /kiwix  kiwix, reste  dashboard. auto_https off.
+- caddy : façade unique, port ${HTTP_PORT}:80. Routes /documents → filebrowser,
+  /kiwix → kiwix, reste → dashboard. auto_https off.
   Après toute modification du Caddyfile : docker compose restart caddy (up -d ne le relit pas).
 - Authentification unique : forward_auth vers /api/auth/verifier du dashboard. Mot de passe choisi à la
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
@@ -789,7 +789,7 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 - Caractères perdus à l'écriture : des sessions de Claude Code du 2026-09-21 ont écrit certains symboles comme des espaces
   (« Installé · vérifié » dans le compte rendu, « Installé  vérifié » dans le fichier ; « / » et « ODIN » de la barre du
   lecteur devenus « » et « ODIN » précédé d'une espace ; « [−] », « A− », « ↗ » vides). Rien n'a atteint git : chaque ligne est
-  fautive dès son premier commit. Rétablis le 2026-09-26 (« · », « — ODIN » des titres, / de git). Reste h2::before de
-  globals.css (content: ' ', symbole d'origine inconnu). Chercher : grep -nE "[^ ]  +[^ /]" hors commentaires.
+  fautive dès son premier commit. Rétablis le 2026-09-26 (« · », « — ODIN » des titres, / de git). h2::before de globals.css : ◆ doré
+  (choix du propriétaire, l'original est perdu). Chercher : grep -nE "[^ ]  +[^ /]" hors commentaires.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
