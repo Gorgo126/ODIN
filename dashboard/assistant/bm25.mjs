@@ -78,7 +78,8 @@ export function classer(passages, requetes, n, { terme = null, secondaires = [] 
   // A general article among the candidates: only then is a specialised one pushed back
   const rapports = passages.map((p) => rapportAuTerme(p.titre, terme));
   const general = rapports.some((r) => r.type === 'exact' || r.type === 'commence');
-  const docs = passages.map((p) => normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+  // motsCles: synonyms given by the source for its document (« Comment faire ? » keywords)
+  const docs = passages.map((p) => normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte} ${(p.motsCles || []).join(' ')}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
   const moyenne = docs.reduce((s, d) => s + d.length, 0) / docs.length;
   const compte = (d, m) => d.reduce((k, t) => k + (t === m || (m.length >= 5 && t.startsWith(m)) ? 1 : 0), 0);
   const frequences = docs.map((d) => mots.map((m) => compte(d, m)));
@@ -120,7 +121,7 @@ export function noterCouverture(passages, requetes) {
   const mots = termes(requetes);
   if (!mots.length || !passages.length) return;
   const presents = passages.map((p) => {
-    const d = new Set(normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+    const d = new Set(normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte} ${(p.motsCles || []).join(' ')}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
     return mots.map((m) => d.has(m) || (m.length >= 5 && [...d].some((t) => t.startsWith(m))));
   });
   // A word found in no passage at all (« soigner », « comment ») says nothing about any of them:

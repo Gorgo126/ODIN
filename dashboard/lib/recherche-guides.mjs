@@ -10,12 +10,16 @@ const memo = globalThis.__odinRechercheGuides ??= { index: null, sections: [] };
 function sections(index) {
   if (memo.index !== index) {
     memo.index = index;
-    memo.sections = index.articles.flatMap((a) => a.sections.map((s) => ({
-      a,
-      s,
-      norm: normaliser(`${s.titre} ${s.texte}`).replace(/\s+/g, ' '),
-      titres: normaliser(`${a.title} ${s.titre}`)
-    })));
+    memo.sections = index.articles.flatMap((a) => {
+      // « keywords » of the manifest: synonyms of the whole article, as good as its title
+      const cles = normaliser((a.keywords || []).join(' '));
+      return a.sections.map((s) => ({
+        a,
+        s,
+        norm: normaliser(`${s.titre} ${s.texte}`).replace(/\s+/g, ' '),
+        titres: `${normaliser(`${a.title} ${s.titre}`)} ${cles}`
+      }));
+    });
   }
   return memo.sections;
 }
@@ -28,8 +32,9 @@ export async function chercherDansGuides(q, nombre = 5) {
   const meilleurs = new Map();
   for (const x of sections(index)) {
     let score = 0;
+    // Every word in the section, or among the article's keywords
     for (const m of mots) {
-      const k = positions(x.norm, m, 10).length;
+      const k = positions(x.norm, m, 10).length || positions(x.titres, m, 1).length;
       if (!k) { score = 0; break; }
       score += k;
     }

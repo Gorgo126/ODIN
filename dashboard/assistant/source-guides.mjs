@@ -13,7 +13,10 @@ const memo = { index: null, sections: [] };
 function sections(index) {
   if (memo.index !== index) {
     memo.index = index;
-    memo.sections = index.articles.flatMap((a) => a.sections.map((s) => ({ a, s, norm: normaliser(`${s.titre} ${s.texte}`) })));
+    memo.sections = index.articles.flatMap((a) => {
+      const cles = normaliser((a.keywords || []).join(' '));
+      return a.sections.map((s) => ({ a, s, norm: normaliser(`${s.titre} ${s.texte}`), cles }));
+    });
   }
   return memo.sections;
 }
@@ -28,7 +31,8 @@ export async function passagesGuides(requetes, { sections: nombre = 5 } = {}) {
     let total = 0;
     // Words counted as the BM25 counts them (occurrences): « sonne » must not match « personne »
     for (const m of mots) {
-      const k = occurrences(x.norm, m);
+      // The article's keywords (manifest) count as one occurrence in each of its sections
+      const k = occurrences(x.norm, m) + (x.cles && occurrences(x.cles, m, 1));
       if (k) { distincts++; total += k; }
     }
     if (distincts) candidates.push({ ...x, score: distincts * 100 + total });
@@ -44,6 +48,8 @@ export async function passagesGuides(requetes, { sections: nombre = 5 } = {}) {
       // First-aid articles are a guide for emergencies, like the health books
       guide: a.category === 'sante',
       titre: a.title,
+      // Synonyms of the article: in the BM25 and in the embedded text (assistant/index.mjs)
+      ...(a.keywords?.length ? { motsCles: a.keywords } : {}),
       section: s.titre,
       texte: t,
       lien: lienArticle(a)

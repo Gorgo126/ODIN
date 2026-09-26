@@ -528,7 +528,8 @@ export class Index {
     if (q && externes.length) {
       const t = Date.now();
       try {
-        const vs = await vectoriser(this.cfg, externes.map((p) => prof.document(p.section ? `${p.section}\n${p.texte}` : p.texte, p.titre)));
+        // Keywords of a « Comment faire ? » article go with its title into the embedded text
+        const vs = await vectoriser(this.cfg, externes.map((p) => prof.document(p.section ? `${p.section}\n${p.texte}` : p.texte, p.motsCles?.length ? `${p.titre} (${p.motsCles.join(', ')})` : p.titre)));
         externes.forEach((p, i) => {
           const v = reduire(vs[i], q.length);
           let c = 0;

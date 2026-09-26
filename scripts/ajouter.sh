@@ -40,7 +40,7 @@ if [ $# -eq 0 ] || [ "$1" = "--liste" ]; then
 fi
 
 IFS='|' read -r _ nom var libelle <<< "$(packs | awk -F'|' -v id="$1" '$1==id')"
-[ -n "$nom" ] || { echo "Pack inconnu : $1  voir $0 --liste"; exit 1; }
+[ -n "$nom" ] || { echo "Pack inconnu : $1 — voir $0 --liste"; exit 1; }
 
 choix=$(choisir "$nom" "$var") || true
 if [ -z "$choix" ]; then

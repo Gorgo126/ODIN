@@ -163,6 +163,19 @@ export function validerArchive(entrees, publie) {
   return { articles, assets };
 }
 
+// Optional « keywords » of an article (format 1): the article's own synonyms for the search. Kept
+// only as a list of short strings; anything else is ignored (logged), never a reason to refuse.
+export function motsCles(a) {
+  if (a.keywords === undefined) return [];
+  if (!Array.isArray(a.keywords)) {
+    console.error(`Comment faire ? ${a.slug} : « keywords » ignoré (pas un tableau)`);
+    return [];
+  }
+  const propres = a.keywords.filter((k) => typeof k === 'string' && k.trim()).map((k) => k.trim().slice(0, 80));
+  if (propres.length !== a.keywords.length) console.error(`Comment faire ? ${a.slug} : entrées de « keywords » ignorées (pas des chaînes)`);
+  return [...new Set(propres)].slice(0, 30);
+}
+
 // Index of the version: what the pages and the search read, built once here
 export function construireIndex(publie, { articles, assets }) {
   const categories = new Map(publie.articles.map((a) => [a.slug, a.category]));
@@ -175,7 +188,7 @@ export function construireIndex(publie, { articles, assets }) {
     articles: publie.articles.map((a) => {
       const n = nettoyer(articles.get(a.slug), { slug: a.slug, articles: categories, assets: cles });
       if (n.rejetes.length) console.log(`Comment faire ? ${a.slug} : retiré au nettoyage : ${n.rejetes.join(', ')}`);
-      return { ...a, html: n.html, sections: n.sections };
+      return { ...a, keywords: motsCles(a), html: n.html, sections: n.sections };
     })
   };
 }

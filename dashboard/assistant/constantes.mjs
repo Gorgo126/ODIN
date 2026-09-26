@@ -36,8 +36,9 @@ export const CONSTANTES = {
     documents: { reponse: 0.4, proches: 0.18 },
     wikis: { reponse: 0.48, proches: 0.42 },
     livres: { reponse: 0.45, proches: 0.3 },
-    // « Comment faire ? » articles: the thresholds of the books, NOT calibrated yet (added 2026-09-26)
-    guides: { reponse: 0.45, proches: 0.3 }
+    // « Comment faire ? » articles: PROVISIONAL, calibrated on 6 questions only (2026-09-26, odintest
+    // with WikiMed and one book): relevant articles 0.48–0.62, off-topic ones 0.31–0.44
+    guides: { reponse: 0.46, proches: 0.35 }
   },
 
   // Advanced search without the vectors (embedding model unavailable): share of the query found in

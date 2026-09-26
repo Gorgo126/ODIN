@@ -52,6 +52,7 @@
     { "theme": "froid", "dit": ["doigts gelés", "orteils gelés", "orteils noirs", "doigts noirs", "devenus noirs", "devenu noir", "noircis", "engelure", "gelure"], "cherche": ["gelure", "engelure"], "aussi": ["hypothermie"] },
     { "theme": "froid", "dit": ["dormir dehors", "s'abriter", "abri pour la nuit", "construire un abri", "bivouac"], "cherche": ["abri", "bivouac"], "aussi": ["isolation"] },
     { "theme": "froid", "dit": ["s'habiller chaudement", "se couvrir", "vêtements chauds", "rester au chaud"], "cherche": ["vêtement"], "aussi": ["superposition des couches"] },
+    { "theme": "energie", "dit": ["coupure de courant"], "cherche": ["panne de courant", "électricité"], "aussi": [] },
     { "theme": "froid", "dit": ["chauffer sans électricité", "chauffer la maison", "chauffage sans électricité", "poêle à bois"], "cherche": ["chauffage", "poêle à bois"], "aussi": [] },
 
     { "theme": "nourriture", "dit": ["conserver la viande", "garder la viande", "sans frigo", "sans réfrigérateur", "conserver les aliments", "garder la nourriture"], "cherche": ["conservation des aliments"], "aussi": ["salaison", "fumage", "séchage"] },

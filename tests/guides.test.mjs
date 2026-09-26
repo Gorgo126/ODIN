@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { gzipSync } from 'zlib';
 import { nettoyer } from '../dashboard/lib/guides-html.mjs';
 import { lireTarGz } from '../dashboard/lib/tar.mjs';
-import { validerArchive, defautManifeste, comparer } from '../dashboard/lib/guides.mjs';
+import { validerArchive, defautManifeste, comparer, motsCles, construireIndex } from '../dashboard/lib/guides.mjs';
 
 const ctx = {
   slug: 'eau',
@@ -127,4 +127,18 @@ test('différences : nouveaux, modifiés, supprimés, par le sha256 seul', () =>
   assert.deepEqual(d.modifies.map((x) => x.slug), ['b']);
   assert.deepEqual(comparer(distant, local).supprimes.map((x) => x.slug), ['c']);
   assert.equal(comparer(local, local).aJour, true);
+});
+
+test('keywords : facultatif, nettoyé, jamais une raison de refuser', () => {
+  assert.deepEqual(motsCles({ slug: 'a' }), []);
+  assert.deepEqual(motsCles({ slug: 'a', keywords: [' coupure de courant ', 'électricité', 'électricité', '', 3] }), ['coupure de courant', 'électricité']);
+  assert.deepEqual(motsCles({ slug: 'a', keywords: 'panne' }), []);
+  // A manifest with keywords stays format 1, and its archive is accepted the same way
+  const avec = { ...publie, articles: [{ ...interne.articles[0], keywords: ['potable', 'eau du robinet'] }] };
+  assert.equal(defautManifeste(avec), null);
+  const { archive: _a, ...interneAvec } = avec;
+  const entrees = [{ nom: 'manifest.json', contenu: JSON.stringify(interneAvec) }, ...bon.slice(1)];
+  const index = construireIndex(avec, validerArchive(lireTarGz(tar(entrees)), avec));
+  assert.deepEqual(index.articles[0].keywords, ['potable', 'eau du robinet']);
+  assert.deepEqual(construireIndex(publie, validerArchive(lireTarGz(tar(bon)), publie)).articles[0].keywords, []);
 });
