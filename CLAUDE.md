@@ -209,6 +209,66 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   (assistant/wikis.mjs). Un ZIM hors catalogue ou d'une autre variante que celle du catalogue (medecine nopic sur
   odintest) n'est pas désinstallable depuis ODIN.
 
+- « Comment faire ? » (2026-09-26) : articles du blog d'odin-node.com, installés à la demande, lisibles et cherchables hors
+  ligne. Source : https://odin-node.com/odin/guides/manifest.json (no-cache ; GUIDES_MANIFESTE pour en changer, sans passer
+  par compose.yml). Contrat format 1 : manifeste publié {format, version, generated_at, archive {url, sha256, size},
+  categories[] {slug, title, description, order}, articles[] {slug, title, category, summary, published, updated, sha256}} ;
+  tout autre format refusé (« une mise à jour d'ODIN est nécessaire »). Archive tar.gz : manifest.json (= manifeste publié
+  SANS « archive », comparé clé par clé), articles/<slug>.html (fragments sans h1), assets/<slug>/* (SVG autonomes, fond
+  sombre et couleurs en dur). Changements détectés par le sha256 des articles SEULEMENT (contrat) : même version, autre
+  sha256 = modifié. Archive acceptée seulement en https sur le même site que le manifeste.
+  lib/guides.mjs (installation, vérification, suppression), lib/guides-index.mjs (lecture, sans dépendance : pages,
+  recherche, worker), lib/guides-html.mjs (nettoyage), lib/tar.mjs (lecteur ustar en mémoire), lib/recherche-guides.mjs,
+  assistant/source-guides.mjs, /api/guides (GET état, POST {action: verifier|installer}, DELETE), /api/guides/assets/
+  <slug>/<fichier> (nom de fichier du contrat, article installé, pas de lien, chemin résolu resté dans le dossier ;
+  image/svg+xml, nosniff, CSP sandbox), pages /comment-faire, /comment-faire/<catégorie>, /comment-faire/<catégorie>/<slug>
+  (Lecteur de /lire, sans lien Kiwix, classe guide), carte de l'accueil (« Non installé » tant que rien n'est là), panneau
+  Configuration id="guides" (seul endroit avec « Supprimer les articles », définition dans lib/suppressions.mjs), catégorie
+  de /sante.
+  Stockage : data/config/guides (volume /config existant : ni compose.yml ni install.sh modifiés). Chaque version dans
+  v-<date>-<hasard>/ (manifest.json publié complet, guides.json = index construit à l'installation : HTML nettoyé et texte par
+  section h2, articles/, assets/) ; le lien « actuel » est basculé par un rename, puis les anciennes versions retirées. Tout
+  échec avant la bascule laisse la version installée intacte. 604 Ko pour 12 articles et 19 schémas (archive de 68 Ko).
+  Installation : enLigne() d'abord (sinon « Connexion à internet nécessaire pour installer ou mettre à jour », tout de
+  suite) ; manifeste 10 s au plus ; archive par telechargerFlux (15 s pour la réponse, 30 s d'inactivité, taille annoncée
+  = maximum), SHA-256, puis lecture en mémoire et contrôle AVANT toute écriture : entrées ustar ordinaires seulement (lien,
+  pax, périphérique refusés), aucun « .. », chemin absolu ni antislash, uniquement manifest.json, les articles du manifeste
+  et leurs assets, tous les articles présents, toute image appelée présente, aucun doublon. Archive en 404 ou empreinte
+  fausse : manifeste relu une fois et nouvel essai, puis erreur. Une installation à la fois ; suppression refusée pendant.
+  Nettoyage (liste blanche) : h2-h4, p, ul, ol, li, blockquote, pre, code, table, figure, figcaption, img, a, strong, em,
+  PLUS thead, tbody, tfoot, tr, th, td (le contrat dit « table » ; les articles réels en ont besoin). Attributs : a href/title,
+  img src/alt/width/height, th/td colspan/rowspan/scope, ol start ; tout le reste retiré (on*, style, class). script, style,
+  iframe, svg… retirés avec leur contenu, autres balises inconnues retirées en gardant le texte. Liens javascript:, data:,
+  vbscript: (même masqués par des espaces ou des entités) retirés ; https://odin-node.com/blog/…/<slug> → article local s'il
+  est installé ; autres liens : target _blank, data-externe, « ↗ nécessite internet » (CSS), grisés hors ligne par le
+  Lecteur. Images : seulement assets/<son slug>/<fichier présent>. Un bloc ferme un paragraphe ouvert (comme le parseur HTML) ;
+  balises refermées en fin de fragment. Ce qui est retiré est écrit dans les journaux du dashboard.
+  Schémas : pas de fond blanc (la règle .article img des articles Kiwix est annulée pour .guide), marge seulement. Leurs
+  titres demandent la police VT323 (et IBM Plex Mono) : un SVG chargé par <img> ne peut charger aucune police, et ODIN n'en
+  embarque aucune, donc ils s'affichent en monospace du système (vu dans Chromium). Même comportement que sur le site si
+  celui-ci les charge aussi par <img>.
+  Recherche : bloc « Comment faire ? » au-dessus de la bibliothèque sur /recherche (mots-clés, une ligne par article, meilleure
+  section) ; source « guides » de la recherche avancée et de l'assistant (origine comment-faire, étiquette « Comment faire ? »,
+  paragraphes des 5 sections les plus riches en mots de la requête, 4 vectorisés ; articles de la catégorie sante = guide
+  médical pour les urgences). Seuils guides = ceux des livres (0,45 / 0,3), NON CALIBRÉS. Index relu quand la version change :
+  installation, mise à jour et suppression visibles à la question suivante (vérifié : trouvé → supprimé, rien → réinstallé,
+  trouvé).
+  Tests : node --test tests/guides.test.mjs (9 : nettoyage, liens, images, archive conforme et 10 archives refusées, format 2,
+  différences). Vérifié le 2026-09-26 sur odintest (dev 8f2afab à b070cdf) : installation depuis zéro (< 1 s), 12 articles et
+  19 schémas, sirènes et eau potable lus avec schémas, aucune requête vers un autre hôte, aucune erreur de console, aucun
+  débord à 390 px ; manifeste local modifié à la main (un article en moins, un sha256 changé) → « Nouveaux (1) », « Modifiés
+  (1) », mise à jour en 1,5 s, puis « à jour » ; dashboard coupé d'internet (docker network disconnect, jamais le pare-feu
+  sur odintest) : sonde encore « établie » → échec en 5 s (DNS), sonde « rompue » → refus en 46 ms, articles et schémas
+  lisibles ; suppression puis réinstallation depuis l'interface (1,3 s). Contre un site simulé (fetch remplacé,
+  GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
+  bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
+  9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
+  /comment-faire, catégorie, deux articles avec schémas, recherche, Configuration sans requête vers un autre hôte ; boutons
+  grisés avec le message, « Supprimer » actif ; API : refus en 15 ms ; journal : sonde et NTP seulement, capture DNS de
+  90 s pendant l'usage des articles : wikipedia.org (sonde) seulement.
+  NON VÉRIFIÉ : coupure au milieu du téléchargement (archive de 68 Ko, reçue d'un coup) ; réécriture des liens du blog sur
+  de vrais articles (les 12 articles actuels n'ont AUCUN lien : testée seulement par les tests unitaires) ; empreinte de
+  chaque article (formule non publiée : seule l'archive est vérifiée) ; seuils de la recherche avancée pour ces articles.
 - Point d'accès Wi-Fi (option POINT_ACCES, NON VÉRIFIÉE sur du vrai matériel ; brief docs/conception-point-acces.md,
   lots 1 et 2 (portail captif) faits et dans main depuis le 2026-09-26, lot 3 bascule seulement sur accord du propriétaire). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
   (paquet dnsmasq-base, PAS dnsmasq qui lance un service sur le port 53) sous systemd. scripts/point-acces.sh
@@ -541,7 +601,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Guides médicaux : livre dont la fiche porte avertissement « sante », pack Kiwix dont le titre parle de
   médecine ou de santé. En cas d'urgence, leur meilleur passage est toujours envoyé au modèle, et une
   urgence sans autre résultat passe en issue 2 sur ces guides, pour renvoyer à la bonne page.
-  Sources : Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
+  Sources : Comment faire ? (source-guides.mjs, voir « Comment faire ? »), Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
   LOCAL, deux requêtes en parallèle, 15 articles, paragraphes ≥ 60 caractères coupés à 700, BM25 local,
   8 vectorisés ; bonus BM25 quand le titre de section contient les mots de la requête), Livres
   (source-livres.mjs : pages.json des livres installés, 4 paragraphes vectorisés).
@@ -575,7 +635,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur odintest pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /comment-faire, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Disques (lot 7)

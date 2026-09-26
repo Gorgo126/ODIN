@@ -42,6 +42,7 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 | 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de l'encyclopédie et de la bibliothèque, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
 | 📚 | **Encyclopédie** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
 | 📖 | **Bibliothèque** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. Aucun n'est encore proposé : le premier attend l'accord de son éditeur (voir Licences). |
+| ❓ | **Comment faire ?** | Les fiches pratiques du blog d'[odin-node.com](https://odin-node.com) (eau, abri, feu, premiers secours, énergie…), avec leurs schémas, installées une fois puis lisibles et cherchables hors ligne. |
 | 📁 | **Documents personnels** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Cartes** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
 | 🌍 | **Traduction** | Traduction de textes sur le serveur, sans internet : français et anglais inclus, 48 autres langues à ajouter en un clic (allemand, espagnol, arabe, ukrainien…). |
@@ -71,6 +72,20 @@ Chaque pack est extrait à la demande du fichier mondial [Protomaps](https://pro
 OpenStreetMap), pour ne télécharger que la région voulue. La liste se modifie dans
 [`catalogue/cartes.txt`](catalogue/cartes.txt).
 
+### Comment faire ?
+
+Des fiches pratiques pour tenir sans réseau, écrites pour le blog d'[odin-node.com](https://odin-node.com) :
+rendre l'eau potable, garder sa chaleur, allumer un feu par temps humide, les gestes de premiers secours,
+reconnaître une sirène d'alerte, calculer son autonomie électrique… Elles se lisent par catégorie, avec
+leurs schémas, et répondent à la recherche (étiquette « Comment faire ? »).
+
+Rien n'est installé d'office : la carte **Comment faire ?** de l'accueil propose **Installer les
+articles** (quelques centaines de Ko). Ensuite, **Vérifier les mises à jour** compare avec le site et
+liste les articles nouveaux, modifiés ou retirés, avant **Mettre à jour**. Rien n'est vérifié en tâche de
+fond. L'archive est contrôlée (empreinte SHA-256, fichiers attendus, aucun fichier en trop) et remplace
+l'ancienne version d'un coup : un échec ne touche pas aux articles déjà installés. **Supprimer les
+articles** se trouve dans **Configuration → Comment faire ?**.
+
 ### La recherche avancée
 
 C'est le cœur d'ODIN. Elle ne demande ni carte graphique ni modèle de langage.
@@ -80,8 +95,8 @@ C'est le cœur d'ODIN. Elle ne demande ni carte graphique ni modèle de langage.
    « brûlure », « mal à la tête » cherche « céphalée, migraine », « l'eau de la rivière » cherche
    « eau potable ». Santé, eau, feu, froid et nourriture sont couverts ; la table s'enrichit sans
    toucher au code.
-2. **Elle cherche dans trois sources à la fois**, par le sens et par les mots : vos documents, les
-   packs de l'encyclopédie et les livres PDF de la bibliothèque.
+2. **Elle cherche dans toutes les sources à la fois**, par le sens et par les mots : vos documents, les
+   packs de l'encyclopédie, les livres PDF de la bibliothèque et les fiches « Comment faire ? ».
 3. **Elle montre les meilleurs passages**, groupés par document, les mots cherchés surlignés, avec
    un lien vers l'article, la page du livre ou le document. Les résultats plus éloignés restent
    accessibles, repliés ; quand rien ne répond vraiment, elle le dit.
