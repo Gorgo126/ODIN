@@ -559,7 +559,8 @@ arreter_unites() {
 # Starts the units and waits up to DELAI seconds for the access point to emit
 lancer_et_verifier() {
   systemctl reset-failed odin-hostapd.service odin-dnsmasq.service odin-point-acces-reseau.service odin-point-acces-echec.service 2>/dev/null
-  systemctl start --no-block odin-point-acces.target
+  # (warns that the target changed on disk: its enable was --no-reload, on purpose)
+  systemctl start --no-block odin-point-acces.target 2>/dev/null
   local i
   for i in $(seq "$DELAI"); do
     sleep 1

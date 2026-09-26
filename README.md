@@ -308,7 +308,8 @@ les adresses où joindre ODIN.
 3. Dans **Configuration**, installez les contenus, les cartes, les langues de traduction et les fiches « Comment faire ? » voulus tant que la connexion est disponible.
 4. Posez une question dans la barre de recherche, en langage courant : « comment rendre l'eau potable ? ».
 
-C'est prêt : vous pouvez débrancher internet.
+C'est prêt : vous pouvez débrancher internet. Sans box sur place, ODIN peut aussi créer son propre
+réseau Wi-Fi : voir [Point d'accès Wi-Fi](#point-daccès-wi-fi-expérimental).
 
 ### Option IA (non vérifiée)
 
@@ -324,34 +325,62 @@ disque, le télécharge et teste son chargement sur la carte.
 > Ubuntu, ni une carte de 8 Go exactement n'ont été éprouvés. Sans carte adaptée, rien n'est téléchargé
 > et ODIN fonctionne en recherche avancée.
 
-### Point d'accès Wi-Fi (option, non vérifiée)
+### Point d'accès Wi-Fi (expérimental)
 
 Sans box ni routeur, ODIN peut créer **son propre réseau Wi-Fi** avec la carte Wi-Fi de la machine :
 un téléphone rejoint le réseau « ODIN », une page d'accueil s'ouvre d'elle-même (portail captif), puis
-on utilise ODIN dans son navigateur habituel, à l'adresse `http://10.42.0.1` ou `http://<nom>.lan`.
-Option désactivée par défaut, activée à l'installation :
+on utilise ODIN dans son navigateur habituel, à l'adresse affichée (`http://10.42.0.1` en général) ou
+`http://<nom>.lan`.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sudo POINT_ACCES=1 bash
-```
+**Désactivé par défaut**, parce qu'il prend la carte Wi-Fi : si c'est elle qui relie la machine à
+internet, la connexion est coupée tant que le point d'accès est actif. L'installeur prépare tout (paquets
+`hostapd`, `dnsmasq-base` et `iw`, laissés arrêtés ; aucun service DNS ajouté à la machine), et on
+l'active **depuis le tableau de bord**, page **Point d'accès Wi-Fi** (petite carte en bas de l'accueil).
+
+**Matériel requis** : une carte Wi-Fi capable de créer un point d'accès (mode « AP » ; la plupart des
+cartes récentes, à vérifier pour une clé USB). Sans elle, la page l'indique et le bouton reste grisé.
+
+**Marche à suivre**
+1. **Tout télécharger d'abord** : packs, livres, cartes, langues, fiches « Comment faire ? ». Internet
+   peut disparaître juste après l'activation.
+2. Ouvrir la page Point d'accès Wi-Fi : elle dit ce qui va se passer sur **cette** machine (par câble,
+   internet est conservé ; en Wi-Fi seul, il est coupé) et affiche en grand le nom du réseau, le mot de
+   passe et l'adresse d'ODIN. **Les noter ou les photographier** : connecté à ODIN par Wi-Fi, on perd la
+   page au moment de l'activation. Une fiche à imprimer avec deux QR codes est proposée.
+3. Cocher « J'ai compris et j'ai noté les informations », puis **Activer**.
+4. Pour revenir à la connexion habituelle : **Désactiver** sur la même page ; la machine retourne sur la
+   box, où il faut la retrouver à son adresse habituelle.
+
+**Filet de sécurité**
+- Si le point d'accès n'émet pas dans les **30 secondes**, ODIN revient tout seul à l'ancienne connexion
+  et affiche l'erreur sur la page.
+- L'état choisi survit au redémarrage ; si le point d'accès échoue au démarrage (ou s'arrête plus tard),
+  même retour automatique à l'ancienne connexion.
+- À la désactivation, si l'ancienne connexion Wi-Fi ne revient pas dans les 30 secondes (box absente,
+  mot de passe changé), ODIN **réactive son point d'accès** pour rester joignable, et le signale.
+- En dernier recours, dans un terminal de la machine :
+
+  ```bash
+  sudo /opt/odin/scripts/point-acces.sh desactiver
+  ```
+
+**Alternative recommandée** : un **routeur de voyage** branché sur la machine par un câble Ethernet crée
+le même réseau, plus simplement et plus fiablement, sans que la machine touche à sa propre connexion.
 
 - Réseau en **2,4 GHz** (canal 1, 6 ou 11, le moins encombré à chaque démarrage), **WPA2** avec un mot
-  de passe généré, affiché à la fin de l'installation et gardé aux mises à jour. Deux QR codes (rejoindre
-  le réseau, ouvrir ODIN) sont produits dans `data/config/`.
-- **Aucun accès à internet** pour les appareils du réseau, même quand ODIN en a un : seul ODIN est
-  joignable, et les appareils ne se voient pas entre eux.
-- **Seule la carte Wi-Fi est touchée** : l'Ethernet, sa configuration et Docker restent tels quels. Une
-  carte Wi-Fi qui sert déjà à la connexion de la machine n'est pas prise : préparez ODIN par l'Ethernet.
-- **Jamais bloquant** : sans carte compatible, ou si le point d'accès ne démarre pas, l'installation se
-  termine normalement en indiquant la raison, et ODIN reste joignable par le réseau existant. Le
-  démarrage de la machine n'attend jamais le Wi-Fi.
+  de passe généré à l'installation et gardé aux mises à jour.
+- **Aucun accès à internet** pour les appareils du réseau, même quand ODIN en a un (pas de partage de
+  connexion) : seul ODIN est joignable, et les appareils ne se voient pas entre eux.
+- **Seule la carte Wi-Fi est touchée** : l'Ethernet, Docker et le DNS de la machine restent tels quels.
+  La carte est reprise à NetworkManager ou à netplan (systemd-networkd), puis leur est rendue.
+- **Plage d'adresses** choisie à l'installation hors des réseaux de la machine et de Docker (10.42.0.0/24,
+  sinon 10.43 à 10.49) ; refus avec un message clair si aucune n'est libre.
 - **Portail captif** : à la connexion, le téléphone ou l'ordinateur ouvre la page de bienvenue d'ODIN ;
   après « Continuer », elle indique l'adresse à retenir. Android, iPhone, Windows, Firefox et Linux
   (NetworkManager) sont reconnus.
-- **Fiche à imprimer** (Configuration → Point d'accès Wi-Fi) : nom du réseau, mot de passe, adresse et
-  deux QR codes, à poser à côté de la machine.
-- Relancer l'installeur avec `POINT_ACCES=0` retire tout et rend la carte au système (NetworkManager
-  compris).
+- En ligne de commande : `POINT_ACCES=1` après `sudo` active le point d'accès à l'installation, mais
+  jamais sur la carte qui porte la connexion de la machine (utiliser alors le tableau de bord) ;
+  `POINT_ACCES=0` le désactive. Sans cette variable, une mise à jour ne change rien à son état.
 
 **Limites connues**
 - **Android reste en « connectivité limitée »** après « Continuer » : il exige une réponse d'un site HTTPS
@@ -364,9 +393,10 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh | sud
 - Certains navigateurs mobiles prennent `odin.lan` pour une recherche : taper `http://` devant, ou utiliser
   le QR code d'adresse.
 
-> **Non vérifié sur du vrai matériel.** Ce chemin a été testé avec des radios Wi-Fi virtuelles
-> (`mac80211_hwsim`) : connexion, bail, DNS, accès à ODIN, absence de sortie vers internet, redémarrage,
-> retrait, avec et sans NetworkManager. Restent non vérifiés : les vrais pilotes (Intel, MediaTek,
+> **Expérimental, non vérifié sur du vrai matériel.** Testé avec des radios Wi-Fi virtuelles
+> (`mac80211_hwsim`) et une fausse box : connexion, bail, DNS, accès à ODIN, absence de sortie vers
+> internet, bascule d'une carte qui porte la connexion (netplan et NetworkManager) et retour, replis
+> automatiques, redémarrage. Restent non vérifiés : les vrais pilotes (Intel, MediaTek,
 > Realtek), la portée, le nombre d'appareils, et le comportement de vrais téléphones et ordinateurs.
 > Le portail captif a été testé avec les sondes de chaque système simulées une à une, pas avec de
 > vraies fenêtres de portail d'iOS, d'Android ou de Windows.
@@ -386,7 +416,7 @@ curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/main/install.sh \
 | `BRANCHE` | `main` | Branche d'ODIN à installer. |
 | `DEPOT` | ce dépôt | Dépôt Git à cloner, pour une copie personnelle d'ODIN. |
 | `DONNEES` | `/opt/odin/data` | Dossier des données (chemin absolu), par exemple sur un gros disque de données. |
-| `POINT_ACCES` | `0` | `1` : ODIN crée son propre réseau Wi-Fi (option non vérifiée, voir plus haut). Gardé aux mises à jour ; `0` le retire. |
+| `POINT_ACCES` | vide | `1` : active le point d'accès Wi-Fi (expérimental, voir plus haut), sauf sur la carte qui porte la connexion ; `0` le désactive. Vide : état inchangé. |
 
 Dans `/opt/odin/.env`, `TRADUCTION_LANGUES` (défaut `fr,en`) choisit les langues de traduction d'une
 **première** installation, par exemple `fr,en,de,es` ; ensuite, les langues se gèrent dans ODIN, et une
@@ -394,7 +424,7 @@ mise à jour ne réinstalle que le français et l'anglais s'ils manquaient.
 
 Les ports se règlent dans `/opt/odin/.env`, comme le dossier des données (`DATA_DIR`, écrit par `DONNEES`).
 Le point d'accès s'y règle aussi : `POINT_ACCES_SSID` (nom du réseau, `ODIN`), `POINT_ACCES_RESEAU`
-(`10.42.0.1/24`), `POINT_ACCES_INTERFACE` (carte imposée) et `PAYS` (code pays, déduit sinon du fuseau
+(plage imposée ; vide = choisie par l'installeur), `POINT_ACCES_INTERFACE` (carte imposée) et `PAYS` (code pays, déduit sinon du fuseau
 horaire) ; relancer l'installeur ensuite.
 
 ### Disques

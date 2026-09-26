@@ -296,10 +296,14 @@ demande() {
   bilan
 }
 
+# The daemon-reload of the test makes netplan rewrite its files: networkd takes them at once (the
+# Ethernet lease is renewed here, during the test setup), so that ODIN's switches are measured clean
+recharger() { systemctl daemon-reload; networkctl reload 2>/dev/null; sleep 3; }
+
 hostapd() {
   case "$1" in
-    casser) mkdir -p "$(dirname "$CASSE")"; printf '[Service]\nExecStart=\nExecStart=/bin/false\n' > "$CASSE"; systemctl daemon-reload; echo "hostapd d'ODIN cassé" ;;
-    reparer) rm -f "$CASSE"; rmdir "$(dirname "$CASSE")" 2>/dev/null; systemctl daemon-reload; echo "hostapd d'ODIN réparé" ;;
+    casser) mkdir -p "$(dirname "$CASSE")"; printf '[Service]\nExecStart=\nExecStart=/bin/false\n' > "$CASSE"; recharger; echo "hostapd d'ODIN cassé" ;;
+    reparer) rm -f "$CASSE"; rmdir "$(dirname "$CASSE")" 2>/dev/null; recharger; echo "hostapd d'ODIN réparé" ;;
   esac
 }
 
