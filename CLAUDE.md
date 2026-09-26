@@ -14,9 +14,13 @@ toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
   installer ou mettre à jour ODIN. Hors ligne, elles échouent vite (quelques secondes au plus) et
   le disent clairement ; jamais de blocage ni d'attente sans limite.
 - Tout appel réseau sortant du code ODIN a un délai (AbortSignal.timeout), y compris
-  pendant qu'un flux se télécharge. Exceptions voulues : les packs de cartes n'ont pas de délai
-  d'inactivité (pmtiles extract a une longue phase de préparation silencieuse) ; les livres non plus, mais
-  gardent 15 s au plus pour obtenir la réponse HTTP. Dans les deux cas, l'annulation est manuelle.
+  pendant qu'un flux se télécharge : packs ZIM, livres (15 s pour la réponse, puis 30 s sans données,
+  INACTIVITE de lib/telechargements.mjs), langues et articles 30 s, modèle IA 2 min. Cartes : 2 min sans
+  progression (lib/cartes.mjs, INACTIVITE_CARTE). Pour une extraction, la taille du fichier ne dit rien
+  (pmtiles la réserve d'un coup) : progression = nouveau pourcentage, nouvelle ligne de journal ou blocs
+  réellement écrits (st_blocks, vérifié toutes les 10 s) ; sinon SIGTERM, SIGKILL 10 s plus tard, .part
+  retiré. Fichier mondial entier : telechargerFlux à 2 min, .part gardé pour la reprise. Préparation mesurée
+  le 2026-09-26 (odintest) : moins de 10 s (Luxembourg z15, Europe z13, monde z10).
 - Aucun CDN, police externe, analytique ou vérification de mise à jour. Pour une image tierce,
   désactiver ces fonctions par variable d'environnement (Ollama : OLLAMA_NO_CLOUD=true).
 - Tout ce qu'un service télécharge au premier usage (modèles, index, caches) doit être
@@ -52,7 +56,7 @@ garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshom
 - Une fois validé : fusionner dev dans main et pousser. C'est main que récupère l'installeur.
 - Image du dashboard : à chaque push sur main ou dev touchant dashboard/, GitHub Actions publie
   ghcr.io/gorgo126/odin-dashboard:<sha> puis fige le compose.yml de cette branche sur cette image, par
-  un commit automatique (github-actions[bot]). Faire git pull avant de repousser. L'installeur prend
+  un commit automatique (github-actions[bot]), version (commit) et empreinte (sha256) ensemble. Faire git pull avant de repousser. L'installeur prend
   donc l'image de la branche clonée (BRANCHE). Suivre un build : gh run list / gh run watch.
 - Revenir sur odintest à l'image publiée : ... && docker compose pull dashboard && docker compose up -d --remove-orphans
 - Logs : multipass exec odintest -- bash -lc "cd /opt/odin && docker compose logs --tail 50 <service>"
@@ -528,10 +532,23 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   vers un autre hôte ; messages gardés après docker compose restart dashboard et après l'installeur (image publiée).
   NON VÉRIFIÉ : vrais téléphones, VM vierge, hors ligne, point d'accès Wi-Fi (le portail captif ne touche pas un Host d'ODIN).
 
-Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
-Une montée de version se fait volontairement, une image à la fois, après test sur odintest puis hors ligne.
-Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
-mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de travail).
+Images Docker figées par version ET empreinte : image: <nom>:<version>@sha256:<empreinte> dans compose.yml,
+compose.ia.yml, compose.amd.yml, et FROM <nom>:<version>@sha256:… dans dashboard/Dockerfile (jamais latest, main
+ni stable). Docker ne tient compte que de l'empreinte ; la version reste pour la lecture (et /sante, qui retire
+@sha256). L'empreinte est celle de la LISTE MULTI-ARCHITECTURE (index OCI) quand l'image en publie une, jamais
+celle du manifeste amd64 seul : un passage sur ARM ne demandera pas de changer d'empreinte. Vérifié le 2026-09-26
+(docker buildx imagetools inspect) : toutes sont des index contenant linux/amd64 ; arm64 aussi, sauf
+ollama 0.34.2-rocm (amd64 seul) et le dashboard (construit en amd64 seul, voir Pièges) ; empreintes égales aux
+RepoDigests des images qui tournaient sur odintest.
+Mettre à jour une image (volontairement, une à la fois, après test sur odintest puis hors ligne) :
+1. docker buildx imagetools inspect <nom>:<nouvelle version> (sur odintest) : noter la ligne « Digest » du haut
+   (MediaType index), vérifier que linux/amd64 figure dans les plateformes ;
+2. remplacer version ET empreinte ensemble, dans tous les fichiers qui citent l'image (grep du nom) ;
+3. docker compose pull <service> && docker compose up -d <service> sur odintest, contrôle, puis VM vierge si
+   l'installeur est concerné.
+Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>@sha256:…), écrite
+automatiquement par GitHub Actions sur chaque branche avec l'empreinte rendue par docker/build-push-action (sortie
+digest de l'étape « image » ; le workflow échoue si elle manque) : voir Flux de travail.
 
 - Connectivité externe (« liaison » dans le code : lib/liaison.mjs, /api/liaison, useLiaison) : sonde côté serveur (lib/liaison.mjs), lancée au démarrage par instrumentation.js,
   toutes les 45 s : TCP 443 vers LIAISON_CIBLES (délai 2,5 s, en parallèle) et résolution DNS de
@@ -916,7 +933,7 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
 
 ### Audit hors ligne (liste en cours)
 
-État relevé dans le code le 2026-09-26 (dev 669ec4d), rien d'implémenté depuis.
+État relevé dans le code le 2026-09-26 (dev 669ec4d) ; lot A (délais, liens de la carte, empreintes) fait le même jour.
 
 - Dashboard en root alors qu'il répond à des requêtes non authentifiées (mur de messages : /messages, GET et POST
   /api/messages) ; évaluer le passage en non-root. À FAIRE. Preuve : dashboard/Dockerfile n'a aucune ligne USER
@@ -926,15 +943,14 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   faudra un chown au démarrage (point d'entrée) ou dans l'installeur, pour chaque volume où le dashboard écrit (config,
   cartes, livres, assistant, traduction, messages). À FAIRE (avec le point précédent). Preuve : seul install.sh
   fait chown -R "$UTILISATEUR" "$CIBLE" "$DATA", et le Dockerfile n'a pas de point d'entrée (CMD node server.js).
-- Téléchargements de packs et de modèles : délai d'inactivité (ni échec trop tôt, ni attente sans fin). PARTIEL.
-  Fait : packs ZIM (lib/telechargements.mjs, INACTIVITE = 30000, 15 s pour répondre, 3 essais par miroir), langues
-  (lib/traduction-packs.mjs, INACTIVITE = 30000), articles « Comment faire ? » (telechargerFlux, 15 s puis 30 s),
-  modèle IA (lib/ia.mjs, INACTIVITE = 120000 sur la progression d'Ollama), modèle de vecteurs de l'installeur
-  (install.sh, curl --speed-limit 1024 --speed-time 60). Reste : livres (lib/livres.mjs, telechargerFlux avec
-  inactivite: null après 15 s de réponse) et cartes (lib/cartes.mjs, « No inactivity timeout », pmtiles extract et
-  fichier mondial) peuvent rester pendus sans limite ; seule l'annulation manuelle les arrête. Exceptions voulues
-  jusqu'ici (voir « Principe hors ligne ») : pour les cartes, surveiller la progression de pmtiles (« NN% | ») plutôt
-  que les octets.
+- Téléchargements de packs et de modèles : délai d'inactivité (ni échec trop tôt, ni attente sans fin). FAIT
+  (lot A, 2026-09-26, 86d4fc5). Livres : lib/livres.mjs passe inactivite: INACTIVITE (30 s, celle des packs ZIM) à
+  telechargerFlux, message « Connexion perdue : aucune donnée reçue depuis 30 s ». Cartes : lib/cartes.mjs,
+  INACTIVITE_CARTE = 120000 (voir « Principe hors ligne »). Vérifié : livre (conteneur jetable de l'image de dev,
+  catalogue d'essai, serveur HTTPS local) qui envoie 256 Ko puis se tait → source coupée à 30 s, miroir à 30 s, erreur,
+  aucun .part ; livre lent (50 Ko toutes les 20 s, 80 s) → terminé, SHA-256 vérifié ; extraction Belgique sur
+  odintest, pmtiles gelé par kill -STOP à 12 s → arrêt à 155 s, processus tué, .part retiré, « aucune progression
+  depuis 2 minutes ». NON TESTÉ : blocage du fichier mondial entier (téléchargement direct, 120 Go).
 - OFFLINE_MODE d'Open WebUI. SANS OBJET : Open WebUI n'existe plus (retiré à l'ancien lot 1). Preuve : aucun service
   open-webui dans compose*.yml ; install.sh ne le mentionne que dans le bloc « Migration: former assistant (Open WebUI +
   synchro) », qui retire ses conteneurs, images et data/openwebui.
@@ -945,26 +961,31 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   juste après une coupure, tant que la sonde (45 s) dit encore « en ligne », la requête du catalogue peut prendre
   jusqu'à 15 s (DNS, cf. « sonde encore établie → échec en 5 s » pour les articles) ; au démarrage, enLigne() attend
   la première sonde 4 s au plus.
-- Fonctions impossibles hors ligne, désactivées ou masquées proprement. PARTIEL.
+- Fonctions impossibles hors ligne, désactivées ou masquées proprement. PARTIEL (reste l'interface native de Kiwix).
   Dépend d'internet, dashboard : packs ZIM et catalogue Kiwix (Packs.jsx), livres (Livres.jsx), packs de cartes et
   builds Protomaps (PacksCartes.jsx), langues de traduction (PacksTraduction.jsx), modèle de l'option IA
   (ia/InstallationIA.jsx), articles « Comment faire ? » (comment-faire/Gestion.jsx), liens monde de la carte de
   connectivité (CarteLiaison.jsx, reglages.mjs : World Monitor), liens externes des articles et des licences (Lecteur,
   data-externe). Tous passent par useLiaison / enLigne : grisés avec « Indisponible hors ligne » (ou le message du point
-  d'accès), jamais cachés ; le Lecteur grise les liens data-externe. Non traités : liens d'attribution
-  OpenStreetMap/ODbL de /carte (carte/Plan.jsx, liens ordinaires) et liens externes de l'interface native de Kiwix
-  (/kiwix, cadre /ouvrir), qui échouent sans avertissement.
+  d'accès), jamais cachés ; le Lecteur grise les liens data-externe. Attribution OpenStreetMap/ODbL/Protomaps
+  de /carte (lot A) : toujours affichée, liens data-externe grisés et barrés hors ligne, clic bloqué avec l'avis
+  (carte/Plan.jsx, classe hors-liaison sur .cadre : MapLibre gère les classes de son conteneur) ; vérifié par Playwright
+  (réponse de /api/liaison simulée dans le navigateur). Reste : liens externes de l'interface native de Kiwix (/kiwix,
+  cadre /ouvrir), qui échouent sans avertissement. kiwix-serve 3.8.2 n'offre que --blockexternal : page intermédiaire
+  « External Link Detected » par le lecteur de Kiwix, en ligne comme hors ligne, lien toujours cliquable (essayé sur
+  une instance temporaire) ; griser dans Kiwix demanderait d'injecter du script dans ses cadres (écarté). Choix au
+  propriétaire : --blockexternal, ou ouvrir les articles dans le lecteur d'ODIN (/lire) plutôt que dans Kiwix.
   Open WebUI : retiré (voir plus haut). FileBrowser : rien (config/filebrowser.yaml disableUpdateCheck: true ; aucune
   fonction en ligne). LibreTranslate : LT_UPDATE_MODELS=false, rien. Ollama (option) : OLLAMA_NO_CLOUD=true, pull
   seulement depuis /ia. Sonde de connectivité : TCP 443 vers LIAISON_CIBLES et DNS de LIAISON_DNS (voulu).
   Installeur : entièrement en ligne par nature (apt, dépôt Docker, git clone, docker compose pull, modèle de vecteurs,
   langues fr et en et fond de carte par l'API du dashboard) ; scripts/point-acces.sh est le seul à fonctionner hors ligne.
-- Versions des images Docker figées (ni latest ni tag flottant). FAIT, sans empreintes. Preuve : compose.yml
-  caddy:2.11.4-alpine, kiwix-serve:3.8.2, filebrowser:1.5.6-stable, llama.cpp:server-v0.4.1, libretranslate:v1.9.6,
-  socket-proxy:1.13.1@sha256:…, dashboard figé sur son commit ; compose.ia.yml ollama:0.34.2, compose.amd.yml
-  0.34.2-rocm ; Dockerfile node:24.21.0-alpine3.23 et go-pmtiles:v1.31.2 ; scripts/maj-bibliotheque.sh reprend l'image
-  de compose.yml. « bge-m3:latest » d'install.sh est un modèle Ollama retiré par la migration, pas une image. Reste :
-  seul socket-proxy est figé par empreinte ; un tag republié changerait l'image en silence.
+- Versions des images Docker figées (ni latest ni tag flottant). FAIT, par version ET empreinte (lot A) : toutes les
+  images de compose.yml, compose.ia.yml, compose.amd.yml et les FROM de dashboard/Dockerfile en <nom>:<version>@sha256:…
+  (index multi-architecture), dashboard par le workflow. Procédure de mise à jour : section des images plus haut.
+  Vérifié : build du dashboard sur odintest (FROM résolus par empreinte), docker compose pull de toutes les images de
+  compose.yml par empreinte, odintest passée sur l'image publiée 86d4fc5@sha256:439ed1b4…, /sante affiche toujours
+  nom et version. Ollama : empreintes résolues (imagetools), images non tirées (9 Go, option IA absente d'odintest).
 
 ## Règles
 
