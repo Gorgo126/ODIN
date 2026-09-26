@@ -287,7 +287,22 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   Recherche par mots-clés : un mot de la requête peut être trouvé dans la section OU parmi les keywords (et le titre) de
   l'article, bonus comme le titre. Recherche avancée : keywords comptés dans le choix des sections, dans le BM25 (motsCles des
   passages, bm25.mjs) et dans le texte vectorisé (ajoutés au titre, index.mjs). Absent : rien ne change (vérifié : mêmes
-  résultats qu'avant sur les 6 questions). Aucun article publié n'en a encore. Contre un site simulé (fetch remplacé,
+  résultats qu'avant sur les 6 questions). Publiés par le site le 2026-09-26 (version 5d520da938b4101c, 12/12), installés
+  sur odintest. Choix des sections de la source (source-guides.mjs), corrigé après mesure : seuls les mots qui peuvent
+  porter un sens (peutEtreNom de lexique.mjs : ni outil, ni verbe courant, ni nombre, adverbe, temps, personne) font une
+  section candidate, et seuls eux sont cherchés dans les keywords (clesUtiles de bm25.mjs, aussi pour le BM25, la couverture
+  et la recherche par mots-clés) ; question sans aucun de ces mots (« je suis perdu ») : tous ses mots. 6 sections au plus,
+  2 par article ; parmi les paragraphes vectorisés, 4 au plus, 2 par article (unParArticle, index.mjs). Sans cela : le
+  keyword « je suis perdu » faisait passer les 6 sections de l'orientation devant la brûlure (« je », « suis ») ; le keyword
+  « coupure de courant » remplissait toutes les places avec l'article sur l'énergie. Tests : tests/guides-recherche.test.mjs.
+  10 questions avant/après keywords (odintest, WikiMed, livre) : brûlure 0,511 → 0,512 (3e, derrière WikiMed et le livre) ;
+  eau pas potable 0,533 → 0,556, plus « Hygiène › Eau de boisson, eau propre, eau grise » 0,543 (fort, devant le livre
+  0,495 : pertinent) ; sirène 0,586 → 0,609 (1er) ; purifier 0,617 → 0,620, plus Hygiène 0,464 (fort, 4e, secondaire) ;
+  coupure de courant : Rester joignable 0,390, livre 0,372, autonomie électrique 0,359 (nouveau), abri 0,351 ; mal de dent et
+  15 minutes de marche inchangés (premiers-secours ne remonte pas) ; plus d'électricité : autonomie électrique 0,377
+  (nouveau, proche) ; je suis perdu : orientation 0,444 → 0,451 ; appeler le 112 : inchangé (deux articles hors sujet en
+  proche, 0,422 et 0,351, déjà là avant). Seuils 0,46 / 0,35 gardés ; marges minces : pertinents à 0,351 et 0,359, hors
+  sujet à 0,351 et 0,422, « je suis perdu » (LA réponse) seulement proche à 0,451. Contre un site simulé (fetch remplacé,
   GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
   bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
   9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
@@ -835,5 +850,11 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   lecteur devenus « » et « ODIN » précédé d'une espace ; « [−] », « A− », « ↗ » vides). Rien n'a atteint git : chaque ligne est
   fautive dès son premier commit. Rétablis le 2026-09-26 (« · », « — ODIN » des titres, / de git). h2::before de globals.css : ◆ doré
   (choix du propriétaire, l'original est perdu). Chercher : grep -nE "[^ ]  +[^ /]" hors commentaires.
+- rtk (hook ~/.claude/hooks/rtk-rewrite.sh, « rtk rewrite ») réécrit le PREMIER mot de la commande : curl (JSON remplacé par
+  un schéma : « Expecting property name… »), git (diff, log, show), grep, wc, cat (→ rtk read), ls, docker. Pas : multipass
+  exec (tout ce qui tourne dans la VM ou un conteneur est exact), sha256sum, python3, node, gh run list, ni ce qui suit un |.
+  Toute vérification sur une sortie exacte (JSON, SHA-256, digest, en-têtes, octets) : « rtk proxy <commande> », ou sortie
+  écrite dans un fichier puis lue par python3/node, et comparaison faite par le programme (code de sortie, égalité), jamais
+  à l'œil sur une sortie réécrite. Vérifications du 2026-09-26 refaites ainsi : toutes confirmées.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
