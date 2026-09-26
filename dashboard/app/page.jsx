@@ -15,6 +15,8 @@ const DESCRIPTIONS = {
   assistantAbsent: "Option : un modèle de langage qui rédige les réponses à partir des passages trouvés. Demande une carte graphique de 8 Go au moins.",
   bibliotheque: "Encyclopédies et wikis au format ZIM, indexés en plein texte et consultables hors ligne.",
   documents: "Stockage de fichiers personnels sur le serveur, accessible depuis tout navigateur du réseau local.",
+  guides: "Fiches pratiques pour tenir sans réseau : eau, abri, feu, premiers secours, énergie, avec leurs schémas.",
+  guidesAbsent: "Fiches pratiques pour tenir sans réseau (eau, abri, feu, premiers secours…). À installer une fois, depuis internet.",
   livres: "Ouvrages de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
   traduction: "Traduction de textes entre les langues installées, sur ce serveur, sans internet.",
   carte: "Cartes OpenStreetMap consultables hors ligne, jusqu'au niveau des rues pour les régions installées."
@@ -39,6 +41,14 @@ const ICONES = {
   documents: (
     <svg viewBox="0 0 24 24" {...trait}>
       <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+    </svg>
+  ),
+  // Question mark in a circle
+  guides: (
+    <svg viewBox="0 0 24 24" {...trait}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
     </svg>
   ),
   livres: (
@@ -89,17 +99,18 @@ export default async function Page() {
         <h2>Services</h2>
         <div className="services">
           {services.map((s) => {
-            // The assistant without the AI option: greyed, « Non installé », leads to /ia
-            const option = s.id === 'assistant' && !s.ok;
+            // The assistant without the AI option: greyed, « Non installé », leads to /ia. The articles
+            // not installed: same, their page offers the installation.
+            const option = (s.id === 'assistant' || s.id === 'guides') && !s.ok;
             const perso = s.id === 'assistant' && s.ok && assistant.configure;
             return (
-              <a key={s.id} href={option ? '/ia' : s.interne ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
+              <a key={s.id} href={option && s.id === 'assistant' ? '/ia' : s.interne ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
                 <div className="service-tete">
                   <span className="service-icone">{perso ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}</span>
                   <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Actif' : option ? 'Non installé' : 'Offline'}</span>
                 </div>
                 <strong>{perso ? assistant.nom : s.nom}</strong>
-                <p>{option ? DESCRIPTIONS.assistantAbsent : DESCRIPTIONS[s.id]}</p>
+                <p>{option ? DESCRIPTIONS[`${s.id}Absent`] : DESCRIPTIONS[s.id]}</p>
               </a>
             );
           })}

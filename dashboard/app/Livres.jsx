@@ -62,7 +62,7 @@ export default function Livres({ liaisonInitiale }) {
                   ? 'Extraction du texte'
                   : t.verification
                   ? 'Vérification de l\'empreinte'
-                  : `${t.source === 'miroir' ? 'Miroir  ' : ''}${pct} %  ${octets(t.recu)} / ${octets(t.total)}`}
+                  : `${t.source === 'miroir' ? 'Miroir · ' : ''}${pct} % · ${octets(t.recu)} / ${octets(t.total)}`}
               </em>
               <button onClick={() => confirm('Annuler le téléchargement ? La partie déjà reçue sera supprimée.') && envoyer(l.id, 'DELETE')}>Annuler</button>
             </div>
@@ -71,7 +71,7 @@ export default function Livres({ liaisonInitiale }) {
           action = (
             <span>
               <em className="livre-verifie" title={l.fiche?.verifie?.sha256}>
-                Installé  vérifié{l.fiche?.verifie?.source === 'miroir' ? ' (miroir)' : ''}
+                Installé · vérifié{l.fiche?.verifie?.source === 'miroir' ? ' (miroir)' : ''}
               </em>
               <a href={`/livres/${l.id}`} className="bouton bouton-lire">Lire</a>
               <button onClick={() => desinstaller(l)}>Désinstaller</button>
@@ -97,8 +97,8 @@ export default function Livres({ liaisonInitiale }) {
                 {CATEGORIES[l.categorie] && <span className="badge badge-discret">{CATEGORIES[l.categorie]}</span>}
               </span>
               <strong>{l.titre}</strong>
-              <em>{auteurs(l.auteurs)}  {l.editeur}{l.annee ? `  ${l.annee}` : ''}</em>
-              <em>{l.pages ? `${l.pages} pages  ` : ''}{octets(l.taille)}  {l.licence.nom}</em>
+              <em>{auteurs(l.auteurs)} · {l.editeur}{l.annee ? ` · ${l.annee}` : ''}</em>
+              <em>{l.pages ? `${l.pages} pages · ` : ''}{octets(l.taille)} · {l.licence.nom}</em>
               {l.horsCatalogue && <em>Retiré du catalogue</em>}
             </div>
             {action}

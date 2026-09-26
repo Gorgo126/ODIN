@@ -35,6 +35,8 @@ réinstallation, avec packs, documents et mot de passe) y restent. Multipass ne 
 garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshome.net et reste bloqué au démarrage.
 
 - On travaille sur la branche dev. odintest suit dev.
+- Recherche : toute modification doit faire passer le banc de mesure (voir « Recherche avancée : règles de score et
+  banc de mesure ») : multipass exec odintest -- /opt/odin/scripts/banc-recherche.sh, code de sortie 0.
 - Pour tester : commit et push sur dev, puis
   multipass exec odintest -- bash -lc "cd /opt/odin && git pull --ff-only origin dev && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
   (--remove-orphans retire les conteneurs d'un service supprimé de compose.yml ; install.sh fait de même)
@@ -93,8 +95,8 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
 
 Un seul compose.yml écrit à la main, aucun orchestrateur.
 
-- caddy : façade unique, port ${HTTP_PORT}:80. Routes /documents  filebrowser,
-  /kiwix  kiwix, reste  dashboard. auto_https off.
+- caddy : façade unique, port ${HTTP_PORT}:80. Routes /documents → filebrowser,
+  /kiwix → kiwix, reste → dashboard. auto_https off.
   Après toute modification du Caddyfile : docker compose restart caddy (up -d ne le relit pas).
 - Authentification unique : forward_auth vers /api/auth/verifier du dashboard. Mot de passe choisi à la
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
@@ -209,6 +211,135 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   (assistant/wikis.mjs). Un ZIM hors catalogue ou d'une autre variante que celle du catalogue (medecine nopic sur
   odintest) n'est pas désinstallable depuis ODIN.
 
+- « Comment faire ? » (2026-09-26) : articles du blog d'odin-node.com, installés à la demande, lisibles et cherchables hors
+  ligne. Source : https://odin-node.com/odin/guides/manifest.json (no-cache ; GUIDES_MANIFESTE pour en changer, sans passer
+  par compose.yml). Contrat format 1 : manifeste publié {format, version, generated_at, archive {url, sha256, size},
+  categories[] {slug, title, description, order}, articles[] {slug, title, category, summary, published, updated, sha256}} ;
+  tout autre format refusé (« une mise à jour d'ODIN est nécessaire »). Archive tar.gz : manifest.json (= manifeste publié
+  SANS « archive », comparé clé par clé), articles/<slug>.html (fragments sans h1), assets/<slug>/* (SVG autonomes, fond
+  sombre et couleurs en dur). Changements détectés par le sha256 des articles SEULEMENT (contrat) : même version, autre
+  sha256 = modifié. Archive acceptée seulement en https sur le même site que le manifeste.
+  lib/guides.mjs (installation, vérification, suppression), lib/guides-index.mjs (lecture, sans dépendance : pages,
+  recherche, worker), lib/guides-html.mjs (nettoyage), lib/tar.mjs (lecteur ustar en mémoire), lib/recherche-guides.mjs,
+  assistant/source-guides.mjs, /api/guides (GET état, POST {action: verifier|installer}, DELETE), /api/guides/assets/
+  <slug>/<fichier> (nom de fichier du contrat, article installé, pas de lien, chemin résolu resté dans le dossier ;
+  image/svg+xml, nosniff, CSP sandbox), pages /comment-faire, /comment-faire/<catégorie>, /comment-faire/<catégorie>/<slug>
+  (Lecteur de /lire, sans lien Kiwix, classe guide), carte de l'accueil (« Non installé » tant que rien n'est là), panneau
+  Configuration id="guides" (seul endroit avec « Supprimer les articles », définition dans lib/suppressions.mjs), catégorie
+  de /sante.
+  Stockage : data/config/guides (volume /config existant : ni compose.yml ni install.sh modifiés). Chaque version dans
+  v-<date>-<hasard>/ (manifest.json publié complet, guides.json = index construit à l'installation : HTML nettoyé et texte par
+  section h2, articles/, assets/) ; le lien « actuel » est basculé par un rename, puis les anciennes versions retirées. Tout
+  échec avant la bascule laisse la version installée intacte. 604 Ko pour 12 articles et 19 schémas (archive de 68 Ko).
+  Installation : enLigne() d'abord (sinon « Connexion à internet nécessaire pour installer ou mettre à jour », tout de
+  suite) ; manifeste 10 s au plus ; archive par telechargerFlux (15 s pour la réponse, 30 s d'inactivité, taille annoncée
+  = maximum), SHA-256, puis lecture en mémoire et contrôle AVANT toute écriture : entrées ustar ordinaires seulement (lien,
+  pax, périphérique refusés), aucun « .. », chemin absolu ni antislash, uniquement manifest.json, les articles du manifeste
+  et leurs assets, tous les articles présents, toute image appelée présente, aucun doublon. Archive en 404 ou empreinte
+  fausse : manifeste relu une fois et nouvel essai, puis erreur. Une installation à la fois ; suppression refusée pendant.
+  Nettoyage (liste blanche) : h2-h4, p, ul, ol, li, blockquote, pre, code, table, figure, figcaption, img, a, strong, em,
+  PLUS thead, tbody, tfoot, tr, th, td (le contrat dit « table » ; les articles réels en ont besoin). Attributs : a href/title,
+  img src/alt/width/height, th/td colspan/rowspan/scope, ol start ; tout le reste retiré (on*, style, class). script, style,
+  iframe, svg… retirés avec leur contenu, autres balises inconnues retirées en gardant le texte. Liens javascript:, data:,
+  vbscript: (même masqués par des espaces ou des entités) retirés ; https://odin-node.com/blog/…/<slug> → article local s'il
+  est installé ; autres liens : target _blank, data-externe, « ↗ nécessite internet » (CSS), grisés hors ligne par le
+  Lecteur. Images : seulement assets/<son slug>/<fichier présent>. Un bloc ferme un paragraphe ouvert (comme le parseur HTML) ;
+  balises refermées en fin de fragment. Ce qui est retiré est écrit dans les journaux du dashboard.
+  Schémas : pas de fond blanc (la règle .article img des articles Kiwix est annulée pour .guide), marge seulement. Leurs
+  titres demandent la police VT323 (et IBM Plex Mono) : un SVG chargé par <img> ne peut charger aucune police, et ODIN n'en
+  embarque aucune, donc ils s'affichent en monospace du système (vu dans Chromium). Même comportement que sur le site si
+  celui-ci les charge aussi par <img>.
+  Recherche : bloc « Comment faire ? » au-dessus de la bibliothèque sur /recherche (mots-clés, une ligne par article, meilleure
+  section) ; source « guides » de la recherche avancée et de l'assistant (origine comment-faire, étiquette « Comment faire ? »,
+  paragraphes des 5 sections les plus riches en mots de la requête (mots comptés depuis leur début, positions() : en
+  sous-chaîne, « sonne » trouvait « personne » et « sirène qui sonne » ne sortait rien), 4 vectorisés ; articles de la catégorie sante = guide
+  médical pour les urgences). Seuils guides = ceux des livres (0,45 / 0,3), NON CALIBRÉS. Index relu quand la version change :
+  installation, mise à jour et suppression visibles à la question suivante (vérifié : trouvé → supprimé, rien → réinstallé,
+  trouvé).
+  Tests : node --test tests/guides.test.mjs (9 : nettoyage, liens, images, archive conforme et 10 archives refusées, format 2,
+  différences). Vérifié le 2026-09-26 sur odintest (dev 8f2afab à b070cdf) : installation depuis zéro (< 1 s), 12 articles et
+  19 schémas, sirènes et eau potable lus avec schémas, aucune requête vers un autre hôte, aucune erreur de console, aucun
+  débord à 390 px ; manifeste local modifié à la main (un article en moins, un sha256 changé) → « Nouveaux (1) », « Modifiés
+  (1) », mise à jour en 1,5 s, puis « à jour » ; dashboard coupé d'internet (docker network disconnect, jamais le pare-feu
+  sur odintest) : sonde encore « établie » → échec en 5 s (DNS), sonde « rompue » → refus en 46 ms, articles et schémas
+  lisibles ; suppression puis réinstallation depuis l'interface (1,3 s) ; faux article ajouté au manifeste et à l'index
+  locaux (présent partout) → « Supprimés (1) » avec son titre → mise à jour → absent de sa page (404), de la catégorie, de
+  /recherche, de la recherche avancée et de passagesGuides (source de l'assistant, pas installé sur odintest).
+  Recherche avancée sur odintest (AUCUN pack, livre ni document : pas de concurrence, à refaire avec WikiMed et un livre) :
+  « je me suis brûlé » → premiers secours › Brûlure (fort, 0,511), puis feu par temps humide (proche, 0,309, hors sujet) ;
+  « eau pas potable » → eau potable › Clarifier d'abord (fort, 0,533) ; « sirène qui sonne » → alerte › Reconnaître la
+  sirène (fort, 0,484). Depuis le 2026-09-26 (soir), livres et articles choisissent leurs candidats avec occurrences() de
+  bm25.mjs (mot entier, ou début de mot dès 5 lettres, comme le BM25) : la série de 33 questions n'a pas été remesurée.
+  Avec WikiMed (maxi 2026-07) et « Là où il n'y a pas de docteur » sur odintest, 6 questions : les articles sortent en fort
+  pour brûlure (0,511, après WikiMed et le livre), eau pas potable (0,533, 2e), sirène (0,484, 2e derrière « Sirénomélie »
+  de WikiMed, 0,496), purifier l'eau (0,617, 2e) ; « coupure de courant » : WikiMed « Diarrhée » en fort (0,599) et
+  « Calculer son autonomie électrique » jamais retenu (aucune entrée « coupure de courant » dans la table de synonymes).
+  Seuils guides 0,46 / 0,35 (PROVISOIRES, appliqués le 2026-09-26 avec l'accord du propriétaire ; 6 questions seulement :
+  pertinents 0,48 à 0,62, hors sujet 0,31 à 0,44). Entrée « coupure de courant → panne de courant, électricité » (thème
+  energie) : « Diarrhée » ne sort plus. Règle de la table (2026-09-26) : une expression de plusieurs mots qui ne garde
+  qu'une racine une fois les petits mots retirés (« la courante », « du pus », « j'ai froid », « se noie ») doit se trouver
+  telle qu'écrite dans la question (sinon « la courante » = « courant » : « panne de courant » → diarrhée). « coupure » seul
+  remplacé par « coupure au doigt / à la main / profonde / qui saigne », « je me suis fait une coupure » ; « a froid » et
+  « ont froid » ajoutés (« il a froid » passait par « j'ai froid »). Entrée « sirène qui sonne, sirène d'alerte → sirène
+  d'alerte, alerte des populations » : l'article passe en tête (0,586) et « Sirénomélie » (embedding seul, 0,496) disparaît.
+  Compréhension comparée sur les 70 questions (deux séries + 14) : 6 changent, toutes voulues sauf « orteils noirs à cause
+  du froid » qui perd « hypothermie » (terme principal inchangé : gelure). Tests : node --test tests/synonymes.test.mjs.
+  Champ facultatif « keywords » (tableau de chaînes) par article, format 1 inchangé : nettoyé à l'installation (motsCles :
+  chaînes non vides, 80 caractères, 30 au plus ; autre chose ignoré avec un message, jamais un refus), gardé dans guides.json.
+  Recherche par mots-clés : un mot de la requête peut être trouvé dans la section OU parmi les keywords (et le titre) de
+  l'article, bonus comme le titre. Recherche avancée : keywords comptés dans le choix des sections, dans le BM25 (motsCles des
+  passages, bm25.mjs) et dans le texte vectorisé (ajoutés au titre, index.mjs). Absent : rien ne change (vérifié : mêmes
+  résultats qu'avant sur les 6 questions). Publiés par le site le 2026-09-26 (version 5d520da938b4101c, 12/12), installés
+  sur odintest. Choix des sections de la source (source-guides.mjs), corrigé après mesure : seuls les mots qui peuvent
+  porter un sens (peutEtreNom de lexique.mjs : ni outil, ni verbe courant, ni nombre, adverbe, temps, personne) font une
+  section candidate, et seuls eux sont cherchés dans les keywords (clesUtiles de bm25.mjs, aussi pour le BM25, la couverture
+  et la recherche par mots-clés) ; question sans aucun de ces mots (« je suis perdu ») : tous ses mots. 6 sections au plus,
+  2 par article ; parmi les paragraphes vectorisés, 4 au plus, 2 par article (unParArticle, index.mjs). Sans cela : le
+  keyword « je suis perdu » faisait passer les 6 sections de l'orientation devant la brûlure (« je », « suis ») ; le keyword
+  « coupure de courant » remplissait toutes les places avec l'article sur l'énergie. Tests : tests/guides-recherche.test.mjs.
+  10 questions avant/après keywords (odintest, WikiMed, livre) : brûlure 0,511 → 0,512 (3e, derrière WikiMed et le livre) ;
+  eau pas potable 0,533 → 0,556, plus « Hygiène › Eau de boisson, eau propre, eau grise » 0,543 (fort, devant le livre
+  0,495 : pertinent) ; sirène 0,586 → 0,609 (1er) ; purifier 0,617 → 0,620, plus Hygiène 0,464 (fort, 4e, secondaire) ;
+  coupure de courant : Rester joignable 0,390, livre 0,372, autonomie électrique 0,359 (nouveau), abri 0,351 ; mal de dent et
+  15 minutes de marche inchangés (premiers-secours ne remonte pas) ; plus d'électricité : autonomie électrique 0,377
+  (nouveau, proche) ; je suis perdu : orientation 0,444 → 0,451 ; appeler le 112 : inchangé (deux articles hors sujet en
+  proche, 0,422 et 0,351, déjà là avant). Seuils 0,46 / 0,35 gardés ; marges minces : pertinents à 0,351 et 0,359, hors
+  sujet à 0,351 et 0,422, « je suis perdu » (LA réponse) seulement proche à 0,451.
+  Mot-clé entier (2026-09-26, e22ef57) : un keyword normalisé (forme() de synonymes.mjs : accents, casse, ponctuation ;
+  NOMBRES GARDÉS) présent tel quel dans la question → sections de l'article en tête des candidates, paragraphes vectorisés
+  d'abord (exactsDabord, index.mjs), puis motsClesExacts (source-guides.mjs) : son meilleur passage reçoit l'ajustement qu'il
+  faut pour passer devant les autres articles et atteindre « fort » (seuil guides), sauf cosinus < 0,25 (PLANCHER_MOT_CLE,
+  contradiction nette de l'embedding) ; cosinus brut inchangé (seuils de l'assistant). Recherche par mots-clés : même
+  correspondance, article en tête. Cause des deux cas : « appeler le 112 » était entièrement filtré par clesUtiles (verbe
+  courant + nombre) ; « coupure de courant » correspondait mais sans aucun bonus. Résultat : coupure de courant →
+  autonomie électrique 1re, fort (cos 0,359 +0,101) ; appeler le 112 → premiers-secours 2e, fort, 0,568 (cosinus réel :
+  il manquait seulement parmi les candidats) ; plus d'électricité → autonomie 1re, fort ; je suis perdu → orientation fort ;
+  les 6 autres identiques. « fort » à 0,44 simulé : aucun changement depuis e22ef57 (avant : seulement « je suis perdu »).
+  Correspondance graduée (2026-09-26, 52e0a67), parce qu'un mot-clé d'un seul mot générique forçait des hors-sujet en fort
+  (coup de soleil → orientation par « soleil », radio du thorax → communication par « radio », batterie de voiture à plat →
+  énergie ET communication par « batterie », savon pour bébé → hygiène par « savon », cosinus 0,28 à 0,36) :
+  correspondance() et motsClesExacts() de source-guides.mjs. Mots porteurs de sens d'un mot-clé = peutEtreNom ou nombre ;
+  couverture = part des mots utiles de la question (motsUtiles : 3 lettres, pas un mot outil ; « bébé » compte ; tous ses
+  mots si elle n'en a aucun) présents dans le mot-clé. COMPLET si le mot-clé a 2 mots porteurs de sens ou plus, OU couvre
+  2/3 de la question : priorité parmi les candidats et les paragraphes vectorisés, puis en tête de sa source et fort.
+  MODÉRÉ sinon : pas de priorité, +0,05 (BONUS_MODERE) sans jamais franchir fort par le bonus. Planchers : 0,25 pour un
+  mot-clé de plusieurs mots porteurs de sens, 0,35 s'il n'en a qu'un (complet par couverture, ou modéré). Mot-clé complet
+  partagé par plusieurs articles : seul le meilleur cosinus est forcé, les autres reçoivent le bonus modéré. Même règle dans
+  la recherche par mots-clés (complet +1000, modéré +3). 16 questions : les 10 de référence inchangées (coupure de courant,
+  plus d'électricité, je suis perdu en fort ; appeler le 112 : premiers-secours 2e, fort par son cosinus) ; coup de soleil et
+  radio du thorax : l'article hors sujet disparaît (sous le plancher) ; batterie de voiture à plat : plus rien en fort,
+  « Rester joignable » proche 0,409 (autonomie électrique n'est plus parmi les candidats : aucun article ne traite des
+  batteries de voiture) ; savon pour bébé : hygiène proche 0,406 derrière WikiMed Savon et le livre ; j'ai froid aux mains et
+  ma montre ne marche plus : inchangés. Tests : tests/guides-recherche.test.mjs. Contre un site simulé (fetch remplacé,
+  GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
+  bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
+  9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
+  /comment-faire, catégorie, deux articles avec schémas, recherche, Configuration sans requête vers un autre hôte ; boutons
+  grisés avec le message, « Supprimer » actif ; API : refus en 15 ms ; journal : sonde et NTP seulement, capture DNS de
+  90 s pendant l'usage des articles : wikipedia.org (sonde) seulement.
+  NON VÉRIFIÉ : coupure au milieu du téléchargement (archive de 68 Ko, reçue d'un coup) ; réécriture des liens du blog sur
+  de vrais articles (les 12 articles actuels n'ont AUCUN lien : testée seulement par les tests unitaires) ; empreinte de
+  chaque article (formule non publiée : seule l'archive est vérifiée) ; seuils de la recherche avancée pour ces articles.
 - Point d'accès Wi-Fi (option POINT_ACCES, NON VÉRIFIÉE sur du vrai matériel ; brief docs/conception-point-acces.md,
   lots 1 et 2 (portail captif) faits et dans main depuis le 2026-09-26, lot 3 bascule seulement sur accord du propriétaire). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
   (paquet dnsmasq-base, PAS dnsmasq qui lance un service sur le port 53) sous systemd. scripts/point-acces.sh
@@ -291,7 +422,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   online suffit ; sinon corps comparé sur son début) : connectivity-check.ubuntu.com. (avec le point final : Host
   normalisé), nmcheck.gnome.org, ping.archlinux.org, fedoraproject.org/static/hotspot.txt.
   Tests du lot 2 : node --test tests/portail.test.mjs (6 : réponses et tailles exactes, hôtes, libération, plage) ;
-  sudo scripts/point-acces-test.sh portail (B6, 33 contrôles : 14 sondes → 302 /portail, /portail 200, Continuer 303,
+  sudo scripts/point-acces-test.sh portail (B6, rejouable : redémarre d'abord le dashboard, qui oublie les appareils
+  libérés ; 33 contrôles : 14 sondes → 302 /portail, /portail 200, Continuer 303,
   14 sondes → réponse identique à l'octet, autre domaine → 302 /, dns.msftncsi.com, ODIN par son adresse sans portail).
   Résultats lot 2 (VM test, 2026-09-25/26) : B6 33/33 ; depuis le PC par l'IP Ethernet, Host de sonde → 302 /connexion
   (aucun portail), liberer → 403, fiche et QR → connexion. B10 : hors-ligne.sh couper, redémarrage à froid, point
@@ -540,7 +672,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   Guides médicaux : livre dont la fiche porte avertissement « sante », pack Kiwix dont le titre parle de
   médecine ou de santé. En cas d'urgence, leur meilleur passage est toujours envoyé au modèle, et une
   urgence sans autre résultat passe en issue 2 sur ces guides, pour renvoyer à la bonne page.
-  Sources : Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
+  Sources : Comment faire ? (source-guides.mjs, voir « Comment faire ? »), Mes documents (index), Wiki (wikis.mjs : ZIM avec _ftindex:yes lu dans le catalogue OPDS
   LOCAL, deux requêtes en parallèle, 15 articles, paragraphes ≥ 60 caractères coupés à 700, BM25 local,
   8 vectorisés ; bonus BM25 quand le titre de section contient les mots de la requête), Livres
   (source-livres.mjs : pages.json des livres installés, 4 paragraphes vectorisés).
@@ -574,8 +706,57 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur odintest pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /comment-faire, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
+
+## Recherche avancée : règles de score et banc de mesure
+
+Référence unique des règles (le détail de leur histoire est dans « Recherche avancée » et « Comment faire ? » plus haut).
+NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire passer le banc de mesure.
+
+- Sources et candidats : wikis (recherche plein texte de Kiwix, 15 articles, paragraphes classés par BM25, 8 vectorisés),
+  livres (pages de pages.json, 5 pages les plus riches, 4 paragraphes vectorisés), Mes documents (index FTS5 + vecteurs),
+  « Comment faire ? » (sections de guides.json : 6 au plus, 2 par article ; 4 paragraphes vectorisés, 2 par article).
+  Livres et articles comptent les mots comme le BM25 (occurrences() de bm25.mjs : mot entier, ou début de mot dès 5 lettres ;
+  jamais à l'intérieur d'un mot : « sonne » ne trouve pas « personne »).
+- Mots porteurs de sens (peutEtreNom, assistant/lexique.mjs) : 3 lettres ou plus, ni mot outil, ni verbe courant, ni nombre,
+  adverbe, mot de temps ou de personne. Seuls eux font une section « Comment faire ? » candidate et sont cherchés dans les
+  keywords (clesUtiles) ; une question qui n'en a aucun (« je suis perdu ») garde tous ses mots. Pour un keyword, les nombres
+  comptent aussi comme porteurs de sens (« 112 »).
+- Score d'un passage = cosinus (EmbeddingGemma) + ajustement. Ajustements (bm25.mjs, AJUSTEMENTS) : titre exact du terme
+  principal +0,15, section générale +0,03, cas particulier -0,05 ; mots-clés « Comment faire ? » ci-dessous.
+- Niveaux (constantes.mjs, seuils ; score = cosinus + ajustement) : fort ≥ réponse, proche ≥ proches, sinon écarté.
+  documents 0,40 / 0,18 ; wikis 0,48 / 0,42 ; livres 0,45 / 0,30 ; guides 0,46 / 0,35 (PROVISOIRES, 6 puis 16 questions).
+  Sans vecteurs : couverture de la requête, 0,75 / 0,50. Les issues de l'assistant utilisent le cosinus BRUT (sans ajustement).
+- Table de synonymes (catalogue/synonymes.json, assistant/synonymes.mjs) : expression reconnue par ses mots utiles dans
+  n'importe quel ordre ; une expression de plusieurs mots qui ne garde qu'une racine sans ses petits mots (« la courante »)
+  doit être trouvée telle qu'écrite ; la plus précise d'abord.
+- Keywords « Comment faire ? », correspondance exacte : un keyword entier présent dans la question après normalisation
+  (forme() : accents, casse, ponctuation ; NOMBRES GARDÉS). Force de la correspondance (correspondance(), source-guides.mjs) :
+  COMPLÈTE si le keyword a 2 mots porteurs de sens ou plus, OU couvre au moins 2/3 (COUVERTURE) des mots utiles de la question
+  (motsUtiles : 3 lettres, pas un mot outil) ; MODÉRÉE sinon.
+  Complète : sections de l'article en tête des candidates, paragraphes vectorisés d'abord, puis son meilleur passage ajusté
+  pour passer devant les autres articles et atteindre fort. Modérée : aucune priorité, +0,05 (BONUS_MODERE) sans jamais
+  franchir fort par ce bonus. Planchers (cosinus sous lequel l'embedding contredit le keyword, rien n'est ajouté) : 0,25 pour
+  un keyword de plusieurs mots porteurs de sens, 0,35 s'il n'en a qu'un (PLANCHERS). Keyword complet partagé par plusieurs
+  articles : seul le meilleur cosinus est forcé, les autres reçoivent le bonus modéré. Recherche par mots-clés (/recherche) :
+  complète +1000, modérée +3.
+- Banc de mesure : scripts/banc-recherche.sh (tests/banc-recherche.json : questions et attentes ; tests/banc-recherche.mjs :
+  comparaison), sur odintest : multipass exec odintest -- /opt/odin/scripts/banc-recherche.sh (DETAIL=1 : les 5 premiers
+  résultats de chaque question ; un autre fichier de questions en argument). Passe par /api/recherche dans le conteneur du
+  dashboard (route, index, toutes les sources) ; le lanceur et les questions viennent du dépôt (pas besoin de reconstruire
+  l'image). Code de sortie : 0 aucune régression, 1 régression (attente ratée et 5 premiers résultats affichés), 2 banc non
+  applicable (un pack, un livre ou un article « Comment faire ? » cité par les attentes est absent — requis : medecine,
+  pas-de-docteur, 9 articles par identifiant — ou dashboard injoignable). Version des articles : guidesReference (version
+  avec laquelle les attentes ont été écrites, c139f8128106cf7f depuis le 2026-09-26) ; une autre version installée donne un
+  AVERTISSEMENT, pas un blocage (le contenu du site évolue). Attentes par source et début de titre : niveau (fort, present, proche), rangMax, tete (premier
+  de sa source), absent, pasFort ; jamais de score exact. 16 questions (10 de référence + 6 keywords génériques), 34 attentes,
+  ~45 s. Vérifié le 2026-09-26 : 34/34 ; attentes inversées exprès → code 1 ; article requis inexistant → code 2 ;
+  autre version de référence → avertissement et code 0.
+  RÈGLE : toute modification de la recherche (assistant/*.mjs de recherche, sources, bm25, synonymes, constantes, lib/
+  recherche*, catalogue/synonymes.json, contenu requis) doit faire passer le banc (code 0) avant d'être poussée vers main.
+  Une attente ne change que par décision explicite, avec sa raison (nouveau contenu, jugement du propriétaire), jamais pour
+  faire passer une régression ; un défaut corrigé ajoute sa question au banc.
 
 ## Disques (lot 7)
 
@@ -618,9 +799,7 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   avant-fusion-point-acces. Vérifié après la fusion sur VM vierge depuis main (4f707fc) : sans POINT_ACCES, installation
   normale en 155 s (7 conteneurs, aucune unité odin-*, pas de hostapd, pas de PORTAIL_* dans .env, sonde → connexion) ;
   puis radios virtuelles et installeur relancé avec POINT_ACCES=1 (36 s) : B1 à B5 bons, B6 33/33, accès par l'IP
-  Ethernet sans portail, liberer → 403. Le test portail suppose un téléphone pas encore libéré : relancé tout de suite,
-  les 14 sondes « avant Continuer » échouent (libéré pour 12 h), attendu. odintest mise à jour ensuite (installeur, dev
-  a3049cb, sans POINT_ACCES).
+  Ethernet sans portail, liberer → 403. odintest mise à jour ensuite (installeur, dev a3049cb, sans POINT_ACCES).
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
@@ -709,9 +888,32 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   (on_starting) ; au HUP, gunicorn relit ces arguments, perd l'application (« No application module specified »), le
   maître s'arrête et le conteneur redémarre en entier. Pour relire les modèles : SIGTERM au worker. Pas de fichier pid
   non plus (--pid) : il survit à un kill -9 du maître et bloque le démarrage suivant (« Already running »).
-- Miroirs Kiwix : download.kiwix.org renvoie vers un miroir choisi par lb.download.kiwix.org ; le 2026-09-25,
-  ftp.nluug.nl ne répondait plus qu'en IPv6 depuis odintest. La VM a l'IPv6, pas les conteneurs : curl sur la VM
-  passe, le dashboard échoue (UND_ERR_CONNECT_TIMEOUT). Tester avec curl -4 avant de chercher dans ODIN.
+- Miroirs Kiwix : lb.download.kiwix.org (MirrorBrain) renvoie vers le miroir du pays : depuis la Belgique, toujours
+  ftp.nluug.nl (priorité 1). Son IPv4 ne répond pas depuis ce réseau (VM, conteneurs ET PC du propriétaire : connexion TCP
+  jamais ou tardivement établie, puis rien ; pas un problème de MTU, testé à 1400) ; seul son IPv6 marche, et les conteneurs
+  n'ont pas d'IPv6. Ce n'est ni Docker, ni le DNS, ni le Happy Eyeballs de Node (testé : ipv4first, sans autoselect, délai
+  de 2 s : même échec). Même signature que les 3 ETIMEDOUT du premier pack pendant la traduction (réussi au second essai :
+  MirrorBrain a dû choisir un autre miroir). Corrigé (2026-09-26) : telechargements.mjs lit le métalien (.meta4 du catalogue :
+  9 miroirs par priorité, taille exacte, SHA-256), essaie chaque miroir tant que rien n'est reçu (15 s pour répondre), puis
+  vérifie le SHA-256 (« Vérification de l'empreinte »). Ordre des miroirs (ordonnerMiroirs) : essai de débit en parallèle
+  sur les 4 premiers (512 Ko, 4 s au plus pour l'ensemble, débit partiel compté pour un miroir lent), les plus rapides
+  d'abord, puis l'ordre de Kiwix ; classement gardé 30 min par hôtes (globalThis), jamais gardé si tous échouent (l'ordre de
+  Kiwix reste). Mesuré d'ici : nluug échec, mirror.download.kiwix.org 0,2 à 0,6 Mo/s, accum.se 0,5 à 1,3, ftp.fau.de 4 à 5
+  (sur 512 Ko ; le débit réel est plus élevé). Une reprise de .part sur un autre miroir est sûre (mêmes fichiers, Range) :
+  le SHA-256 final fait foi. scripts/ajouter.sh n'a plus de logique de téléchargement : il appelle l'API du dashboard dans
+  son conteneur (docker exec dashboard node -, 127.0.0.1:3000, sans mot de passe) : --liste = GET /api/packs, <id> = POST
+  puis suivi. Tester avec curl -4 sur l'adresse du miroir (pas sur lb) avant de chercher dans ODIN.
+  VM vierge (2026-09-26, dev ac40503, image ba90a66) : installation en 164 s (install.sh non modifié mais indirectement
+  concerné : l'image contient le nouveau module, que les étapes langues et fond de carte chargent — telechargerFlux, qu'elles
+  utilisent, n'a pas changé — et une mise à jour redémarre FileBrowser, filebrowser.yaml ayant changé) ; fr et en, fond de
+  carte, 18 tailles ; ajouter.sh voyage : fau.de choisi, installé, inscrit ; pack coupé par hors-ligne.sh couper à 91,6 Mo
+  → « aucune donnée reçue depuis 30 s », .part gardé ; rétabli, dashboard redémarré, ftp.fau.de bloqué (iptables, VM test)
+  → reprise sur mirror.accum.se, fichier complet, SHA-256 identique au métalien ; reprise d'un .part commencé sur accum.se et
+  fini sur fau.de (fonctions d'ODIN, /tmp du conteneur) : SHA-256 identique.
+- Banc odintest hors de l'état de l'installeur (2026-09-26) : WikiMed (wikipedia_fr_medicine_maxi_2026-07.zim, 1,3 Go)
+  téléchargé À LA MAIN par curl en IPv6 sur la VM dans data/zim, puis inscrit par ODIN (POST /api/packs/medecine : le
+  fichier présent n'est pas retéléchargé, library.xml écrit par ODIN) ; SHA-256 identique à celui du métalien Kiwix. Le
+  livre « Là où il n'y a pas de docteur » et le pack climat ont été installés normalement par ODIN.
 - /run est monté noexec sur Ubuntu : un script d'accroche (udhcpc -s, dhcpcd -c) placé dans /run n'est jamais
   exécuté, sans erreur visible. Les mettre ailleurs (/var/lib/…).
 - iw : les modes sont indentés « \t\t * AP » (deux tabulations, une espace) ; « AP » apparaît aussi dans AP/VLAN et
@@ -720,5 +922,19 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 - NetworkManager, liste unmanaged-devices : une spec « except: » qui correspond l'emporte sur toute la liste. Pour
   écarter une seule carte, une section [device-xxx] avec match-device et managed=0 ; vérifier au démarrage dans le
   journal de NM (« state change »), --print-config ne suffit pas.
+- Caractères perdus à l'écriture : des sessions de Claude Code du 2026-09-21 ont écrit certains symboles comme des espaces
+  (« Installé · vérifié » dans le compte rendu, « Installé  vérifié » dans le fichier ; « / » et « ODIN » de la barre du
+  lecteur devenus « » et « ODIN » précédé d'une espace ; « [−] », « A− », « ↗ » vides). Rien n'a atteint git : chaque ligne est
+  fautive dès son premier commit. Rétablis le 2026-09-26 (« · », « — ODIN » des titres, / de git). h2::before de globals.css : ◆ doré
+  (choix du propriétaire, l'original est perdu). Chercher : grep -nE "[^ ]  +[^ /]" hors commentaires.
+- rtk (hook ~/.claude/hooks/rtk-rewrite.sh, « rtk rewrite ») réécrit le PREMIER mot de la commande : curl (JSON remplacé par
+  un schéma : « Expecting property name… »), git (diff, log, show), grep, wc, cat (→ rtk read), ls, docker. Pas : multipass
+  exec (tout ce qui tourne dans la VM ou un conteneur est exact), sha256sum, python3, node, gh run list, ni ce qui suit un |.
+  Toute vérification sur une sortie exacte (JSON, SHA-256, digest, en-têtes, octets) : « rtk proxy <commande> », ou sortie
+  écrite dans un fichier puis lue par python3/node, et comparaison faite par le programme (code de sortie, égalité), jamais
+  à l'œil sur une sortie réécrite. Vérifications du 2026-09-26 refaites ainsi : toutes confirmées.
+- odintest ne fait pas tourner l'image publiée mais une build locale (compose.dev.yml : odin-dashboard:dev) : pour savoir
+  ce qui tourne, comparer les fichiers du conteneur au dépôt (sha256sum de dashboard/lib et assistant, copiés tels quels dans
+  /app) plutôt que se fier aux dates.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

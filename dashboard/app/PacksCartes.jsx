@@ -87,14 +87,14 @@ export default function PacksCartes({ liaisonInitiale }) {
           action = (
             <div className="progression">
               <div className="jauge"><div style={{ width: pct + '%' }} /></div>
-              <em>{t.preparation ? 'Préparation de l\'extraction' : `${pct} %  ${octets(t.recu)} / ${octets(t.total)}`}</em>
+              <em>{t.preparation ? 'Préparation de l\'extraction' : `${pct} % · ${octets(t.recu)} / ${octets(t.total)}`}</em>
               <button onClick={() => confirm('Annuler le téléchargement ? La partie déjà reçue sera supprimée.') && envoyer(p.id, 'DELETE')}>Annuler</button>
             </div>
           );
         } else if (p.installe) {
           action = (
             <span>
-              <em>Installé  {octets(p.surDisque)}</em>
+              <em>Installé · {octets(p.surDisque)}</em>
               {suppressionCarte(p) && <button onClick={() => desinstaller(p)}>Supprimer</button>}
             </span>
           );
@@ -116,7 +116,7 @@ export default function PacksCartes({ liaisonInitiale }) {
               <strong>{p.libelle}</strong>
               <em>
                 Zoom {p.zoom}
-                {!p.installe && (affichee ? `  ${octets(affichee)}${taille ? '' : ' (dernière mesure)'}` : enLigne && liste.joignable ? '  calcul de la taille' : '')}
+                {!p.installe && (affichee ? ` · ${octets(affichee)}${taille ? '' : ' (dernière mesure)'}` : enLigne && liste.joignable ? ' · calcul de la taille' : '')}
               </em>
               {affichee >= ENORME && !p.installe && <em className="erreur">Très volumineux</em>}
             </div>

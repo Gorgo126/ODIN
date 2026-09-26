@@ -7,7 +7,7 @@
     { "theme": "sante", "dit": ["du mal à respirer", "mal à respirer", "respire mal", "respire difficilement", "j'étouffe", "étouffe", "essoufflé", "souffle court", "manque d'air", "difficulté à respirer"], "cherche": ["dyspnée", "détresse respiratoire"], "aussi": ["asthme", "insuffisance respiratoire"] },
     { "theme": "sante", "dit": ["évanoui", "s'est évanoui", "tombé dans les pommes", "perdu connaissance", "inconscient", "ne répond plus", "ne se réveille pas"], "cherche": ["perte de connaissance", "syncope"], "aussi": ["position latérale de sécurité", "réanimation cardiopulmonaire"] },
     { "theme": "sante", "dit": ["saigne beaucoup", "saigne abondamment", "pisse le sang", "perd beaucoup de sang", "n'arrête pas de saigner", "hémorragie"], "cherche": ["hémorragie"], "aussi": ["garrot", "point de compression", "pansement compressif"] },
-    { "theme": "sante", "dit": ["coupé", "coupure", "entaille", "plaie", "je me suis coupé"], "cherche": ["plaie"], "aussi": ["désinfection", "suture", "pansement"] },
+    { "theme": "sante", "dit": ["coupé", "coupure au doigt", "coupure à la main", "coupure profonde", "coupure qui saigne", "je me suis fait une coupure", "entaille", "plaie", "je me suis coupé"], "cherche": ["plaie"], "aussi": ["désinfection", "suture", "pansement"] },
     { "theme": "sante", "dit": ["os cassé", "jambe cassée", "bras cassé", "poignet cassé", "fracture", "cassé la jambe", "cassé le bras"], "cherche": ["fracture"], "aussi": ["attelle", "immobilisation"] },
     { "theme": "sante", "dit": ["cheville tordue", "tordu la cheville", "foulure", "entorse"], "cherche": ["entorse"], "aussi": ["immobilisation", "cheville"] },
     { "theme": "sante", "dit": ["de la fièvre", "fièvre", "fiévreux", "température élevée", "brûlant de fièvre"], "cherche": ["fièvre"], "aussi": ["hyperthermie"] },
@@ -48,10 +48,12 @@
     { "theme": "feu", "dit": ["éteindre un feu", "éteindre le feu", "incendie", "feu de forêt"], "cherche": ["incendie", "extinction"], "aussi": ["extincteur"] },
     { "theme": "feu", "dit": ["monoxyde", "intoxication au monoxyde", "fumée du poêle", "mal de tête près du poêle", "poêle qui fume", "le poêle fume", "tous mal à la tête", "tout le monde a mal à la tête"], "cherche": ["monoxyde de carbone"], "aussi": ["intoxication"] },
 
-    { "theme": "froid", "dit": ["j'ai froid", "grelotte", "grelotter", "frigorifié", "gelé", "hypothermie", "refroidi", "il fait froid", "trop froid", "il gèle", "sous zéro", "glacial", "froid dans la maison"], "cherche": ["hypothermie"], "aussi": ["réchauffement"] },
+    { "theme": "froid", "dit": ["j'ai froid", "a froid", "ont froid", "grelotte", "grelotter", "frigorifié", "gelé", "hypothermie", "refroidi", "il fait froid", "trop froid", "il gèle", "sous zéro", "glacial", "froid dans la maison"], "cherche": ["hypothermie"], "aussi": ["réchauffement"] },
     { "theme": "froid", "dit": ["doigts gelés", "orteils gelés", "orteils noirs", "doigts noirs", "devenus noirs", "devenu noir", "noircis", "engelure", "gelure"], "cherche": ["gelure", "engelure"], "aussi": ["hypothermie"] },
     { "theme": "froid", "dit": ["dormir dehors", "s'abriter", "abri pour la nuit", "construire un abri", "bivouac"], "cherche": ["abri", "bivouac"], "aussi": ["isolation"] },
     { "theme": "froid", "dit": ["s'habiller chaudement", "se couvrir", "vêtements chauds", "rester au chaud"], "cherche": ["vêtement"], "aussi": ["superposition des couches"] },
+    { "theme": "alerte", "dit": ["sirène qui sonne", "sirène d'alerte"], "cherche": ["sirène d'alerte", "alerte des populations"], "aussi": [] },
+    { "theme": "energie", "dit": ["coupure de courant"], "cherche": ["panne de courant", "électricité"], "aussi": [] },
     { "theme": "froid", "dit": ["chauffer sans électricité", "chauffer la maison", "chauffage sans électricité", "poêle à bois"], "cherche": ["chauffage", "poêle à bois"], "aussi": [] },
 
     { "theme": "nourriture", "dit": ["conserver la viande", "garder la viande", "sans frigo", "sans réfrigérateur", "conserver les aliments", "garder la nourriture"], "cherche": ["conservation des aliments"], "aussi": ["salaison", "fumage", "séchage"] },

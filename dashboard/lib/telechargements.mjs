@@ -1,4 +1,5 @@
-import { promises as fs, createWriteStream } from 'fs';
+import { promises as fs, createWriteStream, createReadStream } from 'fs';
+import { createHash } from 'crypto';
 import { Readable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 import path from 'path';
@@ -12,6 +13,8 @@ const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
 const VIDE = '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n';
 const INACTIVITE = 30000;
+// Time allowed to a mirror to answer before the next one is tried
+const CONNEXION = 15000;
 const taches = globalThis.__odinTaches ??= new Map();
 // Kept apart from taches: tasks are serialized to the browser
 const controles = globalThis.__odinControles ??= new Map();
@@ -66,13 +69,15 @@ export async function demarrer(id) {
   controles.set(id, c);
   const fin = telecharger(pack, e, t, c)
     .catch(async (err) => {
-      if (c.signal.reason === 'annule') {
+      // The controller of the mirror in use (replaced when a mirror is skipped)
+      const raison = (controles.get(id) || c).signal.reason;
+      if (raison === 'annule') {
         t.etat = 'annule';
         await fs.rm(path.join(DATA, nomFichier(e) + '.part'), { force: true });
         return;
       }
       t.etat = 'erreur';
-      t.erreur = disquePlein(err) || (c.signal.reason === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
+      t.erreur = disquePlein(err) || (raison === 'inactif' ? 'Connexion perdue : aucune donnée reçue depuis 30 s'
         : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?'
         : err.message);
     })
@@ -111,6 +116,93 @@ export async function supprimer(id) {
   }
 }
 
+// Mirrors of a Kiwix file from its metalink, by priority, with the exact size and SHA-256; null when
+// the metalink cannot be read (the address without .meta4 is then used, as before)
+export async function metalien(url) {
+  if (!url.endsWith('.meta4')) return null;
+  const fichier = path.basename(url.replace(/\.meta4$/, ''));
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000), cache: 'no-store' });
+    if (!r.ok) return null;
+    const xml = await r.text();
+    const miroirs = [...xml.matchAll(/<url\b([^>]*)>(https:\/\/[^<]+)<\/url>/g)]
+      .map((m, i) => ({ p: Number(m[1].match(/priority="(\d+)"/)?.[1] ?? 1000 + i), url: m[2].replace(/&amp;/g, '&') }))
+      // Mirrors of this file only (the publisher's <url> is the site of Kiwix)
+      .filter((m) => m.url.endsWith(`/${fichier}`))
+      .sort((a, b) => a.p - b.p)
+      .map((m) => m.url);
+    return {
+      miroirs,
+      sha256: xml.match(/<hash type="sha-256">([0-9a-f]{64})<\/hash>/)?.[1] || null,
+      taille: Number(xml.match(/<size>(\d+)<\/size>/)?.[1]) || null
+    };
+  } catch (err) {
+    console.error(`Métalien ${url} illisible (${err.cause?.code || err.name}) : adresse de redirection seule`);
+    return null;
+  }
+}
+
+// Mirror choice: a short throughput test of the first mirrors of the metalink, in parallel (512 KB,
+// 4 s at most, the whole test included). Kiwix orders them by country, not by speed: from Belgium the
+// second one gave 0.3 MB/s while another answered 35 times faster. The ranking is kept 30 minutes
+// (by host, whatever the file); when no test succeeds, the order of Kiwix stays.
+const ESSAIS = 4;
+const OCTETS_ESSAI = 512 * 1024;
+const DUREE_ESSAI = 4000;
+const GARDE_CLASSEMENT = 30 * 60 * 1000;
+const classements = globalThis.__odinMiroirs ??= new Map();
+
+async function debit(url, signal) {
+  const debut = Date.now();
+  const r = await fetch(url, { headers: { Range: `bytes=0-${OCTETS_ESSAI - 1}` }, signal, cache: 'no-store' });
+  if (r.status !== 206 && r.status !== 200) throw new Error(`HTTP ${r.status}`);
+  let recu = 0;
+  try {
+    for await (const morceau of r.body) {
+      recu += morceau.length;
+      if (recu >= OCTETS_ESSAI) break;
+    }
+  } catch (e) {
+    // Time is up: a slow mirror is measured on what it sent
+    if (!recu) throw e;
+  }
+  return recu / Math.max(1, Date.now() - debut); // bytes per ms
+}
+
+export async function ordonnerMiroirs(miroirs) {
+  if (miroirs.length < 2) return miroirs;
+  const hote = (u) => new URL(u).hostname;
+  const testes = miroirs.slice(0, ESSAIS);
+  const cle = testes.map(hote).join(' ');
+  let c = classements.get(cle);
+  if (!c || Date.now() - c.t > GARDE_CLASSEMENT) {
+    const signal = AbortSignal.timeout(DUREE_ESSAI);
+    const resultats = await Promise.all(testes.map((u) => debit(u, signal).catch(() => 0)));
+    c = { t: Date.now(), debits: new Map(testes.map((u, i) => [hote(u), resultats[i]])) };
+    // Nothing measured (offline, all mirrors down): not kept, the next download tests again
+    if (resultats.some((v) => v > 0)) classements.set(cle, c);
+    console.log(`Miroirs Kiwix : ${testes.map((u, i) => `${hote(u)} ${resultats[i] ? `${(resultats[i] / 1024 * 1000 / 1024).toFixed(1)} Mo/s` : 'échec'}`).join(', ')}`);
+  }
+  // Fastest first; failed ones keep their Kiwix order after them; the untested ones stay last
+  const tries = testes.map((u, i) => ({ u, i, v: c.debits.get(hote(u)) || 0 }))
+    .sort((a, b) => b.v - a.v || a.i - b.i)
+    .map((x) => x.u);
+  return [...tries, ...miroirs.slice(ESSAIS)];
+}
+
+async function empreinteFichier(fichier) {
+  const h = createHash('sha256');
+  for await (const morceau of createReadStream(fichier)) h.update(morceau);
+  return h.digest('hex');
+}
+
+// New controller for the next mirror (the previous one stays aborted); annuler() uses the new one
+function remplacer(id, ancien) {
+  const c = new AbortController();
+  if (controles.get(id) === ancien) controles.set(id, c);
+  return c;
+}
+
 async function telecharger(pack, e, t, controle) {
   const fichier = nomFichier(e);
   const dest = path.join(DATA, fichier);
@@ -120,18 +212,38 @@ async function telecharger(pack, e, t, controle) {
     const deja = (await fs.stat(part).catch(() => null))?.size || 0;
     // 2 % margin; the part already received is on the disk
     await reserver(`zim:${pack.id}`, DATA, Math.ceil((e.taille - deja) * 1.02), () => e.taille - t.recu);
-    // download.kiwix.org sends each request to a mirror picked at random; one may be unreachable for
-    // a moment (seen on the test VM: « fetch failed » at once, fine on the next try). A connection that
-    // fails before any byte is tried again, twice, 3 s apart; the cause goes to the logs.
-    for (let essai = 1; ; essai++) {
+    // download.kiwix.org sends every request to the mirror of the visitor's country (MirrorBrain). One
+    // may be unreachable from a given network: on 2026-09-26, ftp.nluug.nl (first for Belgium) did not
+    // answer over IPv4, only over IPv6, which the containers do not have. The metalink (.meta4) of the
+    // catalogue lists all the mirrors by priority, with the exact size and the SHA-256: each mirror is
+    // tried in turn while nothing has been received from it; a transfer cut in the middle stops as
+    // before (the .part stays for « Réessayer »). The files are the same on every mirror: resuming a
+    // .part from another one is safe, the SHA-256 checks the whole file at the end.
+    const lien = await metalien(e.url);
+    if (lien?.taille) t.total = lien.taille;
+    const miroirs = lien?.miroirs.length ? await ordonnerMiroirs(lien.miroirs) : [e.url.replace(/\.meta4$/, '')];
+    for (const [i, url] of miroirs.entries()) {
       const avant = t.recu;
       try {
-        await telechargerFlux(e.url.replace(/\.meta4$/, ''), part, t, controle);
+        await telechargerFlux(url, part, t, controle, { connexion: CONNEXION });
         break;
       } catch (err) {
-        if (controle.signal.aborted || err.message !== 'fetch failed' || t.recu !== avant || essai >= 3) throw err;
-        console.error(`Pack ${pack.id} : connexion impossible (${err.cause?.code || err.cause?.message || 'cause inconnue'}), nouvel essai ${essai + 1}/3`);
-        await new Promise((r) => setTimeout(r, 3000));
+        const reseau = err.message === 'fetch failed' || controle.signal.reason === 'connexion' || /\((404|403|5\d\d)\)/.test(err.message);
+        if (controle.signal.aborted && controle.signal.reason !== 'connexion') throw err;
+        if (!reseau || t.recu !== avant || i === miroirs.length - 1) throw err;
+        console.error(`Pack ${pack.id} : miroir ${new URL(url).hostname} injoignable (${err.cause?.code || controle.signal.reason || err.message}), miroir suivant`);
+        // A new controller: the one of the failed mirror stays aborted
+        controle = remplacer(pack.id, controle);
+      }
+    }
+    if (lien?.sha256) {
+      t.verification = true;
+      const recue = await empreinteFichier(part);
+      t.verification = false;
+      if (recue !== lien.sha256) {
+        await fs.rm(part, { force: true });
+        console.error(`Pack ${pack.id} : empreinte différente, attendue ${lien.sha256}, reçue ${recue}`);
+        throw new Error('Fichier reçu incorrect (empreinte SHA-256 différente) : supprimé, réessayez.');
       }
     }
     await fs.rename(part, dest);

@@ -7,7 +7,7 @@ import { motsUtiles } from './contexte.mjs';
 // they are, grouped by document, with their source and a link. Nothing is written, so nothing can
 // be invented. No dependency on Next: shared by the route and the evaluation.
 
-const SEUILS = { documents: 'documents', wiki: 'wikis', livre: 'livres' };
+const SEUILS = { documents: 'documents', wiki: 'wikis', livre: 'livres', 'comment-faire': 'guides' };
 const PASSAGES_PAR_DOCUMENT = 3;
 const LONGUEUR = 420; // characters of a passage shown, around the first query word
 
@@ -19,8 +19,8 @@ export function lienDocument(chemin, page) {
 }
 export const lien = (e) => e.lien || lienDocument(e.chemin, e.page);
 
-// One key per document: a personal file, a wiki article, a book
-export const cleSource = (e) => (e.origine === 'documents' ? e.chemin : e.origine === 'wiki' ? e.lien : `livre:${e.source}`);
+// One key per document: a personal file, a wiki article, a book, a « Comment faire ? » article
+export const cleSource = (e) => (e.origine === 'documents' ? e.chemin : e.origine === 'livre' ? `livre:${e.source}` : e.lien);
 
 // With vectors: the thresholds of each source on the raw cosine. Without: the share of the query
 // found in the passage (keywords only). « fort » answers the question, « proche » is near it.

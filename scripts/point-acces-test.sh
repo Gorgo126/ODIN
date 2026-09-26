@@ -161,6 +161,15 @@ SONDES=(
 portail() {
   local adresse s hote chemin statut corps r
   adresse=$(sed -n 's/^  "adresse": "\(.*\)",/\1/p' "$ETAT")
+  # Released devices live in the dashboard's memory only (12 h): restarting it makes the phone a new,
+  # not released device, so the test can be run again at once
+  docker restart dashboard >/dev/null || { ko "redémarrage du dashboard"; return; }
+  local i pret=
+  for i in $(seq 60); do
+    [ "$(curl -s -m 3 -o /dev/null -w '%{http_code}' "http://$adresse/portail")" = 200 ] && { pret=1; break; }
+    sleep 1
+  done
+  [ -n "$pret" ] || { ko "dashboard pas prêt après 60 s"; return; }
   # Same second try as verifier: a reconnection right after another one may time out
   [ "$(connecter)" = connecté ] || { sleep 3; [ "$(connecter)" = connecté ]; } || { ko "téléphone non connecté"; return; }
   echo "6. Portail captif"

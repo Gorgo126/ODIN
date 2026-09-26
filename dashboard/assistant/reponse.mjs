@@ -27,7 +27,7 @@ export { lienDocument } from './passages.mjs';
 // The passages of the search always come with the answer (resultats), whatever the outcome.
 // rechercher(question, options) and reprendre(jeton) come from the index.
 
-const SEUILS = { documents: 'documents', wiki: 'wikis', livre: 'livres' };
+const SEUILS = { documents: 'documents', wiki: 'wikis', livre: 'livres', 'comment-faire': 'guides' };
 const seuil = (reglages, e) => reglages.seuils[SEUILS[e.origine] || 'documents'];
 const DELAI_PREMIER_MOT = 60000; // no first word after that: the passages are shown instead
 const DELAI_EMPLACEMENT = 1500;  // /api/ps, read after the answer: never delays it much
@@ -129,7 +129,7 @@ function ressembleAUneReponse(texte, documents) {
   });
 }
 
-export async function* repondre({ question, historique = [], reglages, cfg, rechercher, reprendre, reseau, signal, sources: parmi = ['documents', 'wikis', 'livres'] }) {
+export async function* repondre({ question, historique = [], reglages, cfg, rechercher, reprendre, reseau, signal, sources: parmi = ['documents', 'wikis', 'livres', 'guides'] }) {
   const debut = Date.now();
   const durees = {};
   const premier = () => { durees.premierMot ??= Date.now() - debut; };

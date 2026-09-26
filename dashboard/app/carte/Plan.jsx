@@ -104,8 +104,8 @@ export default function Plan({ packs }) {
     <div className="cadre">
       <link rel="stylesheet" href={`${RESSOURCES}/maplibre/maplibre-gl.css`} precedence="default" />
       <nav className="barre">
-        <a href="/" className="accueil"> ODIN</a>
-        <span className="sep"></span>
+        <a href="/" className="accueil">ODIN</a>
+        <span className="sep">/</span>
         <span>Cartes</span>
         <a className="externe" href="/configuration">Gérer les cartes</a>
       </nav>

@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { normaliser } from '../lib/normalisation.mjs';
-import { termes } from './bm25.mjs';
+import { termes, occurrences } from './bm25.mjs';
 
 // « Livres » source of the assistant: installed PDF books, through the text already extracted page
 // by page (data/livres/<id>/pages.json). The pages richest in the query words give their paragraphs.
@@ -51,8 +51,8 @@ export async function passagesLivres(requetes, { pages = 5 } = {}) {
       let distincts = 0;
       let total = 0;
       for (const m of mots) {
-        const k = p.norm.split(m).length - 1;
-        if (k) { distincts++; total += Math.min(k, 10); }
+        const k = occurrences(p.norm, m);
+        if (k) { distincts++; total += k; }
       }
       if (distincts) candidates.push({ l, p, score: distincts * 100 + total });
     }

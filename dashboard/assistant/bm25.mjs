@@ -1,5 +1,6 @@
 import { normaliser, motsRequete } from '../lib/normalisation.mjs';
 import { CONSTANTES } from './constantes.mjs';
+import { peutEtreNom } from './lexique.mjs';
 
 // BM25 over a handful of passages (paragraphs of wiki articles or book pages), to choose the few
 // worth an embedding. Words of 5 letters or more also match longer forms (brûlure → brûlures).
@@ -42,6 +43,26 @@ function rapportAuTerme(titre, terme) {
 
 // Words of several queries: each one on its own (motsRequete keeps 8 words of 200 characters), then
 // together, 16 at most
+// Occurrences of a query word in a normalized text, counted as the BM25 below counts them: the whole
+// word, or its start from 5 letters on (« eau » finds « eau » but not « eaux » ; « brulu » finds
+// « brulure »). Never inside a word: « sonne » must not find « personne ». Shared by the book and
+// « Comment faire ? » sources, so that every source picks its candidates the same way.
+const LETTRE = /[\p{L}\p{N}]/u;
+export function occurrences(texte, m, max = 10) {
+  let k = 0;
+  for (let i = texte.indexOf(m); i !== -1 && k < max; i = texte.indexOf(m, i + 1)) {
+    if (i > 0 && LETTRE.test(texte[i - 1])) continue;
+    if (m.length < 5 && LETTRE.test(texte[i + m.length] || '')) continue;
+    k++;
+  }
+  return k;
+}
+
+// Keywords of a document (« Comment faire ? »), reduced to the words that can carry a meaning: a
+// keyword « je suis perdu » must not make every section of its article match « je me suis brûlé »
+// through « je » and « suis ». Normalized, space-separated.
+export const clesUtiles = (liste = []) => normaliser(liste.join(' ')).split(/[^\p{L}\p{N}]+/u).filter(peutEtreNom).join(' ');
+
 export const termes = (requetes) => [...new Set(requetes.filter(Boolean).flatMap((r) => motsRequete(r)))].slice(0, 16);
 
 // Long paragraphs (encyclopedias, books) are cut at a sentence end: every character costs time for
@@ -63,7 +84,8 @@ export function classer(passages, requetes, n, { terme = null, secondaires = [] 
   // A general article among the candidates: only then is a specialised one pushed back
   const rapports = passages.map((p) => rapportAuTerme(p.titre, terme));
   const general = rapports.some((r) => r.type === 'exact' || r.type === 'commence');
-  const docs = passages.map((p) => normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+  // motsCles: synonyms given by the source for its document (« Comment faire ? » keywords)
+  const docs = passages.map((p) => normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte} ${clesUtiles(p.motsCles)}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
   const moyenne = docs.reduce((s, d) => s + d.length, 0) / docs.length;
   const compte = (d, m) => d.reduce((k, t) => k + (t === m || (m.length >= 5 && t.startsWith(m)) ? 1 : 0), 0);
   const frequences = docs.map((d) => mots.map((m) => compte(d, m)));
@@ -105,7 +127,7 @@ export function noterCouverture(passages, requetes) {
   const mots = termes(requetes);
   if (!mots.length || !passages.length) return;
   const presents = passages.map((p) => {
-    const d = new Set(normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+    const d = new Set(normaliser(`${p.titre || ''} ${p.section || ''} ${p.texte} ${clesUtiles(p.motsCles)}`).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
     return mots.map((m) => d.has(m) || (m.length >= 5 && [...d].some((t) => t.startsWith(m))));
   });
   // A word found in no passage at all (« soigner », « comment ») says nothing about any of them:
