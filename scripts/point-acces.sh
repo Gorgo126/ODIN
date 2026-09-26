@@ -771,7 +771,6 @@ installer() {
     exec 9>&-
   fi
   ecrire_etat
-  resume
 }
 
 # Units stopped and removed, card given back to its manager

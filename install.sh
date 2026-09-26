@@ -509,7 +509,9 @@ if [ -z "$PAQUETS_AP" ] || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq
     1) bash "$CIBLE/scripts/point-acces.sh" activer --installeur 2>&1 | sed 's/^/  /' || true ;;
     0) bash "$CIBLE/scripts/point-acces.sh" desactiver 2>&1 | sed 's/^/  /' || true ;;
   esac
+  # State after the action (the summary is repeated at the end)
   POINT_ACCES_FIN=$(bash "$CIBLE/scripts/point-acces.sh" resume 2>/dev/null || true)
+  [ -z "$POINT_ACCES" ] && [ -n "$POINT_ACCES_FIN" ] && echo "  $POINT_ACCES_FIN"
 else
   POINT_ACCES_FIN="Point d'accès Wi-Fi indisponible : paquets impossibles à installer ($PAQUETS_AP)."
   echo "  $POINT_ACCES_FIN"
