@@ -442,6 +442,11 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   l'installeur seulement si une unité change. Reste : après un daemon-reload venu d'ailleurs (mise à jour, apt), la
   bascule suivante d'une carte gérée par networkd renouvelle le bail de l'Ethernet une fois. Sans networkd (NM ou carte
   libre), jamais de networkctl reload.
+  PIÈGE (vérifié sur VM, Ubuntu 24.04, NetworkManager installé après Docker) : « nmcli general reload conf » fait
+  prendre à NetworkManager TOUS les périphériques (lo, veth, ponts Docker), qui détache les ports et retire les
+  adresses des ponts : Caddy injoignable, ODIN en panne même en local. Le code des lots 1 et 2 (dans main) le faisait
+  à chaque démarrage du point d'accès avec NM. Désormais : jamais de rechargement de NM ; nmcli device set <if> managed
+  no/yes à chaud, fichier conf.d lu au démarrage seulement. Remise en état : systemctl restart NetworkManager puis docker.
   Dashboard : lib/portail.mjs = LA table des sondes (SONDES) et les appareils libérés (IP → 12 h, globalThis, perdus
   au redémarrage du dashboard : le portail revient, accepté). /api/portail/sonde (GET, HEAD, POST) : non libéré → 302
   http://<adresse>/portail ; libéré et sonde connue → réponse exacte + X-NetworkManager-Status: online ; sinon → 302
