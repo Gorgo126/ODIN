@@ -11,7 +11,8 @@ import { SLUG, FICHIER_ASSET } from './guides-html.mjs';
 //   guides.json     index built at installation: categories, articles with cleaned HTML and text
 //   articles/<slug>.html, assets/<slug>/*   files of the archive, as verified
 
-export const RACINE = '/config/guides';
+// GUIDES_DOSSIER: for the installation tests only
+export const RACINE = process.env.GUIDES_DOSSIER || '/config/guides';
 export const ACTUEL = path.join(RACINE, 'actuel');
 
 const cache = globalThis.__odinGuidesIndex ??= { dossier: null, mtime: 0, index: null };

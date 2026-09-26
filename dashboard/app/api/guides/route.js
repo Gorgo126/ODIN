@@ -2,7 +2,8 @@ import { etatGuides, verifier, demarrer, supprimer } from '../../../lib/guides.m
 
 export const dynamic = 'force-dynamic';
 
-const erreur = (e) => Response.json({ erreur: e.message }, { status: 400 });
+// Messages of the library start in lower case when they are part of a sentence
+const erreur = (e) => Response.json({ erreur: e.message[0].toUpperCase() + e.message.slice(1) }, { status: 400 });
 
 // Installed version and running installation
 export async function GET() {

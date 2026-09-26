@@ -84,18 +84,18 @@ async function lireManifeste() {
     console.error(`Comment faire ? : manifeste injoignable (${e.cause?.code || e.name || e.message})`);
     throw new ErreurReseau(`${SANS_INTERNET} : odin-node.com ne répond pas.`);
   }
-  if (!r.ok) throw new Error(`Manifeste des articles indisponible (erreur ${r.status}).`);
-  if (Number(r.headers.get('content-length')) > MAX_MANIFESTE) throw new Error('Manifeste des articles trop gros.');
+  if (!r.ok) throw new Error(`manifeste des articles indisponible (erreur ${r.status})`);
+  if (Number(r.headers.get('content-length')) > MAX_MANIFESTE) throw new Error('manifeste des articles trop gros');
   let m;
   try {
     const t = await r.text();
     if (t.length > MAX_MANIFESTE) throw new Error();
     m = JSON.parse(t);
   } catch {
-    throw new Error('Manifeste des articles illisible.');
+    throw new Error('manifeste des articles illisible');
   }
   const d = defautManifeste(m);
-  if (d) throw new Error(`Manifeste des articles refusé : ${d}.`);
+  if (d) throw new Error(`manifeste des articles refusé : ${d}`);
   return m;
 }
 
