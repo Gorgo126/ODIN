@@ -1,0 +1,124 @@
+{
+  "_lisezmoi": "Banc de mesure de la recherche avancée (scripts/banc-recherche.sh). Chaque attente vise un document par sa source (wiki, livre, comment-faire) et le début de son titre. niveau : fort (doit être fort), present (fort ou proche), proche (exactement proche). rangMax : rang maximal parmi tous les résultats (1 = en tête). tete : premier de sa source. absent : ne doit pas sortir du tout. pasFort : ne doit pas être fort (sans titre : aucun document de cette source en fort). Les attentes portent sur les niveaux et les rangs, pas sur les scores, qui bougent légèrement. Contenu requis sur le serveur : WikiMed (pack medecine), le livre « Là où il n'y a pas de docteur », les articles « Comment faire ? » de la version indiquée.",
+  "requis": {
+    "packs": ["medecine"],
+    "livres": ["pas-de-docteur"],
+    "guides": "5d520da938b4101c"
+  },
+  "questions": [
+    {
+      "q": "je me suis brûlé",
+      "attentes": [
+        { "source": "wiki", "titre": "Brûlure", "niveau": "fort", "rangMax": 1 },
+        { "source": "livre", "titre": "Là où il n'y a pas de docteur", "niveau": "fort" },
+        { "source": "comment-faire", "titre": "Les gestes qui comptent", "niveau": "fort", "tete": true },
+        { "source": "comment-faire", "titre": "Allumer un feu", "absent": true },
+        { "source": "comment-faire", "titre": "S'orienter sans GPS", "absent": true }
+      ]
+    },
+    {
+      "q": "eau pas potable",
+      "attentes": [
+        { "source": "wiki", "titre": "Eau potable", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "Rendre l'eau potable", "niveau": "fort", "tete": true },
+        { "source": "livre", "titre": "Là où il n'y a pas de docteur", "niveau": "fort" }
+      ]
+    },
+    {
+      "q": "sirène qui sonne",
+      "attentes": [
+        { "source": "comment-faire", "titre": "Alerte reçue", "niveau": "fort", "rangMax": 1 },
+        { "source": "wiki", "titre": "Sirénomélie", "absent": true }
+      ]
+    },
+    {
+      "q": "comment purifier l'eau",
+      "attentes": [
+        { "source": "wiki", "titre": "Eau potable", "niveau": "fort" },
+        { "source": "comment-faire", "titre": "Rendre l'eau potable", "niveau": "fort", "tete": true },
+        { "source": "livre", "titre": "Là où il n'y a pas de docteur", "niveau": "fort" }
+      ]
+    },
+    {
+      "q": "coupure de courant",
+      "attentes": [
+        { "source": "comment-faire", "titre": "Calculer son autonomie électrique", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "Rester joignable", "niveau": "present" },
+        { "source": "wiki", "titre": "Diarrhée", "absent": true }
+      ]
+    },
+    {
+      "q": "mal de dent",
+      "attentes": [
+        { "source": "wiki", "titre": "Douleur dentaire", "niveau": "fort", "rangMax": 1 },
+        { "source": "livre", "titre": "Là où il n'y a pas de docteur", "niveau": "fort" }
+      ]
+    },
+    {
+      "q": "plus d'électricité",
+      "attentes": [
+        { "source": "comment-faire", "titre": "Calculer son autonomie électrique", "niveau": "fort", "rangMax": 1 }
+      ]
+    },
+    {
+      "q": "je suis perdu",
+      "attentes": [
+        { "source": "comment-faire", "titre": "S'orienter sans GPS", "niveau": "fort", "rangMax": 1 }
+      ]
+    },
+    {
+      "q": "appeler le 112",
+      "attentes": [
+        { "source": "wiki", "titre": "Centrale d'urgence 112", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "Les gestes qui comptent", "niveau": "fort", "tete": true }
+      ]
+    },
+    {
+      "q": "15 minutes de marche",
+      "attentes": [
+        { "source": "wiki", "titre": "Test de marche de six minutes", "niveau": "present" },
+        { "source": "comment-faire", "titre": "Les gestes qui comptent", "absent": true }
+      ]
+    },
+    {
+      "q": "coup de soleil",
+      "attentes": [
+        { "source": "livre", "titre": "Là où il n'y a pas de docteur", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "S'orienter sans GPS", "absent": true }
+      ]
+    },
+    {
+      "q": "radio du thorax",
+      "attentes": [
+        { "source": "wiki", "titre": "Radiographie du thorax", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "Rester joignable", "absent": true }
+      ]
+    },
+    {
+      "q": "batterie de voiture à plat",
+      "attentes": [
+        { "source": "comment-faire", "pasFort": true }
+      ]
+    },
+    {
+      "q": "j'ai froid aux mains",
+      "attentes": [
+        { "source": "wiki", "titre": "Hypothermie", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "Garder sa chaleur", "niveau": "fort", "tete": true }
+      ]
+    },
+    {
+      "q": "ma montre ne marche plus",
+      "attentes": [
+        { "source": "comment-faire", "pasFort": true }
+      ]
+    },
+    {
+      "q": "savon pour bébé",
+      "attentes": [
+        { "source": "wiki", "titre": "Savon", "niveau": "fort", "rangMax": 1 },
+        { "source": "comment-faire", "titre": "Hygiène en autonomie", "pasFort": true }
+      ]
+    }
+  ]
+}
