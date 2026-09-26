@@ -1,4 +1,4 @@
-import { normaliser } from '../lib/normalisation.mjs';
+import { normaliser, positions } from '../lib/normalisation.mjs';
 import { lireIndex, lienArticle } from '../lib/guides-index.mjs';
 import { termes } from './bm25.mjs';
 
@@ -26,8 +26,9 @@ export async function passagesGuides(requetes, { sections: nombre = 5 } = {}) {
   for (const x of sections(index)) {
     let distincts = 0;
     let total = 0;
+    // Words counted from their start only: « sonne » must not match « personne »
     for (const m of mots) {
-      const k = x.norm.split(m).length - 1;
+      const k = positions(x.norm, m, 10).length;
       if (k) { distincts++; total += Math.min(k, 10); }
     }
     if (distincts) candidates.push({ ...x, score: distincts * 100 + total });
