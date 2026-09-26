@@ -1,19 +1,32 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useLiaison, messageHorsLigne } from '../useLiaison';
 
 // Served as-is from public/: MapLibre finds its worker next to its own file
 const RESSOURCES = '/ressources-carte';
-// OpenStreetMap data (ODbL 1.0) in Protomaps tiles
-const ATTRIBUTION = '© <a href="https://openstreetmap.org/copyright">contributeurs d\'OpenStreetMap</a> (<a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>) · <a href="https://protomaps.com">Protomaps</a>';
+// OpenStreetMap data (ODbL 1.0) in Protomaps tiles. Always shown (licence); its links are external,
+// greyed and blocked offline like those of the reader (data-externe)
+const ATTRIBUTION = '© <a href="https://openstreetmap.org/copyright" data-externe="">contributeurs d\'OpenStreetMap</a> (<a href="https://opendatacommons.org/licenses/odbl/" data-externe="">ODbL</a>) · <a href="https://protomaps.com" data-externe="">Protomaps</a>';
 
 // Opening view when the address holds none: Europe
 const VUE_INITIALE = [[-11, 35], [32, 61]];
 
 const aire = (h) => (h.maxLon - h.minLon) * (h.maxLat - h.minLat);
 
-export default function Plan({ packs }) {
+export default function Plan({ packs, liaisonInitiale }) {
   const conteneur = useRef(null);
   const [erreur, setErreur] = useState('');
+  const [avis, setAvis] = useState(false);
+  const liaison = useLiaison(liaisonInitiale);
+  const horsLiaison = !liaison?.enLigne;
+
+  function cliquer(e) {
+    if (horsLiaison && e.target.closest('a[data-externe]')) {
+      e.preventDefault();
+      setAvis(true);
+      setTimeout(() => setAvis(false), 4000);
+    }
+  }
 
   useEffect(() => {
     if (!packs.length) return;
@@ -101,7 +114,8 @@ export default function Plan({ packs }) {
   }, [packs]);
 
   return (
-    <div className="cadre">
+    // The class sits on the frame: MapLibre owns the classes of its own container
+    <div className={`cadre${horsLiaison ? ' hors-liaison' : ''}`} onClickCapture={cliquer}>
       <link rel="stylesheet" href={`${RESSOURCES}/maplibre/maplibre-gl.css`} precedence="default" />
       <nav className="barre">
         <a href="/" className="accueil">ODIN</a>
@@ -114,6 +128,7 @@ export default function Plan({ packs }) {
           Aucune carte installée. Ajoutez-en depuis <a href="/configuration">Configuration</a>, section Cartes.
         </p>
       )}
+      {avis && <p className="avis-liaison plan-avis">Lien externe : {messageHorsLigne(liaison).toLowerCase()}.</p>}
       {erreur && <p className="plan-message">{erreur}</p>}
       {packs.length > 0 && <div ref={conteneur} className="plan" />}
     </div>

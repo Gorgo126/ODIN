@@ -30,6 +30,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
+        id: image
         with:
           context: ./dashboard
           platforms: linux/amd64
@@ -40,12 +41,16 @@ jobs:
             ghcr.io/gorgo126/odin-dashboard:${{ github.sha }}
             ghcr.io/gorgo126/odin-dashboard:${{ github.ref_name }}
 
-      # Pushes made with GITHUB_TOKEN do not trigger workflows: no loop
+      # Pushes made with GITHUB_TOKEN do not trigger workflows: no loop. Pinned by tag (commit) AND
+      # digest of what was just pushed, like every other image of compose.yml
       - name: Pin compose.yml to this image
+        env:
+          EMPREINTE: ${{ steps.image.outputs.digest }}
         run: |
+          case "$EMPREINTE" in sha256:[0-9a-f]*) ;; *) echo "Empreinte absente : $EMPREINTE"; exit 1 ;; esac
           git fetch origin "$GITHUB_REF_NAME"
           git checkout -B "$GITHUB_REF_NAME" "origin/$GITHUB_REF_NAME"
-          sed -i -E "s#(image: ghcr.io/gorgo126/odin-dashboard:)[0-9a-f]{40}#\1$GITHUB_SHA#" compose.yml
+          sed -i -E "s#(image: ghcr.io/gorgo126/odin-dashboard:)[0-9a-f]{40}(@sha256:[0-9a-f]{64})?#\1$GITHUB_SHA@$EMPREINTE#" compose.yml
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

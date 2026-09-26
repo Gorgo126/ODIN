@@ -11,7 +11,7 @@ services:
       - OLLAMA_KEEP_ALIVE=30m
 
   ollama:
-    image: ollama/ollama:0.34.2
+    image: ollama/ollama:0.34.2@sha256:da6e0dc5651df159e45686fd663c4dbe1624a52c44d7280eeac1551d8f865532
     container_name: ollama
     environment:
       # No calls to ollama.com (model recommendations, cloud cache); model pulls still work

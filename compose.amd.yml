@@ -3,7 +3,7 @@
 # install.sh (COMPOSE_FILE) only when /dev/kfd exists (amdgpu driver with ROCm support).
 services:
   ollama:
-    image: ollama/ollama:0.34.2-rocm
+    image: ollama/ollama:0.34.2-rocm@sha256:5487cabc03c1f502854a30d353692468552b01bc54d36858ff92963a57cc44b3
     devices:
       - /dev/kfd
       - /dev/dri

@@ -1,7 +1,7 @@
 import { promises as fs, createReadStream } from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
-import { telechargerFlux } from './telechargements.mjs';
+import { telechargerFlux, INACTIVITE } from './telechargements.mjs';
 import { reserver, liberer, disquePlein } from './espace.mjs';
 import { ecrireJson, lireJson } from './fichiers.mjs';
 import { enLigne, HORS_LIAISON } from './liaison.mjs';
@@ -13,7 +13,8 @@ import { invaliderEspace } from './espace-cache.mjs';
 const DOSSIER = '/livres';
 const EN_COURS = path.join(DOSSIER, '.en-cours');
 const CATALOGUE = '/catalogue/livres.json';
-// Time allowed to get the HTTP response; there is no inactivity timeout once data flows
+// Time allowed to get the HTTP response; once data flows, the inactivity timeout of the ZIM packs
+// (INACTIVITE of telechargements.mjs, 30 s without data)
 const CONNEXION = 15000;
 // Room for the extracted text next to the PDF
 const MARGE = 1.15;
@@ -128,6 +129,10 @@ function messageEchec(echecs) {
   const refus = echecs.some((e) => e.raison === 'empreinte');
   const plusieurs = echecs.length > 1;
   if (!refus) {
+    // A transfer that stopped (no data for 30 s) is not an unreachable server
+    if (echecs.some((e) => e.raison === 'inactif')) {
+      return `Connexion perdue : aucune donnée reçue depuis ${INACTIVITE / 1000} s. Vérifiez l'accès à internet, puis réessayez.`;
+    }
     return plusieurs
       ? 'Source et miroir injoignables. Vérifiez l\'accès à internet, puis réessayez.'
       : 'Source injoignable. Vérifiez l\'accès à internet, puis réessayez.';
@@ -143,6 +148,7 @@ function messageEchec(echecs) {
 
 function raisonReseau(err, essai) {
   if (essai.signal.reason === 'connexion') return `pas de réponse en ${CONNEXION / 1000} s`;
+  if (essai.signal.reason === 'inactif') return `aucune donnée reçue depuis ${INACTIVITE / 1000} s`;
   if (err.message === 'fetch failed') return err.cause?.code || 'connexion impossible';
   return err.message;
 }
@@ -162,13 +168,13 @@ async function installer(livre, t, c) {
     const relayer = () => essai.abort('annule');
     c.signal.addEventListener('abort', relayer, { once: true });
     try {
-      await telechargerFlux(url, part, t, essai, { inactivite: null, connexion: CONNEXION, maximum: Math.ceil(livre.taille * 1.1) });
+      await telechargerFlux(url, part, t, essai, { inactivite: INACTIVITE, connexion: CONNEXION, maximum: Math.ceil(livre.taille * 1.1) });
     } catch (err) {
       if (c.signal.aborted) throw err;
       await fs.rm(part, { force: true });
       // A file much larger than announced was replaced at the source: same verdict as a wrong hash
-      const raison = essai.signal.reason === 'trop-gros' ? 'empreinte' : raisonReseau(err, essai);
-      console.error(`Livre ${livre.id}, ${nom} ${url} : ${raison === 'empreinte' ? 'fichier plus gros que prévu' : raison}`);
+      const raison = essai.signal.reason === 'trop-gros' ? 'empreinte' : essai.signal.reason === 'inactif' ? 'inactif' : raisonReseau(err, essai);
+      console.error(`Livre ${livre.id}, ${nom} ${url} : ${raison === 'empreinte' ? 'fichier plus gros que prévu' : raisonReseau(err, essai)}`);
       echecs.push({ nom, raison });
       continue;
     } finally {

@@ -1,7 +1,7 @@
-FROM ghcr.io/protomaps/go-pmtiles:v1.31.2 AS pmtiles
+FROM ghcr.io/protomaps/go-pmtiles:v1.31.2@sha256:06574f01f55a78f78f887bc7ebf729a5c093c0d6e17d9876300cfcb0758b59d3 AS pmtiles
 
 # Map glyphs and sprites (Protomaps basemaps-assets), pinned commit, checked archive
-FROM node:24.21.0-alpine3.23 AS ressources
+FROM node:24.21.0-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS ressources
 ARG ASSETS=028c18f713baecad011301ff7a69acc39bcc2ae7
 ARG ASSETS_SHA256=57e40e8c512bd8042d0a3a251f19d0d1c8523ad963c666c3c6643bada4dc92d0
 RUN wget -qO /tmp/assets.tgz "https://codeload.github.com/protomaps/basemaps-assets/tar.gz/$ASSETS" \
@@ -14,7 +14,7 @@ RUN wget -qO /tmp/assets.tgz "https://codeload.github.com/protomaps/basemaps-ass
 
 # PDF viewer: pdf.js prebuilt legacy build (also runs on older phones), pinned release, checked
 # archive. Static files for the browser only: nothing here runs on the server's Node.
-FROM node:24.21.0-alpine3.23 AS pdfjs
+FROM node:24.21.0-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS pdfjs
 ARG PDFJS=6.3.289
 ARG PDFJS_SHA256=51683fac4aff7dd31ed91e9ab735a2098a78d50899d1ec529aed6dc8aa19400d
 RUN wget -qO /tmp/pdfjs.zip "https://github.com/mozilla/pdf.js/releases/download/v$PDFJS/pdfjs-$PDFJS-legacy-dist.zip" \
@@ -23,7 +23,7 @@ RUN wget -qO /tmp/pdfjs.zip "https://github.com/mozilla/pdf.js/releases/download
  && find /pdfjs -name '*.map' -delete \
  && rm /pdfjs/web/compressed.tracemonkey-pldi-09.pdf
 
-FROM node:24.21.0-alpine3.23 AS build
+FROM node:24.21.0-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS build
 WORKDIR /app
 # Exact versions of every dependency, transitive ones included (package-lock.json, integrity checked)
 COPY package.json package-lock.json ./
@@ -33,7 +33,7 @@ COPY --from=ressources /r ./public/ressources-carte
 COPY --from=pdfjs /pdfjs ./public/pdfjs
 RUN npm run build
 
-FROM node:24.21.0-alpine3.23
+FROM node:24.21.0-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2
 LABEL org.opencontainers.image.source=https://github.com/Gorgo126/ODIN
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0

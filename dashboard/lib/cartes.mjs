@@ -16,6 +16,9 @@ const SCHEMA = '4.';
 // Max zoom of the Protomaps world build: the whole world at this zoom is the file itself
 const ZOOM_SOURCE = 15;
 export const FOND = 'fond';
+// Map download stopped after 2 min without progress; checked every 10 s
+const INACTIVITE_CARTE = 120000;
+const VEILLE_CARTE = 10000;
 
 // Last measured size of each pack, kept on disk so that it can be shown offline
 const MESURES = path.join(DOSSIER, 'tailles.json');
@@ -92,7 +95,12 @@ function pmtiles(args, { surSortie, signal, delai } = {}) {
       journal = (journal + s).slice(-4000);
       surSortie?.(s);
     };
-    const arreter = () => p.kill('SIGTERM');
+    // SIGKILL if it does not stop: a frozen (or stopped) process ignores SIGTERM
+    let force;
+    const arreter = () => {
+      p.kill('SIGTERM');
+      force ??= setTimeout(() => p.kill('SIGKILL'), 10000);
+    };
     const minuterie = delai && setTimeout(arreter, delai);
     signal?.addEventListener('abort', arreter, { once: true });
     p.stdout.on('data', lire);
@@ -100,6 +108,7 @@ function pmtiles(args, { surSortie, signal, delai } = {}) {
     p.on('error', reject);
     p.on('close', (code) => {
       clearTimeout(minuterie);
+      clearTimeout(force);
       signal?.removeEventListener('abort', arreter);
       if (code === 0) resolve(journal);
       else reject(new Error(derniereLigne(journal) || `pmtiles s'est arrêté (${code})`));
@@ -184,10 +193,25 @@ export async function demarrer(id) {
   etat.taches.set(id, t);
   etat.controles.set(id, c);
 
-  // No inactivity timeout: an extract has a long silent preparation phase; cancelling is manual
-  const travail = direct(pack)
-    ? telechargerFlux(build.url, part, t, c, { inactivite: null })
-    : pmtiles(argsExtraction(pack, build, part), {
+  // Stopped after INACTIVITE_CARTE without progress. Whole file: no data received (telechargerFlux),
+  // the partial file is kept for a resume. Extract: pmtiles reserves the whole file at once, so its
+  // size says nothing; progress is a new percentage, a new log line (preparation: « fetching N dirs »,
+  // « Region tiles ») or more blocks actually written (measured: they grow between two percentages).
+  let veille;
+  let travail;
+  if (direct(pack)) {
+    travail = telechargerFlux(build.url, part, t, c, { inactivite: INACTIVITE_CARTE });
+  } else {
+    let dernier = Date.now();
+    let pctVu = -1;
+    let blocs = 0;
+    const avance = () => { dernier = Date.now(); };
+    veille = setInterval(async () => {
+      const b = (await fs.stat(part).catch(() => null))?.blocks || 0;
+      if (b > blocs) { blocs = b; avance(); }
+      if (Date.now() - dernier > INACTIVITE_CARTE) c.abort('inactif');
+    }, VEILLE_CARTE);
+    travail = pmtiles(argsExtraction(pack, build, part), {
       signal: c.signal,
       surSortie: (s) => {
         // Progress bar: "fetching chunks  42% |"
@@ -195,9 +219,11 @@ export async function demarrer(id) {
         if (pct) {
           t.preparation = false;
           t.recu = Math.round((total * Number(pct[1])) / 100);
-        }
+          if (Number(pct[1]) > pctVu) { pctVu = Number(pct[1]); avance(); }
+        } else if (/\.go:\d+: /.test(s)) avance();
       }
     });
+  }
 
   travail
     .then(async () => {
@@ -213,9 +239,11 @@ export async function demarrer(id) {
         return;
       }
       t.etat = 'erreur';
-      t.erreur = disquePlein(err) || (err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?' : err.message);
+      t.erreur = disquePlein(err) || (c.signal.reason === 'inactif'
+        ? `Connexion perdue : aucune progression depuis ${INACTIVITE_CARTE / 60000} minutes. Réessayez${direct(pack) ? ' : le téléchargement reprendra où il s\'est arrêté' : ''}.`
+        : err.message === 'fetch failed' ? 'Connexion impossible : internet est-il joignable ?' : err.message);
     })
-    .finally(() => { etat.controles.delete(id); liberer(`carte:${id}`); invaliderEspace(); });
+    .finally(() => { clearInterval(veille); etat.controles.delete(id); liberer(`carte:${id}`); invaliderEspace(); });
   return t;
 }
 

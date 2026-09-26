@@ -205,6 +205,9 @@ select option:checked { background-color: var(--or); color: #111; }
 .plan { flex: 1; min-height: 0; }
 .plan-message { padding: 2rem 1rem; }
 .plan-message a { color: var(--or); }
+/* Offline: the attribution stays readable (licence), its links are greyed and blocked */
+.cadre.hors-liaison .maplibregl-ctrl-attrib a[data-externe] { opacity: .5; cursor: not-allowed; text-decoration: line-through; }
+.plan-avis { position: absolute; right: .6rem; bottom: 2.6rem; z-index: 5; max-width: calc(100% - 1.2rem); margin: 0; background: Canvas; }
 
 /* Connectivité externe (carte « liaison », code interne) */
 .liaison { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); clip-path: var(--biseau); }

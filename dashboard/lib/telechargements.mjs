@@ -12,7 +12,7 @@ import { invaliderEspace } from './espace-cache.mjs';
 const DATA = '/data';
 const LIB = path.join(DATA, 'library.xml');
 const VIDE = '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n';
-const INACTIVITE = 30000;
+export const INACTIVITE = 30000;
 // Time allowed to a mirror to answer before the next one is tried
 const CONNEXION = 15000;
 const taches = globalThis.__odinTaches ??= new Map();
