@@ -36,6 +36,11 @@ function convertir(adresse, base, type) {
   if (m && type === 'lien' && !m[2].startsWith('_')) {
     return { url: `/lire/${m[1]}/${m[2]}${u.hash}` };
   }
+  // Kiwix's own pages are not served (Caddyfile): its search becomes ODIN's, the rest the library page
+  if (!m && type === 'lien') {
+    const q = u.pathname === '/kiwix/search' ? u.searchParams.get('pattern') : null;
+    return { url: q ? `/recherche?q=${encodeURIComponent(q)}` : '/encyclopedie' };
+  }
   return { url: u.pathname + u.search + u.hash };
 }
 

@@ -63,8 +63,9 @@
 		}
 	}
 
+	# No authentication needed here: nothing of Kiwix is served (redir would run before forward_auth
+	# anyway), and /encyclopedie asks for the password itself
 	handle /kiwix* {
-		import protege
 		redir * /encyclopedie 302
 	}
 
