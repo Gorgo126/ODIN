@@ -23,6 +23,8 @@ a.carte em { margin-left: .5rem; }
 .connexion form { display: flex; flex-direction: column; gap: .6rem; }
 .connexion input, .connexion button { font: inherit; padding: .6rem .8rem; border-radius: .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; }
 .connexion button { cursor: pointer; }
+.connexion-mur { display: block; margin-top: 1.6rem; padding: .75rem .9rem; border: 1px solid var(--or); color: var(--or); text-align: center; text-decoration: none; font-family: var(--mono); font-size: .9rem; letter-spacing: .04em; box-shadow: var(--relief); }
+.connexion-mur:hover, .connexion-mur:focus { background: var(--or); color: #111; }
 .deconnexion { float: right; font-size: .8rem; font-weight: normal; opacity: .6; color: inherit; }
 .cadre { position: fixed; inset: 0; display: flex; flex-direction: column; background: Canvas; }
 .barre { display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-bottom: 1px solid var(--bord); font-size: .9rem; white-space: nowrap; overflow: hidden; }

@@ -30,6 +30,8 @@ export default async function Connexion({ searchParams }) {
         {erreur && <p className="erreur">{MESSAGES[erreur] || 'Erreur.'}</p>}
         <button>{premier ? 'Définir le mot de passe' : 'Se connecter'}</button>
       </form>
+      {/* The message wall is public: a visitor without the password finds it from here */}
+      <a href="/messages" className="connexion-mur">Mur de messages — accès libre</a>
     </main>
   );
 }
