@@ -6,7 +6,7 @@
 
 Un serveur de connaissances **100 % hors ligne**, installable en une commande sur Ubuntu ou Debian.<br>
 Wikipédia, des livres, des cartes, des fiches pratiques et vos documents, avec une recherche qui comprend vos questions,<br>
-pour tous les appareils du réseau local.
+et un mur de messages pour tous les appareils du réseau local.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-c8963e?style=flat-square)](#licence)
 [![Ubuntu 24.04 · Debian 12](https://img.shields.io/badge/Ubuntu%2024.04%20·%20Debian%2012-2b2b2b?style=flat-square&logo=linux&logoColor=white)](#installation)
@@ -40,16 +40,18 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 | | Service | Ce qu'il fait |
 |---|---|---|
 | 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de l'encyclopédie, de la bibliothèque et des fiches pratiques, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
-| 📚 | **Encyclopédie** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
+| 📚 | **Encyclopédie** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte. Les articles s'ouvrent dans le lecteur d'ODIN, lisible sur téléphone, qui grise les liens vers internet quand il n'est pas joignable. |
 | 📖 | **Bibliothèque** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. Aucun n'est encore proposé : le premier attend l'accord de son éditeur (voir Licences). |
 | ❓ | **Comment faire ?** | Les fiches pratiques du blog d'[odin-node.com](https://odin-node.com) (eau, abri, feu, premiers secours, énergie…), avec leurs schémas, installées une fois puis lisibles et cherchables hors ligne. |
 | 📁 | **Documents personnels** | Un espace de fichiers partagé, accessible depuis n'importe quel navigateur du réseau. |
 | 🗺️ | **Cartes** | Cartes OpenStreetMap consultables hors ligne. Un fond mondial est installé d'office ; on ajoute les régions voulues (pays, continent, monde), jusqu'au niveau des rues. Étiquettes en français. |
+| 💬 | **Messages** | Un mur de messages partagé par les appareils du réseau local (« parti chercher de l'eau, retour 16 h »), **sans mot de passe** : un simple pseudo suffit. |
 | 🌍 | **Traduction** | Traduction de textes sur le serveur, sans internet : français et anglais inclus, 48 autres langues à ajouter en un clic (allemand, espagnol, arabe, ukrainien…). |
 | 🖥️ | **Tableau de bord** | L'état des services, la recherche, le stockage, et l'ajout de contenus en un clic tant qu'une connexion est disponible. La page **État du serveur** montre disque, mémoire, conteneurs, versions et la place prise par chaque contenu. |
 | 🤖 | **Assistant IA** (option) | Sur une machine avec une carte graphique d'au moins 8 Go : il rédige une réponse à partir des passages trouvés, en citant ses sources. |
 
-L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite.
+L'accès est protégé par **un mot de passe unique**, choisi lors de la première visite. Seul le mur de
+messages est ouvert à tous les appareils du réseau local : la page de connexion y mène directement.
 
 ### Contenus disponibles
 
@@ -132,6 +134,16 @@ avec [LibreTranslate](https://libretranslate.com) et les modèles [Argos Transla
 - La liste des langues proposées est dans [`catalogue/traduction.json`](catalogue/traduction.json)
   (adresse, taille et empreinte de chaque modèle).
 
+### Le mur de messages
+
+La page **Messages** (`/messages`) est un fil unique, du plus récent au plus ancien, pensé pour le
+téléphone. Chacun écrit sous un pseudo libre, mémorisé dans son navigateur, sans compte ni mot de passe ;
+un message fait 500 caractères au plus, en texte brut. Les nouveaux messages arrivent tout seuls en
+quelques secondes, et l'heure (« il y a 12 min ») vient de l'horloge du serveur, jamais de celle du
+téléphone. Les messages de plus de 30 jours partent d'eux-mêmes, et le mur en garde 2 000 au plus. Un
+appareil ne peut pas publier plus d'un message toutes les 3 secondes. Seule une personne connectée à
+ODIN peut supprimer un message.
+
 ### L'état du serveur
 
 Un bandeau discret en bas de l'accueil résume l'état du serveur : disque, mémoire, conteneurs en bonne
@@ -148,8 +160,8 @@ si un conteneur est arrêté, redémarre en boucle ou échoue à son test de san
   « Désinstaller », le même que dans Configuration.
 
 Le tableau de bord n'a pas accès au socket Docker : il lit l'état des conteneurs à travers un relais
-filtré (`socket-proxy`) qui ne laisse passer que la liste des conteneurs et les informations générales
-de Docker, en lecture seule.
+filtré (`socket-proxy`) qui ne laisse passer que la liste des conteneurs et la version de Docker, en
+lecture seule. Il tourne lui-même sans les droits root, et sans aucun privilège.
 
 ### L'assistant IA (option)
 
@@ -200,7 +212,8 @@ Il n'est jamais nécessaire pour **l'utiliser**.
 ## Architecture
 
 Tout passe par **Caddy**, la seule porte d'entrée. Caddy vérifie la session auprès du tableau de bord
-(`forward_auth`), puis transmet chaque requête au bon service.
+(`forward_auth`), puis transmet chaque requête au bon service. Sans mot de passe, seuls passent la page
+de connexion et le mur de messages (lecture et publication).
 
 ```mermaid
 flowchart TB
@@ -221,20 +234,23 @@ flowchart TB
 | Service | Image (version figée) | Rôle |
 |---|---|---|
 | `caddy` | `caddy:2.11.4-alpine` | Porte d'entrée, routage, authentification déléguée au tableau de bord. |
-| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche avancée (index SQLite de vos documents), lecteur d'articles, fiches « Comment faire ? », carte (MapLibre GL), ajout de packs et, en option, l'assistant IA. Contient l'outil `pmtiles` qui extrait les régions. |
+| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche avancée (index SQLite de vos documents), lecteur d'articles, fiches « Comment faire ? », carte (MapLibre GL), mur de messages (SQLite), ajout de packs et, en option, l'assistant IA. Contient l'outil `pmtiles` qui extrait les régions. Tourne sous un utilisateur ordinaire (uid 1000), sans aucune capacité. |
+| `droits` | la même image | Passe un instant avant le tableau de bord, puis s'arrête : rend au tableau de bord les dossiers de données qui ne lui appartiennent pas (après une mise à jour), sans jamais tout reparcourir en force. Seul droit : changer un propriétaire ; aucun réseau. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Moteur des archives ZIM de `data/zim` (articles lus dans le lecteur d'ODIN, son interface n'est pas servie). Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
 | `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
 | `libretranslate` | `libretranslate/libretranslate:v1.9.6` | Traduction hors ligne (modèles Argos, sur le processeur). Sur un réseau Docker interne, sans aucune route vers internet : seul le tableau de bord le joint. Ses modèles sont installés par le tableau de bord et montés en lecture seule. |
-| `socket-proxy` | `wollomatic/socket-proxy:1.13.1` (empreinte figée) | Relais du socket Docker pour la page État du serveur. Seules deux lectures passent (liste des conteneurs, informations de Docker) ; tout le reste est refusé, y compris le détail d'un conteneur (ses variables d'environnement) et ses journaux. Réseau interne, seul le tableau de bord peut s'y connecter. |
+| `socket-proxy` | `wollomatic/socket-proxy:1.13.1` (empreinte figée) | Relais du socket Docker pour la page État du serveur. Seules deux lectures passent (liste des conteneurs, version de Docker) ; tout le reste est refusé, y compris le détail d'un conteneur (ses variables d'environnement) et ses journaux. Réseau interne, seul le tableau de bord peut s'y connecter. |
 | `ollama` | `ollama/ollama:0.34.2` | **Option IA seulement** (`compose.ia.yml`), sur une machine équipée d'une carte graphique : modèle de langage de l'assistant. Absent de l'installation par défaut. |
 
 Caddy sert aussi les fichiers de cartes sur `/tuiles`, avec les requêtes par plage : le navigateur
 ne lit que les tuiles affichées.
 
-Toutes les images sont **figées sur une version précise**. Une montée de version se fait
-volontairement, après test. L'image du tableau de bord est construite par GitHub Actions pour chaque
-branche, et `compose.yml` est figé automatiquement sur celle-ci.
+Toutes les images sont **figées sur une version précise et sur son empreinte** (`image:version@sha256:…`,
+celle de la liste multi-architecture) : une image republiée sous le même numéro ne serait pas prise.
+Une montée de version se fait volontairement, après test. L'image du tableau de bord est construite
+par GitHub Actions pour chaque branche, et `compose.yml` est figé automatiquement sur celle-ci, version
+et empreinte ensemble.
 
 ### Arborescence
 
@@ -255,6 +271,7 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── vecteurs/        #   modèle de la recherche avancée (EmbeddingGemma, 334 Mo)
     ├── assistant/       #   index de vos documents pour la recherche avancée (SQLite)
     ├── traduction/      #   modèles de traduction (français et anglais : 158 Mo)
+    ├── messages/        #   mur de messages (SQLite)
     └── config/          #   mot de passe (haché avec scrypt), version installée,
                          #   fiches « Comment faire ? » (guides/)
 ```
@@ -270,9 +287,12 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 - **Aucun service ne vérifie ses mises à jour** : le service de vecteurs lit son modèle sur le disque,
   FileBrowser tourne sans vérification de version, et Ollama (option IA) avec `OLLAMA_NO_CLOUD=true`.
 - **Chaque appel réseau d'ODIN a un délai.** Hors ligne, le catalogue répond « injoignable » en
-  2 secondes, et un téléchargement interrompu s'arrête après 30 secondes sans données. On peut
+  2 secondes. Un téléchargement bloqué s'arrête de lui-même : après 30 secondes sans données pour
+  l'encyclopédie, les livres et les langues, après 2 minutes sans progression pour les cartes. On peut
   aussi l'annuler, ou le reprendre plus tard là où il s'était arrêté. Les tailles des packs restent
   affichées hors ligne.
+- **Les liens vers internet sont grisés** quand il n'est pas joignable : dans les articles, les fiches,
+  les licences et l'attribution de la carte (qui reste toujours affichée).
 - **Rien n'est vérifié en tâche de fond** : les fiches « Comment faire ? » ne consultent le site que sur
   demande (« Vérifier les mises à jour »), et les boutons qui demandent internet sont grisés sans lui.
 - **Testé réellement déconnecté** : [`scripts/hors-ligne.sh`](scripts/hors-ligne.sh) coupe internet
@@ -304,7 +324,8 @@ les adresses où joindre ODIN.
 ### Première visite
 
 1. Depuis n'importe quel appareil du réseau, ouvrez **http://odin.local**, ou l'adresse IP affichée à la fin de l'installation.
-2. Choisissez le mot de passe qui protégera ODIN.
+2. Choisissez le mot de passe qui protégera ODIN. Le mur de messages, lui, reste ouvert sans mot de passe
+   (lien sur la page de connexion).
 3. Dans **Configuration**, installez les contenus, les cartes, les langues de traduction et les fiches « Comment faire ? » voulus tant que la connexion est disponible.
 4. Posez une question dans la barre de recherche, en langage courant : « comment rendre l'eau potable ? ».
 
