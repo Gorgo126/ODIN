@@ -2,6 +2,7 @@ import { normaliser, motsRequete, phraseRequete, positions } from './normalisati
 import { lireIndex, lienArticle } from './guides-index.mjs';
 import { extrait } from './recherche-livres.mjs';
 import { clesUtiles } from '../assistant/bm25.mjs';
+import { forme } from '../assistant/synonymes.mjs';
 
 // Keyword search in the « Comment faire ? » articles, section by section (the index built at
 // installation: guides.json). Same rules as the books: every word in the section, occurrences, bonus
@@ -14,11 +15,13 @@ function sections(index) {
     memo.sections = index.articles.flatMap((a) => {
       // « keywords » of the manifest: synonyms of the whole article, as good as its title
       const cles = clesUtiles(a.keywords);
+      const phrases = (a.keywords || []).map(forme).filter((k) => k.trim().length >= 2);
       return a.sections.map((s) => ({
         a,
         s,
         norm: normaliser(`${s.titre} ${s.texte}`).replace(/\s+/g, ' '),
-        titres: `${normaliser(`${a.title} ${s.titre}`)} ${cles}`
+        titres: `${normaliser(`${a.title} ${s.titre}`)} ${cles}`,
+        phrases
       }));
     });
   }
@@ -31,12 +34,15 @@ export async function chercherDansGuides(q, nombre = 5) {
   if (!mots.length || !index) return { total: 0, resultats: [] };
   const phrase = phraseRequete(q);
   const meilleurs = new Map();
+  // A whole keyword in the question (numbers kept: « appeler le 112 »): its article comes first
+  const question = forme(q);
   for (const x of sections(index)) {
-    let score = 0;
+    const exact = x.phrases.some((k) => question.includes(k));
+    let score = exact ? 1000 : 0;
     // Every word in the section, or among the article's keywords
     for (const m of mots) {
       const k = positions(x.norm, m, 10).length || positions(x.titres, m, 1).length;
-      if (!k) { score = 0; break; }
+      if (!k && !exact) { score = 0; break; }
       score += k;
     }
     if (!score) continue;
