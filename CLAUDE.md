@@ -312,7 +312,23 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   courant + nombre) ; « coupure de courant » correspondait mais sans aucun bonus. Résultat : coupure de courant →
   autonomie électrique 1re, fort (cos 0,359 +0,101) ; appeler le 112 → premiers-secours 2e, fort, 0,568 (cosinus réel :
   il manquait seulement parmi les candidats) ; plus d'électricité → autonomie 1re, fort ; je suis perdu → orientation fort ;
-  les 6 autres identiques. « fort » à 0,44 simulé : aucun changement depuis e22ef57 (avant : seulement « je suis perdu »). Contre un site simulé (fetch remplacé,
+  les 6 autres identiques. « fort » à 0,44 simulé : aucun changement depuis e22ef57 (avant : seulement « je suis perdu »).
+  Correspondance graduée (2026-09-26, 52e0a67), parce qu'un mot-clé d'un seul mot générique forçait des hors-sujet en fort
+  (coup de soleil → orientation par « soleil », radio du thorax → communication par « radio », batterie de voiture à plat →
+  énergie ET communication par « batterie », savon pour bébé → hygiène par « savon », cosinus 0,28 à 0,36) :
+  correspondance() et motsClesExacts() de source-guides.mjs. Mots porteurs de sens d'un mot-clé = peutEtreNom ou nombre ;
+  couverture = part des mots utiles de la question (motsUtiles : 3 lettres, pas un mot outil ; « bébé » compte ; tous ses
+  mots si elle n'en a aucun) présents dans le mot-clé. COMPLET si le mot-clé a 2 mots porteurs de sens ou plus, OU couvre
+  2/3 de la question : priorité parmi les candidats et les paragraphes vectorisés, puis en tête de sa source et fort.
+  MODÉRÉ sinon : pas de priorité, +0,05 (BONUS_MODERE) sans jamais franchir fort par le bonus. Planchers : 0,25 pour un
+  mot-clé de plusieurs mots porteurs de sens, 0,35 s'il n'en a qu'un (complet par couverture, ou modéré). Mot-clé complet
+  partagé par plusieurs articles : seul le meilleur cosinus est forcé, les autres reçoivent le bonus modéré. Même règle dans
+  la recherche par mots-clés (complet +1000, modéré +3). 16 questions : les 10 de référence inchangées (coupure de courant,
+  plus d'électricité, je suis perdu en fort ; appeler le 112 : premiers-secours 2e, fort par son cosinus) ; coup de soleil et
+  radio du thorax : l'article hors sujet disparaît (sous le plancher) ; batterie de voiture à plat : plus rien en fort,
+  « Rester joignable » proche 0,409 (autonomie électrique n'est plus parmi les candidats : aucun article ne traite des
+  batteries de voiture) ; savon pour bébé : hygiène proche 0,406 derrière WikiMed Savon et le livre ; j'ai froid aux mains et
+  ma montre ne marche plus : inchangés. Tests : tests/guides-recherche.test.mjs. Contre un site simulé (fetch remplacé,
   GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
   bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
   9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
