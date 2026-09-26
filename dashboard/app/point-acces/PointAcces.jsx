@@ -20,7 +20,8 @@ function Informations({ e }) {
 
 // The three cases, the one of this machine put forward
 function Cas({ e }) {
-  const cas = !e.modeAP ? 'carte' : e.routeParDefaut ? 'wifi' : e.autreConnexion ? 'cable' : 'aucune';
+  // A cable keeps internet even when the Wi-Fi card also carries a connection
+  const cas = !e.modeAP ? 'carte' : e.autreConnexion ? 'cable' : e.routeParDefaut ? 'wifi' : 'aucune';
   const ligne = (id, titre, texte) => (
     <li className={cas === id ? 'pa-cas-machine' : undefined}>
       {cas === id && <span className="pa-cas-marque">Votre cas</span>}
@@ -29,7 +30,7 @@ function Cas({ e }) {
   );
   return (
     <ul className="pa-cas">
-      {ligne('cable', 'Connexion par câble :', 'internet est conservé. Le Wi-Fi sert seulement au réseau d\'ODIN.')}
+      {ligne('cable', 'Connexion par câble :', `internet est conservé. Le Wi-Fi sert seulement au réseau d'ODIN${e.routeParDefaut ? ' : sa connexion actuelle à la box est coupée, internet passe par le câble' : ''}.`)}
       {ligne('wifi', 'Connexion en Wi-Fi seulement :', 'internet est coupé tant que le point d\'accès est actif. La carte Wi-Fi ne peut pas être à la fois connectée à la box et servir le réseau d\'ODIN.')}
       {ligne('carte', 'Sans carte Wi-Fi compatible :', `le point d'accès est impossible. ${RAISONS[e.raison] || ''}`)}
       {cas === 'aucune' && <li className="pa-cas-machine"><span className="pa-cas-marque">Votre cas</span><strong>Aucune connexion à internet détectée :</strong> rien ne sera coupé.</li>}

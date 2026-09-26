@@ -446,10 +446,16 @@ prendre_carte() {
     # 00- sorts before netplan's 10-netplan-<if>.network, and /etc wins over /run: first match
     mkdir -p "$(dirname "$NETWORKD_CONF")"
     printf '# ODIN : interface du point d'"'"'accès Wi-Fi, laissée à scripts/point-acces.sh\n[Match]\nName=%s\n\n[Link]\nUnmanaged=yes\n' "$INTERFACE" > "$NETWORKD_CONF"
+    # Never a daemon-reload here (nor mask, enable or disable without --no-reload): it makes netplan's
+    # generator rewrite every .network file, and the next « networkctl reload » then reconfigures the
+    # Ethernet too (DHCP lease renewed; seen on the test VM). A reload alone touches changed files only.
     networkctl reload 2>/dev/null
     if [ "$WPA" = oui ]; then
-      # Masked in /etc (over netplan's unit in /run): it would start again at boot
-      systemctl mask "netplan-wpa-$INTERFACE.service" >/dev/null 2>&1
+      # netplan's wpa_supplicant must not start at boot while the card is taken: a condition in a
+      # drop-in (read at boot), instead of a mask (which needs a daemon-reload to be undone)
+      mkdir -p "$SYSTEMD/netplan-wpa-$INTERFACE.service.d"
+      printf '# ODIN : carte prise par le point d'"'"'accès Wi-Fi\n[Unit]\nConditionPathExists=!%s\n' "$ETC/carte-prise" > "$SYSTEMD/netplan-wpa-$INTERFACE.service.d/odin-point-acces.conf"
+      touch "$ETC/carte-prise"
       systemctl stop "netplan-wpa-$INTERFACE.service" 2>/dev/null
     fi
   fi
@@ -472,9 +478,10 @@ rendre_carte() {
     timeout 10 nmcli --wait 0 connection up uuid "$CONNEXION" >/dev/null 2>&1
   fi
   if [ -f "$NETWORKD_CONF" ] || [ "$GESTIONNAIRE" = networkd ]; then
-    rm -f "$NETWORKD_CONF"
-    systemctl unmask "netplan-wpa-$INTERFACE.service" >/dev/null 2>&1
+    rm -f "$NETWORKD_CONF" "$ETC/carte-prise" "$SYSTEMD/netplan-wpa-$INTERFACE.service.d/odin-point-acces.conf"
+    rmdir "$SYSTEMD/netplan-wpa-$INTERFACE.service.d" 2>/dev/null
     networkctl reload 2>/dev/null
+    # The condition is checked at start: without carte-prise, netplan's wpa_supplicant starts again
     [ "$WPA" = oui ] && systemctl start "netplan-wpa-$INTERFACE.service" 2>/dev/null
     networkctl reconfigure "$INTERFACE" 2>/dev/null
   fi
@@ -544,7 +551,7 @@ etat_demarrage() {
 verrouiller() { exec 9>"$VERROU" && flock -w "${1:-180}" 9; }
 
 arreter_unites() {
-  systemctl disable odin-point-acces.target >/dev/null 2>&1
+  systemctl disable --no-reload odin-point-acces.target >/dev/null 2>&1
   systemctl stop odin-point-acces.target odin-hostapd.service odin-dnsmasq.service odin-point-acces-reseau.service 2>/dev/null
   systemctl reset-failed odin-hostapd.service odin-dnsmasq.service odin-point-acces-reseau.service odin-point-acces-echec.service 2>/dev/null
 }
@@ -603,7 +610,7 @@ activer() {
   sauver_origine
   if lancer_et_verifier; then
     echo actif > "$ETC/voulu"
-    systemctl enable odin-point-acces.target >/dev/null 2>&1
+    systemctl enable --no-reload odin-point-acces.target >/dev/null 2>&1
     noter_action activer ok; ecrire_etat
     echo "Réseau Wi-Fi : $SSID, mot de passe : $(<"$ETC/mot-de-passe") (adresse : http://$ADRESSE)"
     return 0
@@ -656,7 +663,7 @@ lancer_et_verifier_repli() {
   generer_configurations
   if lancer_et_verifier; then
     echo actif > "$ETC/voulu"
-    systemctl enable odin-point-acces.target >/dev/null 2>&1
+    systemctl enable --no-reload odin-point-acces.target >/dev/null 2>&1
     return 0
   fi
   arreter_unites
@@ -725,15 +732,17 @@ installer() {
   INTERFACE=$ancien_if; PAYS_CODE=${PAYS_CODE:-$(pays)}
   ecrire_parametres
 
-  local f
+  # daemon-reload only when a unit changed: every daemon-reload makes netplan rewrite its .network
+  # files, and the next « networkctl reload » of a switch would then renew the Ethernet lease
+  local f recharger=
   for f in "${UNITES[@]}"; do
-    ecrire_si_change "$SYSTEMD/$f" "$(remplir "$MODELES/$f" SCRIPT "$SCRIPT" RUN "$RUN" ETC "$ETC" DATA "$DATA")" 644
+    ecrire_si_change "$SYSTEMD/$f" "$(remplir "$MODELES/$f" SCRIPT "$SCRIPT" RUN "$RUN" ETC "$ETC" DATA "$DATA")" 644 && recharger=1
   done
   # The distribution's hostapd stays masked: ODIN starts its own
-  systemctl mask hostapd.service >/dev/null 2>&1
-  systemctl daemon-reload
-  systemctl enable odin-point-acces-etat.service >/dev/null 2>&1
-  systemctl enable --now odin-point-acces-demande.path >/dev/null 2>&1
+  if [ "$(systemctl is-enabled hostapd.service 2>/dev/null)" != masked ]; then systemctl mask --no-reload hostapd.service >/dev/null 2>&1; recharger=1; fi
+  [ -n "$recharger" ] && systemctl daemon-reload
+  systemctl enable --no-reload odin-point-acces-etat.service odin-point-acces-demande.path >/dev/null 2>&1
+  systemctl start odin-point-acces-demande.path 2>/dev/null
 
   # Lots 1 and 2 enabled the target at installation: that access point stays wanted
   if [ ! -f "$ETC/voulu" ] && systemctl is-enabled --quiet odin-point-acces.target 2>/dev/null; then echo actif > "$ETC/voulu"; fi
