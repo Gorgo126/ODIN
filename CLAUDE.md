@@ -503,6 +503,27 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   privée donnerait « échec » sans page de portail ; DNS privé / DoH forcé ; « odin.lan » pris pour une recherche.
   Premier test réel prévu : Ubuntu desktop en clé USB live (NetworkManager).
 
+- Mur de messages (2026-09-26, dev) : /messages, un seul fil public pour les appareils du réseau local, SANS le mot de passe
+  ODIN. Caddyfile @messages : path /messages /api/messages ET method GET HEAD POST, rien d'autre (suppression
+  /api/messages/<id> derrière forward_auth, revérifiée par la route ; verifier/route.js répond 401 JSON pour /api/messages*).
+  Caddy compare les chemins sans casse : /MESSAGES arrive à Next, qui répond 404. lib/messages.mjs : node:sqlite par
+  process.getBuiltinModule (webpack ne le voit pas), base ${DATA_DIR}/messages/messages.db (volume /messages de compose.yml,
+  MESSAGES_DOSSIER pour les tests), WAL, schéma créé s'il manque. Messages {id AUTOINCREMENT, pseudo 30, texte 500 caractères
+  (points de code), date serveur} ; texte brut (React échappe ; contrôles et bidi retirés). Purge : plus de 30 jours et au-delà
+  de 2000, à chaque envoi et au plus toutes les 5 min à la lecture. Génération (table meta, départ = Date.now() à la création) :
+  change à chaque suppression ou purge ; GET ?since=<id>&gen=<g> ne renvoie la suite que si la génération est la même, sinon
+  tout (complet). Chaque réponse porte maintenant (horloge du serveur) : l'heure relative se calcule avec l'écart
+  serveur − téléphone. Un envoi toutes les 3 s par IP (X-Forwarded-For de Caddy, mémoire du processus), POST en JSON seulement
+  (pas de formulaire d'un autre site). Pseudo dans localStorage (odin-pseudo). Interrogation toutes les 5 s, suspendue quand
+  l'onglet est caché. Carte « Messages » de l'accueil (toujours active). Tests : tests/messages.test.mjs (node 22.13+, dans le
+  conteneur, commande en tête).
+  Vérifié sur odintest (756a233) : 6 tests ; chemins publics avant/après comparés (seuls /messages et GET/POST /api/messages
+  changent) ; deux Chromium par Caddy (visiteur sans cookie en 390 px, connecté) : message vu de l'autre côté en 5,3 s et
+  1,8 s, 429, 400 à 501 caractères, HTML affiché tel quel, pseudo gardé, suppression refusée au visiteur (401) puis faite par
+  le connecté (disparue chez le visiteur en 4,9 s), /configuration et / renvoient le visiteur à la connexion, aucune requête
+  vers un autre hôte ; messages gardés après docker compose restart dashboard et après l'installeur (image publiée).
+  NON VÉRIFIÉ : vrais téléphones, VM vierge, hors ligne, point d'accès Wi-Fi (le portail captif ne touche pas un Host d'ODIN).
+
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
 Une montée de version se fait volontairement, une image à la fois, après test sur odintest puis hors ligne.
 Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
@@ -754,7 +775,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
   RAM mesurée sur odintest pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
-Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /comment-faire, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
+Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /messages (public), /configuration, /traduction, /sante, /comment-faire, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
 
 ## Recherche avancée : règles de score et banc de mesure
