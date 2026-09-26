@@ -1,77 +1,66 @@
 #!/usr/bin/env bash
+# Adds a Kiwix pack from the command line, through the dashboard itself: its API, called inside its
+# container (no password needed there). Same catalogue, mirrors, throughput test, SHA-256, disk space
+# check and library.xml as the Configuration page; nothing is copied here. The dashboard must run.
+#
+#   scripts/ajouter.sh --liste      packs of catalogue/packs.txt, their size and state
+#   scripts/ajouter.sh <id>         downloads and installs the pack, with its progress
+#
+# Ctrl+C stops the display only: the download goes on in ODIN (Configuration → Encyclopédie).
 set -euo pipefail
 
-ODIN="$(cd "$(dirname "$0")/.." && pwd)"
-CATALOGUE="$ODIN/catalogue/packs.txt"
-# Data folder: DATA_DIR of .env (relative to ODIN unless absolute), as install.sh and compose.yml
-DATA=$(sed -n 's/^DATA_DIR=//p' "$ODIN/.env" 2>/dev/null | tail -1); DATA=${DATA:-./data}
-case "$DATA" in /*) ;; *) DATA="$ODIN/${DATA#./}" ;; esac
-ZIM_DIR="$DATA/zim"
-OPDS="https://library.kiwix.org/catalog/v2/entries"
-
-# Une ligne par variante disponible : variante<TAB>url<TAB>octets
-variantes() {
-  curl -fsSL "$OPDS?name=$1&count=20" | awk '
-    /<flavour>/ { v=$0; gsub(/.*<flavour>|<\/flavour>.*/, "", v) }
-    /acquisition\/open-access/ {
-      match($0, /href="[^"]*"/);    h=substr($0, RSTART+6, RLENGTH-7)
-      match($0, /length="[0-9]*"/); t=substr($0, RSTART+8, RLENGTH-9)
-      print v "\t" h "\t" t
-    }'
-}
-
-choisir() { variantes "$1" | awk -F'\t' -v v="$2" '$1==v || v=="-" {print; exit}'; }
-taille()  { numfmt --to=iec --suffix=o "$1" 2>/dev/null || echo "$1 o"; }
-packs()   { grep -v -e '^#' -e '^$' "$CATALOGUE"; }
-
-if [ $# -eq 0 ] || [ "$1" = "--liste" ]; then
-  echo "Packs disponibles :"
-  packs | while IFS='|' read -r id nom var libelle; do
-    octets=$(choisir "$nom" "$var" | cut -f3) || true
-    if [ -n "$octets" ]; then
-      printf "  %-20s %8s  %s\n" "$id" "$(taille "$octets")" "$libelle"
-    else
-      printf "  %-20s %8s  %s\n" "$id" "" "$libelle  [introuvable]"
-    fi
-  done
-  echo
-  echo "Installer : $0 <identifiant>"
-  exit 0
-fi
-
-IFS='|' read -r _ nom var libelle <<< "$(packs | awk -F'|' -v id="$1" '$1==id')"
-[ -n "$nom" ] || { echo "Pack inconnu : $1 — voir $0 --liste"; exit 1; }
-
-choix=$(choisir "$nom" "$var") || true
-if [ -z "$choix" ]; then
-  echo "Variante « $var » introuvable pour $nom. Disponibles :"
-  variantes "$nom" | cut -f1 | sed 's/^/  /'
+CONTENEUR=dashboard
+if ! docker inspect -f '{{.State.Running}}' "$CONTENEUR" 2>/dev/null | grep -q true; then
+  echo "Le dashboard d'ODIN ne tourne pas (docker compose up -d dans /opt/odin, puis relancez)." >&2
   exit 1
 fi
 
-url=$(cut -f2 <<< "$choix"); url="${url%.meta4}"
-octets=$(cut -f3 <<< "$choix")
-fichier=$(basename "$url")
+trap 'echo; echo "Affichage arrêté : le téléchargement continue dans ODIN (Configuration → Encyclopédie)."; exit 0' INT
 
-if [ -f "$ZIM_DIR/$fichier" ]; then
-  echo "Déjà à jour : $fichier"
-  exit 0
-fi
+# The same small program for both uses: listing, or installing and following one pack
+docker exec -i "$CONTENEUR" node - "${1:---liste}" <<'JS'
+const API = 'http://127.0.0.1:3000/api/packs';
+const arg = process.argv[2];
+const taille = (n) => {
+  if (!n) return '?';
+  const u = ['o', 'Ko', 'Mo', 'Go', 'To'];
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return `${n.toFixed(n < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
+};
+const lire = async () => (await fetch(API, { cache: 'no-store' })).json();
 
-libre=$(df --output=avail -B1 "$ZIM_DIR" | tail -1)
-if [ "$libre" -le "$octets" ]; then
-  echo "Espace insuffisant : il faut $(taille "$octets"), il reste $(taille "$libre")."
-  exit 1
-fi
-
-echo "Téléchargement : $libelle ($(taille "$octets"))"
-wget -c -q --show-progress -O "$ZIM_DIR/$fichier.part" "$url"
-mv "$ZIM_DIR/$fichier.part" "$ZIM_DIR/$fichier"
-
-for ancien in "$ZIM_DIR/${nom}_"*.zim; do
-  [ -e "$ancien" ] && [ "$ancien" != "$ZIM_DIR/$fichier" ] || continue
-  echo "Suppression de l'ancienne version : $(basename "$ancien")"
-  rm -f "$ancien"
-done
-
-"$ODIN/scripts/maj-bibliotheque.sh"
+(async () => {
+  if (arg === '--liste') {
+    const packs = await lire();
+    console.log('Packs disponibles :');
+    for (const p of packs) {
+      const etat = p.tache?.etat === 'en cours' ? 'en cours' : p.installation === 'installe' ? 'installé'
+        : p.installation === 'maj' ? 'mise à jour disponible' : p.disponible === false ? 'introuvable' : '';
+      console.log(`  ${p.id.padEnd(20)} ${taille(p.taille || p.derniereMesure).padStart(8)}  ${p.libelle}${etat ? ` [${etat}]` : ''}`);
+    }
+    console.log('\nInstaller : scripts/ajouter.sh <identifiant>');
+    return;
+  }
+  const r = await fetch(`${API}/${encodeURIComponent(arg)}`, { method: 'POST' });
+  const v = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.error(`${v.erreur || `Erreur ${r.status}`}${r.status === 400 && /inconnu/i.test(v.erreur || '') ? ' — voir scripts/ajouter.sh --liste' : ''}`);
+    process.exit(1);
+  }
+  process.on('SIGINT', () => { console.log('\nAffichage arrêté : le téléchargement continue dans ODIN (Configuration → Encyclopédie).'); process.exit(0); });
+  for (;;) {
+    await new Promise((ok) => setTimeout(ok, 2000));
+    const p = (await lire()).find((x) => x.id === arg);
+    const t = p?.tache;
+    if (t?.etat === 'en cours') {
+      const pct = t.total ? Math.floor((t.recu / t.total) * 100) : 0;
+      process.stdout.write(`\r  ${t.verification ? 'Vérification de l\'empreinte…' : `${pct} % · ${taille(t.recu)} / ${taille(t.total)}`}      `);
+      continue;
+    }
+    if (t?.etat === 'termine' || p?.installation === 'installe') { console.log(`\n${p.libelle} : installé.`); return; }
+    console.error(`\n${t?.erreur || (t?.etat === 'annule' ? 'Téléchargement annulé.' : 'Échec du téléchargement.')}`);
+    process.exit(1);
+  }
+})().catch((e) => { console.error(`Dashboard injoignable : ${e.message}`); process.exit(1); });
+JS

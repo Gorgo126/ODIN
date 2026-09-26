@@ -142,6 +142,54 @@ export async function metalien(url) {
   }
 }
 
+// Mirror choice: a short throughput test of the first mirrors of the metalink, in parallel (512 KB,
+// 4 s at most, the whole test included). Kiwix orders them by country, not by speed: from Belgium the
+// second one gave 0.3 MB/s while another answered 35 times faster. The ranking is kept 30 minutes
+// (by host, whatever the file); when no test succeeds, the order of Kiwix stays.
+const ESSAIS = 4;
+const OCTETS_ESSAI = 512 * 1024;
+const DUREE_ESSAI = 4000;
+const GARDE_CLASSEMENT = 30 * 60 * 1000;
+const classements = globalThis.__odinMiroirs ??= new Map();
+
+async function debit(url, signal) {
+  const debut = Date.now();
+  const r = await fetch(url, { headers: { Range: `bytes=0-${OCTETS_ESSAI - 1}` }, signal, cache: 'no-store' });
+  if (r.status !== 206 && r.status !== 200) throw new Error(`HTTP ${r.status}`);
+  let recu = 0;
+  try {
+    for await (const morceau of r.body) {
+      recu += morceau.length;
+      if (recu >= OCTETS_ESSAI) break;
+    }
+  } catch (e) {
+    // Time is up: a slow mirror is measured on what it sent
+    if (!recu) throw e;
+  }
+  return recu / Math.max(1, Date.now() - debut); // bytes per ms
+}
+
+export async function ordonnerMiroirs(miroirs) {
+  if (miroirs.length < 2) return miroirs;
+  const hote = (u) => new URL(u).hostname;
+  const testes = miroirs.slice(0, ESSAIS);
+  const cle = testes.map(hote).join(' ');
+  let c = classements.get(cle);
+  if (!c || Date.now() - c.t > GARDE_CLASSEMENT) {
+    const signal = AbortSignal.timeout(DUREE_ESSAI);
+    const resultats = await Promise.all(testes.map((u) => debit(u, signal).catch(() => 0)));
+    c = { t: Date.now(), debits: new Map(testes.map((u, i) => [hote(u), resultats[i]])) };
+    // Nothing measured (offline, all mirrors down): not kept, the next download tests again
+    if (resultats.some((v) => v > 0)) classements.set(cle, c);
+    console.log(`Miroirs Kiwix : ${testes.map((u, i) => `${hote(u)} ${resultats[i] ? `${(resultats[i] / 1024 * 1000 / 1024).toFixed(1)} Mo/s` : 'échec'}`).join(', ')}`);
+  }
+  // Fastest first; failed ones keep their Kiwix order after them; the untested ones stay last
+  const tries = testes.map((u, i) => ({ u, i, v: c.debits.get(hote(u)) || 0 }))
+    .sort((a, b) => b.v - a.v || a.i - b.i)
+    .map((x) => x.u);
+  return [...tries, ...miroirs.slice(ESSAIS)];
+}
+
 async function empreinteFichier(fichier) {
   const h = createHash('sha256');
   for await (const morceau of createReadStream(fichier)) h.update(morceau);
@@ -173,7 +221,7 @@ async function telecharger(pack, e, t, controle) {
     // .part from another one is safe, the SHA-256 checks the whole file at the end.
     const lien = await metalien(e.url);
     if (lien?.taille) t.total = lien.taille;
-    const miroirs = lien?.miroirs.length ? lien.miroirs : [e.url.replace(/\.meta4$/, '')];
+    const miroirs = lien?.miroirs.length ? await ordonnerMiroirs(lien.miroirs) : [e.url.replace(/\.meta4$/, '')];
     for (const [i, url] of miroirs.entries()) {
       const avant = t.recu;
       try {

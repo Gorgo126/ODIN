@@ -8,6 +8,9 @@ import { normaliser } from '../lib/normalisation.mjs';
 // plurals and feminines are ignored. Small words (le, de, un…) do not count; negations (pas, plus,
 // sans) do. The most precise expressions come first, and one whose words all belong to an
 // expression already recognised adds nothing (« morsure » inside « morsure de serpent »).
+// An expression of several words that keeps a single meaningful word once the small words are removed
+// (« la courante », « du pus », « j'ai froid ») must be found as written, word after word: otherwise
+// « la courante » would be « courant » alone, and « coupure de courant » a diarrhoea.
 // The file is read again when it changes.
 
 const FICHIER = process.env.SYNONYMES || '/catalogue/synonymes.json';
@@ -27,11 +30,14 @@ export function compiler(table) {
     const cherche = (e.cherche || []).filter((t) => typeof t === 'string' && t.trim());
     if (!Array.isArray(e.dit) || !cherche.length) return; // invalid entry: skipped
     for (const d of e.dit) {
-      const utiles = [...new Set(mots(d).filter((m) => !PETITS.has(m)).map(racine))];
+      const tous = mots(d);
+      const utiles = [...new Set(tous.filter((m) => !PETITS.has(m)).map(racine))];
       if (!utiles.length) continue;
       motifs.push({
         rang,
         mots: utiles,
+        // As written (normalized, padded) when its small words are what makes it an expression
+        exacte: tous.length > 1 && utiles.length === 1 ? forme(d) : null,
         longueur: utiles.join(' ').length,
         entree: { theme: e.theme || '', cherche, aussi: (e.aussi || []).filter((t) => typeof t === 'string' && t.trim()) }
       });
@@ -58,10 +64,12 @@ export function motifs(fichier = FICHIER) {
 // precise expression (the rules on titles lean on it); cherche and aussi: all terms, without duplicates.
 export function comprendre(question, liste = motifs()) {
   const presents = new Set(mots(question).map(racine));
+  const phrase = forme(question);
   const trouvees = [];
   const pris = new Set();
   for (const m of liste) {
     if (!m.mots.every((w) => presents.has(w))) continue;
+    if (m.exacte && !phrase.includes(m.exacte)) continue;
     // Nothing new: all its words already belong to a more precise expression
     if (m.mots.every((w) => pris.has(w))) continue;
     m.mots.forEach((w) => pris.add(w));
