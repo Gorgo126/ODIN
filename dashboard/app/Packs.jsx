@@ -69,7 +69,7 @@ export default function Packs({ liaisonInitiale }) {
           action = (
             <div className="progression">
               <div className="jauge"><div style={{ width: pct + '%' }} /></div>
-              <em>{pct} %  {octets(t.recu)} / {octets(t.total)}</em>
+              <em>{pct} % · {octets(t.recu)} / {octets(t.total)}</em>
               <button onClick={() => annuler(p.id)}>Annuler</button>
             </div>
           );

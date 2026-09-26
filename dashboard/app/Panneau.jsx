@@ -15,7 +15,7 @@ export default function Panneau({ id, icone, titre, sousTitre, resume, children 
           <span>{sousTitre}</span>
         </span>
         {resume && <span className="panneau-resume">{resume}</span>}
-        <span className="panneau-bascule">{ouvert ? '[]' : '[+]'}</span>
+        <span className="panneau-bascule">{ouvert ? '[−]' : '[+]'}</span>
       </button>
       <div className="panneau-corps">
         <div className="panneau-interieur">{children}</div>

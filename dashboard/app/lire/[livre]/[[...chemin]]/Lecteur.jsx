@@ -26,7 +26,7 @@ export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence,
     } catch {}
   }, []);
 
-  useEffect(() => { document.title = `${titre}  ODIN`; }, [titre]);
+  useEffect(() => { document.title = `${titre} — ODIN`; }, [titre]);
 
   function changer(delta) {
     const v = Math.min(TAILLES.length - 1, Math.max(0, taille + delta));
@@ -37,15 +37,15 @@ export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence,
   return (
     <div className={`lecture${classe ? ` ${classe}` : ''}`}>
       <nav className="barre">
-        <a href="/" className="accueil"> ODIN</a>
-        <span className="sep"></span>
+        <a href="/" className="accueil">ODIN</a>
+        <span className="sep">/</span>
         <a href={livreLien}>{livre}</a>
-        <span className="sep"></span>
+        <span className="sep">/</span>
         <span className="titre">{titre}</span>
         <span className="outils">
-          <button onClick={() => changer(-1)} title="Réduire le texte">A</button>
+          <button onClick={() => changer(-1)} title="Réduire le texte">A−</button>
           <button onClick={() => changer(1)} title="Agrandir le texte">A+</button>
-          {kiwix && <a href={`/ouvrir/bibliotheque?chemin=${encodeURIComponent(kiwix)}`} title="Ouvrir dans Kiwix"></a>}
+          {kiwix && <a href={`/ouvrir/bibliotheque?chemin=${encodeURIComponent(kiwix)}`} title="Ouvrir dans Kiwix">↗</a>}
         </span>
       </nav>
       {avis && <p className="avis-liaison">Lien externe : {HORS_LIAISON.toLowerCase()}.</p>}

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
   const livre = await livreInstalle((await params).id);
-  return { title: livre ? `${livre.titre}  ODIN` : 'ODIN' };
+  return { title: livre ? `${livre.titre} — ODIN` : 'ODIN' };
 }
 
 // Reader: ODIN bar, health warning, then the pdf.js viewer (static files in public/pdfjs)

@@ -5,7 +5,7 @@ import Entete from './Entete';
 import Gestion from './Gestion';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Comment faire ? · ODIN' };
+export const metadata = { title: 'Comment faire ? — ODIN' };
 
 export default async function CommentFaire() {
   const [index, etat, etatLiaison] = await Promise.all([lireIndex(), etatGuides(), liaison()]);

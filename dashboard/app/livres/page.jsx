@@ -4,7 +4,7 @@ import { octets } from '../../lib/format.mjs';
 import LienExterne from '../LienExterne';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Bibliothèque  ODIN' };
+export const metadata = { title: 'Bibliothèque — ODIN' };
 
 const CATEGORIES = { sante: 'Santé', eau: 'Eau', energie: 'Énergie', agriculture: 'Agriculture', technique: 'Technique' };
 // Site a file came from (the address actually used, recorded when it was checked)
@@ -49,7 +49,7 @@ export default async function Livres() {
           <dl className="fiche-attribution">
             <dt>Auteurs</dt><dd>{l.auteurs.join(', ')}</dd>
             <dt>Éditeur</dt><dd>{l.editeur}</dd>
-            {l.edition && <><dt>Édition</dt><dd>{l.edition}{l.isbn ? `  ISBN ${l.isbn}` : ''}</dd></>}
+            {l.edition && <><dt>Édition</dt><dd>{l.edition}{l.isbn ? ` · ISBN ${l.isbn}` : ''}</dd></>}
             <dt>Attribution</dt><dd>{l.attribution}</dd>
             {l.credit && <><dt>Crédit</dt><dd>{l.credit}</dd></>}
             <dt>Licence</dt>
@@ -62,7 +62,7 @@ export default async function Livres() {
             <dd>{l.texte ? 'Texte extrait : le livre répond à la recherche d\'ODIN, page par page' : 'Texte pas encore extrait : le livre ne répond pas encore à la recherche'}</dd>
             <dt>Fichier</dt>
             <dd>
-              {l.pages ? `${l.pages} pages  ` : ''}{octets(l.taille)}  non modifié, empreinte vérifiée
+              {l.pages ? `${l.pages} pages · ` : ''}{octets(l.taille)} · non modifié, empreinte vérifiée
               {l.verifie && ` le ${date(l.verifie.date)} (${l.verifie.source === 'miroir' ? 'miroir ODIN' : hote(l.verifie.url || '')})`}
               <br /><code title="SHA-256">{l.sha256}</code>
             </dd>

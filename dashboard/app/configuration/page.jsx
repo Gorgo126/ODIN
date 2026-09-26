@@ -110,7 +110,7 @@ export default async function Configuration() {
       <header className="entete">
         <a href="/" className="retour-accueil"><img src="/logo.png" alt="ODIN" className="logo logo-petit" /></a>
         <nav className="entete-liens">
-          <a href="/" className="bouton"> Accueil</a>
+          <a href="/" className="bouton">Accueil</a>
           <a href="/api/auth/deconnexion" className="bouton">Se déconnecter</a>
         </nav>
       </header>
@@ -153,7 +153,7 @@ export default async function Configuration() {
             <div key={i} className="carte">
               <strong>{l.titre}</strong>
               <p>{l.description}</p>
-              <em>{l.articles.toLocaleString('fr-BE')} articles  {octets(l.taille)}</em>
+              <em>{l.articles.toLocaleString('fr-BE')} articles · {octets(l.taille)}</em>
             </div>
           ))}
         </div>

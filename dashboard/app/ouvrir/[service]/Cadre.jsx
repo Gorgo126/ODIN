@@ -31,7 +31,7 @@ export default function Cadre({ nom, lien }) {
   }, [src]);
 
   useEffect(() => {
-    document.title = `${titre && titre !== nom ? titre + '  ' : ''}${nom}  ODIN`;
+    document.title = `${titre && titre !== nom ? titre + ' · ' : ''}${nom} — ODIN`;
   }, [titre, nom]);
 
   function revenir() {
@@ -43,17 +43,17 @@ export default function Cadre({ nom, lien }) {
   return (
     <div className="cadre">
       <nav className="barre">
-        <a href="/" className="accueil"> ODIN</a>
-        <span className="sep"></span>
+        <a href="/" className="accueil">ODIN</a>
+        <span className="sep">/</span>
         <button onClick={revenir}>{nom}</button>
         {titre && titre !== nom && (
           <>
-            <span className="sep"></span>
+            <span className="sep">/</span>
             <span className="titre">{titre}</span>
           </>
         )}
         {src && (
-          <a className="externe" href={actuel || src} target="_blank" rel="noopener" title="Ouvrir dans un nouvel onglet"></a>
+          <a className="externe" href={actuel || src} target="_blank" rel="noopener" title="Ouvrir dans un nouvel onglet">↗</a>
         )}
       </nav>
       {src && (

@@ -13,7 +13,7 @@ function ResultatLivre({ r, requete }) {
   return (
     <a href={`/livres/${r.id}?page=${r.page}&q=${encodeURIComponent(requete)}`} className="carte resultat resultat-livre">
       <span className="livre-badges"><span className="badge">Livre</span></span>
-      <strong>{r.titre}  p. {r.page}{r.chapitre ? `  ${r.chapitre}` : ''}</strong>
+      <strong>{r.titre} · p. {r.page}{r.chapitre ? ` · ${r.chapitre}` : ''}</strong>
       <p dangerouslySetInnerHTML={{ __html: r.extrait }} />
       {r.sante && <em className="verifier-livre">Vérifiez dans le livre</em>}
     </a>
@@ -70,7 +70,7 @@ export default async function Recherche({ searchParams }) {
 
         {requete && livres && livres.total > 0 && (
           <section className="bloc-resultats">
-            <h2>Dans la bibliothèque  {nombre(livres.total)} page{livres.total > 1 ? 's' : ''}</h2>
+            <h2>Dans la bibliothèque · {nombre(livres.total)} page{livres.total > 1 ? 's' : ''}</h2>
             {livres.resultats.map((r) => <ResultatLivre key={`${r.id}-${r.page}`} r={r} requete={requete} />)}
             {seulementLivres ? (
               <nav className="pagination">
@@ -87,7 +87,7 @@ export default async function Recherche({ searchParams }) {
 
         {!seulementLivres && requete && (
           <section className="bloc-resultats">
-            {!seul && <h2>Dans les encyclopédies{zim ? `  ${nombre(zim.total)} article${zim.total > 1 ? 's' : ''}` : ''}</h2>}
+            {!seul && <h2>Dans les encyclopédies{zim ? ` · ${nombre(zim.total)} article${zim.total > 1 ? 's' : ''}` : ''}</h2>}
             {erreur && <p className="erreur">{erreur}</p>}
             {zim && (
               <>

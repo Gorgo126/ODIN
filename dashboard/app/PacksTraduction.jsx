@@ -51,7 +51,7 @@ export default function PacksTraduction({ liaisonInitiale }) {
           action = (
             <div className="progression">
               <div className="jauge"><div style={{ width: pct + '%' }} /></div>
-              <em>{pct} %  {octets(t.recu)} / {octets(t.total)}</em>
+              <em>{pct} % · {octets(t.recu)} / {octets(t.total)}</em>
               <button onClick={() => confirm('Annuler le téléchargement ?') && envoyer(l.code, 'DELETE')}>Annuler</button>
             </div>
           );
