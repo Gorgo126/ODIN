@@ -274,10 +274,14 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   « Calculer son autonomie électrique » jamais retenu (aucune entrée « coupure de courant » dans la table de synonymes).
   Seuils guides 0,46 / 0,35 (PROVISOIRES, appliqués le 2026-09-26 avec l'accord du propriétaire ; 6 questions seulement :
   pertinents 0,48 à 0,62, hors sujet 0,31 à 0,44). Entrée « coupure de courant → panne de courant, électricité » (thème
-  energie) : « Diarrhée » ne sort plus. Défauts connus de la table (non corrigés) : les petits mots sont retirés et les
-  terminaisons coupées des deux côtés, donc « la courante » (diarrhée) = racine « courant » : « panne de courant » et « le
-  courant de la rivière » → diarrhée ; « coupure » seul → plaie (« coupure d'eau » aussi). « sirène qui sonne » : « Sirénomélie »
-  (WikiMed, « syndrome de la sirène ») garde 0,496 par l'embedding seul (ni table, ni ajustement) devant l'article (0,484).
+  energie) : « Diarrhée » ne sort plus. Règle de la table (2026-09-26) : une expression de plusieurs mots qui ne garde
+  qu'une racine une fois les petits mots retirés (« la courante », « du pus », « j'ai froid », « se noie ») doit se trouver
+  telle qu'écrite dans la question (sinon « la courante » = « courant » : « panne de courant » → diarrhée). « coupure » seul
+  remplacé par « coupure au doigt / à la main / profonde / qui saigne », « je me suis fait une coupure » ; « a froid » et
+  « ont froid » ajoutés (« il a froid » passait par « j'ai froid »). Entrée « sirène qui sonne, sirène d'alerte → sirène
+  d'alerte, alerte des populations » : l'article passe en tête (0,586) et « Sirénomélie » (embedding seul, 0,496) disparaît.
+  Compréhension comparée sur les 70 questions (deux séries + 14) : 6 changent, toutes voulues sauf « orteils noirs à cause
+  du froid » qui perd « hypothermie » (terme principal inchangé : gelure). Tests : node --test tests/synonymes.test.mjs.
   Champ facultatif « keywords » (tableau de chaînes) par article, format 1 inchangé : nettoyé à l'installation (motsCles :
   chaînes non vides, 80 caractères, 30 au plus ; autre chose ignoré avec un message, jamais un refus), gardé dans guides.json.
   Recherche par mots-clés : un mot de la requête peut être trouvé dans la section OU parmi les keywords (et le titre) de
@@ -799,10 +803,21 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   de 2 s : même échec). Même signature que les 3 ETIMEDOUT du premier pack pendant la traduction (réussi au second essai :
   MirrorBrain a dû choisir un autre miroir). Corrigé (2026-09-26) : telechargements.mjs lit le métalien (.meta4 du catalogue :
   9 miroirs par priorité, taille exacte, SHA-256), essaie chaque miroir tant que rien n'est reçu (15 s pour répondre), puis
-  vérifie le SHA-256 (« Vérification de l'empreinte »). Vérifié : pack climat installé depuis l'API sans intervention,
-  nluug écarté en 0,3 s, mirror.download.kiwix.org ensuite, empreinte bonne ; mais ce miroir est LENT d'ici (79 Mo en 253 s,
-  0,3 Mo/s : WikiMed prendrait ~70 min), alors que ftp.fau.de répond en 0,12 s par Mo. scripts/ajouter.sh (wget sur lb)
-  a toujours le défaut. Tester avec curl -4 sur l'adresse du miroir (pas sur lb) avant de chercher dans ODIN.
+  vérifie le SHA-256 (« Vérification de l'empreinte »). Ordre des miroirs (ordonnerMiroirs) : essai de débit en parallèle
+  sur les 4 premiers (512 Ko, 4 s au plus pour l'ensemble, débit partiel compté pour un miroir lent), les plus rapides
+  d'abord, puis l'ordre de Kiwix ; classement gardé 30 min par hôtes (globalThis), jamais gardé si tous échouent (l'ordre de
+  Kiwix reste). Mesuré d'ici : nluug échec, mirror.download.kiwix.org 0,2 à 0,6 Mo/s, accum.se 0,5 à 1,3, ftp.fau.de 4 à 5
+  (sur 512 Ko ; le débit réel est plus élevé). Une reprise de .part sur un autre miroir est sûre (mêmes fichiers, Range) :
+  le SHA-256 final fait foi. scripts/ajouter.sh n'a plus de logique de téléchargement : il appelle l'API du dashboard dans
+  son conteneur (docker exec dashboard node -, 127.0.0.1:3000, sans mot de passe) : --liste = GET /api/packs, <id> = POST
+  puis suivi. Tester avec curl -4 sur l'adresse du miroir (pas sur lb) avant de chercher dans ODIN.
+  VM vierge (2026-09-26, dev ac40503, image ba90a66) : installation en 164 s (install.sh non modifié mais indirectement
+  concerné : l'image contient le nouveau module, que les étapes langues et fond de carte chargent — telechargerFlux, qu'elles
+  utilisent, n'a pas changé — et une mise à jour redémarre FileBrowser, filebrowser.yaml ayant changé) ; fr et en, fond de
+  carte, 18 tailles ; ajouter.sh voyage : fau.de choisi, installé, inscrit ; pack coupé par hors-ligne.sh couper à 91,6 Mo
+  → « aucune donnée reçue depuis 30 s », .part gardé ; rétabli, dashboard redémarré, ftp.fau.de bloqué (iptables, VM test)
+  → reprise sur mirror.accum.se, fichier complet, SHA-256 identique au métalien ; reprise d'un .part commencé sur accum.se et
+  fini sur fau.de (fonctions d'ODIN, /tmp du conteneur) : SHA-256 identique.
 - Banc odintest hors de l'état de l'installeur (2026-09-26) : WikiMed (wikipedia_fr_medicine_maxi_2026-07.zim, 1,3 Go)
   téléchargé À LA MAIN par curl en IPv6 sur la VM dans data/zim, puis inscrit par ODIN (POST /api/packs/medecine : le
   fichier présent n'est pas retéléchargé, library.xml écrit par ODIN) ; SHA-256 identique à celui du métalien Kiwix. Le

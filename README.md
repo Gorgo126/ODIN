@@ -419,6 +419,10 @@ docker info --format '{{.DockerRootDir}}'   # doit afficher /mnt/donnees/docker
 /opt/odin/scripts/ajouter.sh medecine      # télécharge et installe un pack
 ```
 
+Le script passe par ODIN lui-même (il faut que le tableau de bord tourne) : même choix du miroir le plus
+rapide, même vérification de l'empreinte SHA-256 et même inscription dans la bibliothèque que la page
+**Configuration**. Ctrl+C arrête l'affichage, pas le téléchargement.
+
 Vous pouvez aussi déposer vos propres fichiers `.zim` dans `/opt/odin/data/zim`, puis lancer
 `/opt/odin/scripts/maj-bibliotheque.sh`.
 
