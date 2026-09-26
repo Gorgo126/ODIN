@@ -272,8 +272,18 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   pour brûlure (0,511, après WikiMed et le livre), eau pas potable (0,533, 2e), sirène (0,484, 2e derrière « Sirénomélie »
   de WikiMed, 0,496), purifier l'eau (0,617, 2e) ; « coupure de courant » : WikiMed « Diarrhée » en fort (0,599) et
   « Calculer son autonomie électrique » jamais retenu (aucune entrée « coupure de courant » dans la table de synonymes).
-  Seuils proposés pour guides (NON appliqués, en attente du propriétaire) : 0,46 / 0,35 au lieu de 0,45 / 0,3 ; simulés sur
-  ces 6 questions : retirent 2 « proches » hors sujet (feu par temps humide 0,309, premiers secours 0,321), rien d'autre. Contre un site simulé (fetch remplacé,
+  Seuils guides 0,46 / 0,35 (PROVISOIRES, appliqués le 2026-09-26 avec l'accord du propriétaire ; 6 questions seulement :
+  pertinents 0,48 à 0,62, hors sujet 0,31 à 0,44). Entrée « coupure de courant → panne de courant, électricité » (thème
+  energie) : « Diarrhée » ne sort plus. Défauts connus de la table (non corrigés) : les petits mots sont retirés et les
+  terminaisons coupées des deux côtés, donc « la courante » (diarrhée) = racine « courant » : « panne de courant » et « le
+  courant de la rivière » → diarrhée ; « coupure » seul → plaie (« coupure d'eau » aussi). « sirène qui sonne » : « Sirénomélie »
+  (WikiMed, « syndrome de la sirène ») garde 0,496 par l'embedding seul (ni table, ni ajustement) devant l'article (0,484).
+  Champ facultatif « keywords » (tableau de chaînes) par article, format 1 inchangé : nettoyé à l'installation (motsCles :
+  chaînes non vides, 80 caractères, 30 au plus ; autre chose ignoré avec un message, jamais un refus), gardé dans guides.json.
+  Recherche par mots-clés : un mot de la requête peut être trouvé dans la section OU parmi les keywords (et le titre) de
+  l'article, bonus comme le titre. Recherche avancée : keywords comptés dans le choix des sections, dans le BM25 (motsCles des
+  passages, bm25.mjs) et dans le texte vectorisé (ajoutés au titre, index.mjs). Absent : rien ne change (vérifié : mêmes
+  résultats qu'avant sur les 6 questions). Aucun article publié n'en a encore. Contre un site simulé (fetch remplacé,
   GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
   bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
   9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
@@ -782,9 +792,21 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   (on_starting) ; au HUP, gunicorn relit ces arguments, perd l'application (« No application module specified »), le
   maître s'arrête et le conteneur redémarre en entier. Pour relire les modèles : SIGTERM au worker. Pas de fichier pid
   non plus (--pid) : il survit à un kill -9 du maître et bloque le démarrage suivant (« Already running »).
-- Miroirs Kiwix : download.kiwix.org renvoie vers un miroir choisi par lb.download.kiwix.org ; le 2026-09-25,
-  ftp.nluug.nl ne répondait plus qu'en IPv6 depuis odintest. La VM a l'IPv6, pas les conteneurs : curl sur la VM
-  passe, le dashboard échoue (UND_ERR_CONNECT_TIMEOUT). Tester avec curl -4 avant de chercher dans ODIN.
+- Miroirs Kiwix : lb.download.kiwix.org (MirrorBrain) renvoie vers le miroir du pays : depuis la Belgique, toujours
+  ftp.nluug.nl (priorité 1). Son IPv4 ne répond pas depuis ce réseau (VM, conteneurs ET PC du propriétaire : connexion TCP
+  jamais ou tardivement établie, puis rien ; pas un problème de MTU, testé à 1400) ; seul son IPv6 marche, et les conteneurs
+  n'ont pas d'IPv6. Ce n'est ni Docker, ni le DNS, ni le Happy Eyeballs de Node (testé : ipv4first, sans autoselect, délai
+  de 2 s : même échec). Même signature que les 3 ETIMEDOUT du premier pack pendant la traduction (réussi au second essai :
+  MirrorBrain a dû choisir un autre miroir). Corrigé (2026-09-26) : telechargements.mjs lit le métalien (.meta4 du catalogue :
+  9 miroirs par priorité, taille exacte, SHA-256), essaie chaque miroir tant que rien n'est reçu (15 s pour répondre), puis
+  vérifie le SHA-256 (« Vérification de l'empreinte »). Vérifié : pack climat installé depuis l'API sans intervention,
+  nluug écarté en 0,3 s, mirror.download.kiwix.org ensuite, empreinte bonne ; mais ce miroir est LENT d'ici (79 Mo en 253 s,
+  0,3 Mo/s : WikiMed prendrait ~70 min), alors que ftp.fau.de répond en 0,12 s par Mo. scripts/ajouter.sh (wget sur lb)
+  a toujours le défaut. Tester avec curl -4 sur l'adresse du miroir (pas sur lb) avant de chercher dans ODIN.
+- Banc odintest hors de l'état de l'installeur (2026-09-26) : WikiMed (wikipedia_fr_medicine_maxi_2026-07.zim, 1,3 Go)
+  téléchargé À LA MAIN par curl en IPv6 sur la VM dans data/zim, puis inscrit par ODIN (POST /api/packs/medecine : le
+  fichier présent n'est pas retéléchargé, library.xml écrit par ODIN) ; SHA-256 identique à celui du métalien Kiwix. Le
+  livre « Là où il n'y a pas de docteur » et le pack climat ont été installés normalement par ODIN.
 - /run est monté noexec sur Ubuntu : un script d'accroche (udhcpc -s, dhcpcd -c) placé dans /run n'est jamais
   exécuté, sans erreur visible. Les mettre ailleurs (/var/lib/…).
 - iw : les modes sont indentés « \t\t * AP » (deux tabulations, une espace) ; « AP » apparaît aussi dans AP/VLAN et
