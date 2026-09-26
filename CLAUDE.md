@@ -266,7 +266,14 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   Recherche avancée sur odintest (AUCUN pack, livre ni document : pas de concurrence, à refaire avec WikiMed et un livre) :
   « je me suis brûlé » → premiers secours › Brûlure (fort, 0,511), puis feu par temps humide (proche, 0,309, hors sujet) ;
   « eau pas potable » → eau potable › Clarifier d'abord (fort, 0,533) ; « sirène qui sonne » → alerte › Reconnaître la
-  sirène (fort, 0,484). source-livres.mjs compte encore en sous-chaîne (même défaut possible, non corrigé : série mesurée). Contre un site simulé (fetch remplacé,
+  sirène (fort, 0,484). Depuis le 2026-09-26 (soir), livres et articles choisissent leurs candidats avec occurrences() de
+  bm25.mjs (mot entier, ou début de mot dès 5 lettres, comme le BM25) : la série de 33 questions n'a pas été remesurée.
+  Avec WikiMed (maxi 2026-07) et « Là où il n'y a pas de docteur » sur odintest, 6 questions : les articles sortent en fort
+  pour brûlure (0,511, après WikiMed et le livre), eau pas potable (0,533, 2e), sirène (0,484, 2e derrière « Sirénomélie »
+  de WikiMed, 0,496), purifier l'eau (0,617, 2e) ; « coupure de courant » : WikiMed « Diarrhée » en fort (0,599) et
+  « Calculer son autonomie électrique » jamais retenu (aucune entrée « coupure de courant » dans la table de synonymes).
+  Seuils proposés pour guides (NON appliqués, en attente du propriétaire) : 0,46 / 0,35 au lieu de 0,45 / 0,3 ; simulés sur
+  ces 6 questions : retirent 2 « proches » hors sujet (feu par temps humide 0,309, premiers secours 0,321), rien d'autre. Contre un site simulé (fetch remplacé,
   GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
   bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
   9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
