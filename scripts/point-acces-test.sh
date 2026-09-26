@@ -260,7 +260,9 @@ network:
         "$BOX_SSID": { password: "$BOX_MDP" }
 YAML
       chmod 600 "$NETPLAN_TEST"
-      netplan apply 2>/dev/null ;;
+      # Not « netplan apply »: it renews the Ethernet lease too, which cuts multipass exec
+      netplan generate && systemctl daemon-reload && networkctl reload \
+        && systemctl restart "netplan-wpa-$ODIN_IF.service" && networkctl reconfigure "$ODIN_IF" ;;
     nm)
       client retirer >/dev/null 2>&1
       nmcli device set "$ODIN_IF" managed yes 2>/dev/null
@@ -268,7 +270,9 @@ YAML
       nmcli -w 30 device wifi connect "$BOX_SSID" password "$BOX_MDP" ifname "$ODIN_IF" name odin-test-box >/dev/null
       nmcli connection modify odin-test-box ipv4.route-metric 600 >/dev/null && nmcli -w 30 connection up odin-test-box >/dev/null ;;
     retirer)
-      rm -f "$NETPLAN_TEST"; netplan apply 2>/dev/null
+      systemctl stop "netplan-wpa-$ODIN_IF.service" 2>/dev/null
+      rm -f "$NETPLAN_TEST"; netplan generate && systemctl daemon-reload && networkctl reload
+      ip -4 addr flush dev "$ODIN_IF"
       command -v nmcli >/dev/null && nmcli connection delete odin-test-box >/dev/null 2>&1
       echo "Client retiré"; return ;;
   esac
@@ -309,7 +313,7 @@ bilan() {
   echo "  unités      hostapd $(systemctl is-active odin-hostapd.service) · dnsmasq $(systemctl is-active odin-dnsmasq.service) · cible $(systemctl is-enabled odin-point-acces.target 2>/dev/null)"
   echo "  netplan-wpa $(systemctl is-enabled "netplan-wpa-$ODIN_IF.service" 2>/dev/null) / $(systemctl is-active "netplan-wpa-$ODIN_IF.service" 2>/dev/null)"
   command -v nmcli >/dev/null && echo "  NM          $(nmcli -t -f DEVICE,STATE,CONNECTION device status 2>/dev/null | grep "^$ODIN_IF:")"
-  echo "  fichiers    voulu=$(cat "$ETC/voulu" 2>/dev/null || echo -) origine=$(tr '\n' ' ' < "$ETC/origine" 2>/dev/null || echo -)"
+  echo "  fichiers    voulu=$(cat "$ETC/voulu" 2>/dev/null || echo -) origine=$( [ -f "$ETC/origine" ] && tr '\n' ' ' < "$ETC/origine" || echo -)"
 }
 
 nettoyer() {
