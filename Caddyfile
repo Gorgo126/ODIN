@@ -48,9 +48,24 @@
 		reverse_proxy filebrowser:80
 	}
 
+	# Kiwix is only an engine: articles open in ODIN's reader (/lire), which reads them from kiwix:8080
+	# directly and handles their external links. The browser only needs the files of the ZIMs (images,
+	# media, a PDF in a ZIM) under /kiwix/content/. An HTML page asked there goes to the reader
+	# (/lire-depuis-kiwix keeps its encoding: {http.request.uri} is raw, {re.*} would be decoded);
+	# everything else of Kiwix (its library, viewer, search, catalogue) goes to /encyclopedie.
+	handle /kiwix/content/* {
+		import protege
+		reverse_proxy kiwix:8080 {
+			@html header Content-Type text/html*
+			handle_response @html {
+				redir * /lire-depuis-kiwix{http.request.uri} 302
+			}
+		}
+	}
+
 	handle /kiwix* {
 		import protege
-		reverse_proxy kiwix:8080
+		redir * /encyclopedie 302
 	}
 
 	# Map packs (PMTiles), read by the browser with Range requests

@@ -207,7 +207,7 @@ flowchart TB
     N["🌐 Navigateur du réseau local"] -->|":80"| CA
     CA["Caddy<br/><sub>façade unique · authentification</sub>"]
     CA -->|"/"| D["Tableau de bord<br/><sub>Next.js 15</sub>"]
-    CA -->|"/kiwix"| K["Kiwix<br/><sub>moteur ZIM</sub>"]
+    CA -->|"/kiwix/content (images des ZIM)"| K["Kiwix<br/><sub>moteur ZIM</sub>"]
     CA -->|"/documents"| F["FileBrowser<br/><sub>fichiers</sub>"]
     CA -->|"/tuiles"| T[("Cartes PMTiles<br/><sub>data/cartes</sub>")]
     D -->|"recherche avancée"| V["Vecteurs<br/><sub>llama.cpp · EmbeddingGemma</sub>"]
@@ -222,7 +222,7 @@ flowchart TB
 |---|---|---|
 | `caddy` | `caddy:2.11.4-alpine` | Porte d'entrée, routage, authentification déléguée au tableau de bord. |
 | `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche avancée (index SQLite de vos documents), lecteur d'articles, fiches « Comment faire ? », carte (MapLibre GL), ajout de packs et, en option, l'assistant IA. Contient l'outil `pmtiles` qui extrait les régions. |
-| `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
+| `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Moteur des archives ZIM de `data/zim` (articles lus dans le lecteur d'ODIN, son interface n'est pas servie). Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
 | `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
 | `libretranslate` | `libretranslate/libretranslate:v1.9.6` | Traduction hors ligne (modèles Argos, sur le processeur). Sur un réseau Docker interne, sans aucune route vers internet : seul le tableau de bord le joint. Ses modèles sont installés par le tableau de bord et montés en lecture seule. |

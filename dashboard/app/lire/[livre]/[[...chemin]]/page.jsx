@@ -17,7 +17,6 @@ export default async function Lire({ params }) {
       livreLien={`/lire/${livre}`}
       titre={a.titre}
       html={a.html}
-      kiwix={a.kiwix}
       licence={licenceZim(livre)}
       liaisonInitiale={etatLiaison}
     />

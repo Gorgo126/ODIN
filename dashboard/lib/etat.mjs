@@ -9,7 +9,8 @@ import { lireIndex } from './guides-index.mjs';
 // Internal pages (interne) are available as soon as one pack of their kind is installed.
 // The assistant is an option: without a model installed and enabled, its card leads to /ia
 export const SERVICES = [
-  { id: 'bibliotheque', nom: 'Encyclopédie', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
+  // Kiwix is only an engine: its articles open in ODIN's reader (/lire), its own interface is not served
+  { id: 'bibliotheque', nom: 'Encyclopédie', url: 'http://kiwix:8080/kiwix/', lien: '/encyclopedie', direct: true },
   { id: 'livres', nom: 'Bibliothèque', lien: '/livres', interne: true },
   // Always shown, installed or not: its page offers the installation
   { id: 'guides', nom: 'Comment faire ?', lien: '/comment-faire', interne: true },
@@ -53,6 +54,8 @@ export async function contenu() {
     return [...xml.matchAll(/<book\s([^>]*)\/>/g)].map((m) => {
       const attr = (n) => (m[1].match(new RegExp(`${n}="([^"]*)"`)) || [])[1] || '';
       return {
+        // Name in Kiwix's content addresses (/kiwix/content/<id>/…) and in the reader's (/lire/<id>/…)
+        id: attr('path').split('/').pop().replace(/\.zim$/, ''),
         titre: attr('title'),
         description: attr('description'),
         langue: attr('language'),

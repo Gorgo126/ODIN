@@ -116,7 +116,7 @@ export default async function Page() {
             const option = (s.id === 'assistant' || s.id === 'guides') && !s.ok;
             const perso = s.id === 'assistant' && s.ok && assistant.configure;
             return (
-              <a key={s.id} href={option && s.id === 'assistant' ? '/ia' : s.interne ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
+              <a key={s.id} href={option && s.id === 'assistant' ? '/ia' : s.interne || s.direct ? s.lien : '/ouvrir/' + s.id} className={option ? 'service service-option' : 'service'} style={perso ? { '--or': assistant.couleur } : undefined}>
                 <div className="service-tete">
                   <span className="service-icone">{perso ? <Sprite nom={assistant.avatar} /> : ICONES[s.id]}</span>
                   <span className={s.ok ? 'etat en-ligne' : 'etat arrete'}>{s.ok ? 'Actif' : option ? 'Non installé' : 'Offline'}</span>
