@@ -35,7 +35,9 @@ export const CONSTANTES = {
   seuils: {
     documents: { reponse: 0.4, proches: 0.18 },
     wikis: { reponse: 0.48, proches: 0.42 },
-    livres: { reponse: 0.45, proches: 0.3 }
+    livres: { reponse: 0.45, proches: 0.3 },
+    // « Comment faire ? » articles: the thresholds of the books, NOT calibrated yet (added 2026-09-26)
+    guides: { reponse: 0.45, proches: 0.3 }
   },
 
   // Advanced search without the vectors (embedding model unavailable): share of the query found in

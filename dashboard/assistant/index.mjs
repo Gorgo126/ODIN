@@ -12,6 +12,7 @@ import { classer, noterCouverture, termes } from './bm25.mjs';
 import { termePrincipal } from './terme.mjs';
 import { passagesWikis } from './wikis.mjs';
 import { passagesLivres } from './source-livres.mjs';
+import { passagesGuides } from './source-guides.mjs';
 import { normaliser } from '../lib/normalisation.mjs';
 
 // Index of the personal documents: files, chunks, full-text index (FTS5) and vectors (Float32 BLOB,
@@ -493,6 +494,7 @@ export class Index {
     const req = (requetes?.length ? requetes : [question]).filter(Boolean);
     const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15, titre: termeSur ? terme : null })) : Promise.resolve([]);
     const pLivres = sources.includes('livres') ? mesurer('livres', passagesLivres(req)) : Promise.resolve([]);
+    const pGuides = sources.includes('guides') ? mesurer('guides', passagesGuides(req)) : Promise.resolve([]);
 
     const jeton = this.suspendre();
     const prof = profil(this.cfg.modeleEmbedding);
@@ -510,11 +512,11 @@ export class Index {
     }
 
     const docs = sources.includes('documents') ? this.documentsProches(q, req.join('\n'), n) : { extraits: [], documents: [], meilleur: null };
-    const [wikis, livres] = await Promise.all([pWikis, pLivres]);
+    const [wikis, livres, guides] = await Promise.all([pWikis, pLivres, pGuides]);
     // Main term: the one of the understanding step when each of its words comes from the question,
     // otherwise the rarest word of the question among the passages found. Without a sure term, the
     // title and section rules do not apply at all.
-    const tous = [...wikis, ...livres];
+    const tous = [...wikis, ...livres, ...guides];
     const frequence = (mot) => tous.filter((p) => normaliser(`${p.titre} ${p.section} ${p.texte}`).includes(mot)).length;
     // Words of the headings (titles and sections) of the passages found, singular and plural alike
     const entetes = new Set(tous.flatMap((p) => normaliser(`${p.titre} ${p.section}`).split(/[^\p{L}\p{N}]+/u)).filter(Boolean).map((m) => m.replace(/[sx]$/, '')));
@@ -522,7 +524,7 @@ export class Index {
     const principal = termeSur && terme
       ? { terme: normaliser(terme), source: 'synonymes' }
       : termePrincipal(terme, question, frequence, wikis.map((p) => p.titre), enTete);
-    const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires })];
+    const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires }), ...classer(guides, req, 4, { terme: principal.terme, secondaires })];
     if (q && externes.length) {
       const t = Date.now();
       try {
@@ -544,9 +546,10 @@ export class Index {
     const meilleurs = {
       documents: docs.meilleur,
       wikis: wikis.length ? Math.max(meilleur('wiki'), -1) : null,
-      livres: livres.length ? Math.max(meilleur('livre'), -1) : null
+      livres: livres.length ? Math.max(meilleur('livre'), -1) : null,
+      guides: guides.length ? Math.max(meilleur('comment-faire'), -1) : null
     };
-    for (const k of ['wikis', 'livres']) if (meilleurs[k] === -1) meilleurs[k] = null;
+    for (const k of ['wikis', 'livres', 'guides']) if (meilleurs[k] === -1) meilleurs[k] = null;
     // Share of the query found in each passage: shown in debug, and the ranking itself when the
     // question could not be embedded (Ollama down): keywords only, on a common scale
     noterCouverture([...docs.extraits, ...externes], req);
@@ -564,8 +567,10 @@ export class Index {
     // not answer). Books are grouped by book, with the page of their best passage.
     const vus = new Set();
     const proches = [...docs.documents, ...externes.filter((p) => p.cosinus != null).map((p) => ({
-      origine: p.origine, source: p.source, guide: p.guide, titre: p.titre, type: p.origine === 'wiki' ? 'article' : 'livre',
-      resume: p.origine === 'wiki' ? `article du wiki${p.section ? `, section « ${p.section} »` : ''}` : `livre${p.section ? `, chapitre « ${p.section} »` : ''}`,
+      origine: p.origine, source: p.source, guide: p.guide, titre: p.titre, type: p.origine === 'wiki' ? 'article' : p.origine === 'comment-faire' ? 'guide' : 'livre',
+      resume: p.origine === 'wiki' ? `article du wiki${p.section ? `, section « ${p.section} »` : ''}`
+        : p.origine === 'comment-faire' ? `fiche « Comment faire ? »${p.section ? `, section « ${p.section} »` : ''}`
+        : `livre${p.section ? `, chapitre « ${p.section} »` : ''}`,
       lien: p.lien, page: p.page, cosinus: p.cosinus
     }))].sort((a, b) => (b.cosinus ?? -1) - (a.cosinus ?? -1)).filter((d) => {
       const cle = d.origine === 'documents' ? d.chemin : d.origine === 'livre' ? `livre:${d.source}` : d.lien;

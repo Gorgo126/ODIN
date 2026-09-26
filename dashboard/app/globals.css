@@ -524,3 +524,32 @@ a.passage:hover { border-left-color: var(--or); background: var(--fond); }
   .fiche-wifi .carte { box-shadow: none !important; border: 1px solid #000; clip-path: none; }
   .fiche-wifi h2::before { content: none; }
 }
+
+/* « Comment faire ? » (odin-node.com articles) */
+.guides-intro { opacity: .75; margin: .3rem 0 1rem; }
+.guides-fil { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; opacity: .7; margin: 1.2rem 0 0; }
+.guides-fil a { color: inherit; }
+.guides-categories { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .7rem; }
+.guides-categorie { margin: 0; display: flex; flex-direction: column; gap: .3rem; }
+.guides-categorie p { margin: 0; }
+a.carte.guides-categorie em { margin: auto 0 0; font-family: var(--mono); }
+.guides-vide { opacity: .5; }
+.guides-article p { margin-top: .2rem; }
+.guides-gestion { display: flex; flex-direction: column; gap: .7rem; }
+.guides-gestion .progression { text-align: left; min-width: 0; }
+.guides-gestion .progression em { font-family: var(--mono); font-size: .75rem; opacity: .8; font-style: normal; }
+.guides-etat { margin: 0; font-size: .9rem; }
+.guides-boutons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.guides-gestion button { font-family: var(--mono); font-size: .78rem; padding: .45rem .9rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; box-shadow: var(--relief); }
+.guides-gestion button:disabled { opacity: .45; cursor: not-allowed; }
+.guides-maj { padding: .8rem 1rem; border: 1px solid color-mix(in srgb, var(--or) 40%, transparent); background: var(--fond); }
+.guides-maj p { margin: 0 0 .4rem; }
+.guides-diff ul { margin: .2rem 0 .6rem; padding-left: 1.2rem; font-size: .9rem; }
+.guides-a-jour { margin: 0; color: #16a34a; }
+/* Schemas: standalone SVG with their own dark background (the site's): no white behind them, a margin */
+.guide .article img { background: none; border-radius: 0; display: block; margin: .8rem auto; }
+.guide .article figure { margin: 1.5em 0; }
+.guide .article figcaption { text-align: center; margin-top: .3rem; }
+.guide .article blockquote { margin: 1em 0; padding: .2em 1em; border-left: 3px solid var(--or); opacity: .9; }
+.guide .article a[data-externe]::after { content: " ↗ nécessite internet"; font-family: var(--mono); font-size: .68em; letter-spacing: .04em; opacity: .75; white-space: nowrap; }
+.guide-date { font-family: var(--mono); font-size: .75em; opacity: .65; margin-top: -.5em; }

@@ -4,7 +4,8 @@ import { useLiaison, HORS_LIAISON } from '../../../useLiaison';
 
 const TAILLES = [0.9, 1, 1.1, 1.25, 1.4];
 
-export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence, liaisonInitiale }) {
+// Also the reader of the « Comment faire ? » articles: no Kiwix link there, and a class of its own
+export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence, liaisonInitiale, classe = '' }) {
   const [taille, setTaille] = useState(2);
   const [avis, setAvis] = useState(false);
   const horsLiaison = !useLiaison(liaisonInitiale)?.enLigne;
@@ -34,7 +35,7 @@ export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence,
   }
 
   return (
-    <div className="lecture">
+    <div className={`lecture${classe ? ` ${classe}` : ''}`}>
       <nav className="barre">
         <a href="/" className="accueil"> ODIN</a>
         <span className="sep"></span>
@@ -44,7 +45,7 @@ export default function Lecteur({ livre, livreLien, titre, html, kiwix, licence,
         <span className="outils">
           <button onClick={() => changer(-1)} title="Réduire le texte">A</button>
           <button onClick={() => changer(1)} title="Agrandir le texte">A+</button>
-          <a href={`/ouvrir/bibliotheque?chemin=${encodeURIComponent(kiwix)}`} title="Ouvrir dans Kiwix"></a>
+          {kiwix && <a href={`/ouvrir/bibliotheque?chemin=${encodeURIComponent(kiwix)}`} title="Ouvrir dans Kiwix"></a>}
         </span>
       </nav>
       {avis && <p className="avis-liaison">Lien externe : {HORS_LIAISON.toLowerCase()}.</p>}

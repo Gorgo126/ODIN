@@ -42,7 +42,7 @@ export async function chercher({ question, rechercher, reglages, reseau, debug =
   const p = preparer(question, { synonymes });
   const r = await rechercher(question, {
     n: EXTRAITS,
-    sources: ['documents', 'wikis', 'livres'],
+    sources: ['documents', 'wikis', 'livres', 'guides'],
     requetes: p.requetes,
     terme: p.terme,
     termeSur: p.termeSur,

@@ -44,7 +44,7 @@ async function charger() {
 
 // About EXTRAIT characters of the original text around the exact phrase, or else the first
 // match, words in bold
-function extrait(texte, mots, phrase) {
+export function extrait(texte, mots, phrase) {
   const plat = texte.replace(/\s+/g, ' ');
   const { n, carte } = normaliserAvecCarte(plat);
   const trouves = mots.flatMap((m) => positions(n, m).map((i) => [i, i + m.length])).sort((a, b) => a[0] - b[0]);

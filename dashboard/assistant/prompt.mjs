@@ -90,6 +90,7 @@ const rappel = (reglages) => `\n\n(Réponds directement, avec tes propres mots, 
 export function etiquette(e) {
   if (e.origine === 'wiki') return (e.source || '').split(/\s+/).find((m) => /^wiki/i.test(m)) || e.source || 'Wiki';
   if (e.origine === 'livre') return 'Livre';
+  if (e.origine === 'comment-faire') return 'Comment faire ?';
   return 'Mes documents';
 }
 

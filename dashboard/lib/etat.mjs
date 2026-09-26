@@ -3,6 +3,7 @@ import { installees } from './cartes.mjs';
 import { livresInstalles } from './livres.mjs';
 import { iaInstallee } from './assistant.mjs';
 import { langues } from './traduction.mjs';
+import { lireIndex } from './guides-index.mjs';
 
 // Display order of the home cards (services not available are moved after the others, see page.jsx).
 // Internal pages (interne) are available as soon as one pack of their kind is installed.
@@ -10,6 +11,8 @@ import { langues } from './traduction.mjs';
 export const SERVICES = [
   { id: 'bibliotheque', nom: 'Encyclopédie', url: 'http://kiwix:8080/kiwix/', lien: '/kiwix/' },
   { id: 'livres', nom: 'Bibliothèque', lien: '/livres', interne: true },
+  // Always shown, installed or not: its page offers the installation
+  { id: 'guides', nom: 'Comment faire ?', lien: '/comment-faire', interne: true },
   { id: 'carte', nom: 'Cartes', lien: '/carte', interne: true },
   { id: 'traduction', nom: 'Traduction', lien: '/traduction', interne: true },
   { id: 'documents', nom: 'Documents personnels', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
@@ -17,7 +20,7 @@ export const SERVICES = [
 ];
 
 // Translation: available when LibreTranslate answers /languages (same test as its healthcheck)
-const PRESENTS = { livres: livresInstalles, carte: installees, assistant: async () => (iaInstallee() ? [1] : []), traduction: () => langues(2000) };
+const PRESENTS = { livres: livresInstalles, carte: installees, assistant: async () => (iaInstallee() ? [1] : []), traduction: () => langues(2000), guides: async () => (await lireIndex())?.articles || [] };
 
 export async function etatServices() {
   return Promise.all(SERVICES.map(async (s) => {

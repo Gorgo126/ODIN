@@ -8,7 +8,8 @@ import { lirePacks as lirePacksCartes, FOND } from './cartes.mjs';
 import { fichiersLangues } from './traduction-packs.mjs';
 import { modelesInstallesIA } from './ia.mjs';
 import { lireJson } from './fichiers.mjs';
-import { suppressionZim, suppressionLivre, suppressionCarte, suppressionLangue, suppressionModeleIA } from './suppressions.mjs';
+import { suppressionZim, suppressionLivre, suppressionCarte, suppressionLangue, suppressionModeleIA, suppressionGuides } from './suppressions.mjs';
+import { RACINE as GUIDES, lireIndex as indexGuides } from './guides-index.mjs';
 
 // Space used by each kind of content, for /sante. Computed in the background, one computation at a
 // time, never awaited by a request: the page shows the last result and « calcul en cours ». Kept
@@ -96,6 +97,19 @@ async function langues() {
   return elements;
 }
 
+// All the « Comment faire ? » articles as one item (they are installed and removed together); the
+// link « actuel » is not followed, its version folder is counted once
+async function guides() {
+  const index = await indexGuides();
+  const elements = [];
+  const part = path.join(GUIDES, '.archive.part');
+  if (await fs.stat(part).catch(() => null)) elements.push(await enCours('Articles (téléchargement)', part));
+  if (!index) return elements;
+  const t = await taille(GUIDES);
+  elements.push({ id: 'guides', nom: `${index.articles.length} articles, version ${index.version}`, taille: t, suppression: suppressionGuides({ articles: index.articles.length, taille: t }) });
+  return elements;
+}
+
 async function modelesIA() {
   return (await modelesInstallesIA()).map((m) => ({ id: m.id, nom: m.libelle, taille: m.taille, suppression: suppressionModeleIA(m) }));
 }
@@ -103,17 +117,18 @@ async function modelesIA() {
 async function calculer() {
   const debut = Date.now();
   const [disque, ...listes] = await Promise.all([
-    espaceDisque(), zim(), livres(), cartes(), langues(),
+    espaceDisque(), zim(), livres(), cartes(), langues(), guides(),
     // Only with the AI option (OLLAMA_URL, compose.ia.yml)
     process.env.OLLAMA_URL ? modelesIA().catch(() => []) : null,
     taille('/documents')
   ]);
-  const [z, l, c, t, ia, documents] = listes;
+  const [z, l, c, t, g, ia, documents] = listes;
   const categories = [
     { id: 'zim', nom: 'Encyclopédie (packs ZIM)', lien: '/configuration', elements: trier(z) },
     { id: 'livres', nom: 'Bibliothèque (livres PDF)', lien: '/configuration', elements: trier(l) },
     { id: 'cartes', nom: 'Cartes', lien: '/configuration', elements: trier(c) },
     { id: 'traduction', nom: 'Langues de la traduction', lien: '/configuration#traduction', elements: trier(t) },
+    { id: 'guides', nom: 'Comment faire ? (articles)', lien: '/configuration#guides', elements: g },
     ...(ia ? [{ id: 'ia', nom: 'Modèles de l\'assistant IA', lien: '/ia', elements: trier(ia) }] : []),
     { id: 'documents', nom: 'Mes documents', lien: '/documents/', elements: [{ id: 'documents', nom: 'Documents personnels', taille: documents, suppression: null }] }
   ].map((g) => ({ ...g, taille: g.elements.reduce((s, e) => s + e.taille, 0) }));

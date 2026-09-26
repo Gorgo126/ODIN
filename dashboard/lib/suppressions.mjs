@@ -41,6 +41,13 @@ export const suppressionModeleIA = (m) => ({
   confirmation: avecTaille(`Désinstaller ${m.libelle} ?`, m.taille)
 });
 
+// « Comment faire ? » articles, all of them: { articles, taille }
+export const suppressionGuides = (g) => ({
+  methode: 'DELETE',
+  url: '/api/guides',
+  confirmation: avecTaille(`Supprimer les ${g.articles} articles « Comment faire ? » ? Ils pourront être réinstallés depuis internet.`, g.taille)
+});
+
 // Runs a suppression after its confirmation. null: not confirmed; otherwise { ok, erreur }
 export async function supprimer(s) {
   if (!s || !confirm(s.confirmation)) return null;

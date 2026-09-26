@@ -16,6 +16,8 @@ import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
 import { DEFAUTS } from '../../assistant/reglages.mjs';
 import { etatPointAcces } from '../../lib/portail.mjs';
 import { RAISONS, ETATS } from '../../lib/point-acces.mjs';
+import { etatGuides } from '../../lib/guides.mjs';
+import GestionGuides from '../comment-faire/Gestion';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +76,15 @@ const iconeLiaison = (
   </svg>
 );
 
+// Question mark in a circle: « Comment faire ? » articles
+const iconeGuides = (
+  <svg viewBox="0 0 24 24" {...trait}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+
 // Radio waves: Wi-Fi access point
 const iconeWifi = (
   <svg viewBox="0 0 24 24" {...trait}>
@@ -89,7 +100,7 @@ const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e
 export default async function Configuration() {
   const [livres, cartes, etatLiaison, reglages, pdf, langues] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres(), languesInstallees().catch(() => [])]);
   const assistant = reglagesAssistant();
-  const wifi = await etatPointAcces();
+  const [wifi, guides] = await Promise.all([etatPointAcces(), etatGuides()]);
   // The index answers at once; a worker still starting must not hold the page
   const etatIndex = await demander('etat', {}, 3000).catch(() => null);
   const resume = pluriel(livres.length, 'contenu');
@@ -162,6 +173,16 @@ export default async function Configuration() {
         <div className="grille">
           <Livres liaisonInitiale={etatLiaison} />
         </div>
+      </Panneau>
+
+      <Panneau
+        id="guides"
+        icone={iconeGuides}
+        titre="Comment faire ?"
+        sousTitre="Fiches pratiques du blog d'odin-node.com, lisibles hors ligne"
+        resume={guides.installe ? `${guides.installe.articles} articles installés` : 'Non installé'}
+      >
+        <GestionGuides initial={guides} liaisonInitiale={etatLiaison} avecSuppression />
       </Panneau>
 
       <Panneau
