@@ -3,3 +3,7 @@ services:
     # Local tag, so a dev build never shadows the pinned published image
     image: odin-dashboard:dev
     build: ./dashboard
+  # Same local image for the one-shot ownership service (built by the dashboard service)
+  droits:
+    image: odin-dashboard:dev
+    build: ./dashboard

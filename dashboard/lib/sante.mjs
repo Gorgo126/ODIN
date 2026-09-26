@@ -7,7 +7,7 @@ import { niveauDisque } from './format.mjs';
 // Health of the server (/sante and the status strip of the home page). Memory, load and uptime come
 // from /proc: Docker does not virtualise these files, the container reads those of the host (checked
 // against the host). Containers come from the socket proxy (service socket-proxy, internal network
-// « sante »), which only lets GET /containers/json and GET /info through. No call leaves the server.
+// « sante »), which only lets GET /containers/json and GET /version through. No call leaves the server.
 const DOCKER = process.env.DOCKER_URL || 'http://socket-proxy:2375';
 const DELAI = 2000;
 // Several pages open at once share one reading
@@ -75,7 +75,7 @@ function sante(c) {
 
 async function conteneurs() {
   try {
-    const [liste, info] = await Promise.all([docker('/containers/json?all=1'), docker('/info').catch(() => null)]);
+    const [liste, info] = await Promise.all([docker('/containers/json?all=1'), docker('/version').catch(() => null)]);
     // Only the containers of ODIN's Compose project, found from the dashboard's own container
     // (its hostname is the start of its identifier)
     const moi = liste.find((c) => c.Id.startsWith(os.hostname()));
@@ -83,11 +83,14 @@ async function conteneurs() {
     const siens = projet ? liste.filter((c) => c.Labels?.['com.docker.compose.project'] === projet) : liste;
     return {
       disponible: true,
-      docker: info?.ServerVersion || null,
+      docker: info?.Version || null,
       liste: siens.map((c) => ({
         nom: (c.Names?.[0] || c.Id.slice(0, 12)).replace(/^\//, ''),
         service: c.Labels?.['com.docker.compose.service'] || null,
         etat: c.State,
+        // One-shot service (droits): stopped once done, which is its normal state if it ended well
+        ponctuel: c.Labels?.['odin.ponctuel'] === 'true',
+        fini: c.State === 'exited' && /^Exited \(0\)/.test(c.Status || ''),
         sante: sante(c),
         ...image(c),
         depuis: duree(c.Status),
@@ -112,7 +115,9 @@ function niveau(s, c) {
   if (d) monter(d, `Disque rempli à ${s.disque.pct} %`);
   if (!c.disponible) monter('alerte', 'État des conteneurs indisponible');
   for (const x of c.liste || []) {
-    if (x.etat === 'restarting') monter('critique', `${x.nom} redémarre en boucle`);
+    if (x.ponctuel && x.fini) continue;
+    if (x.ponctuel && x.etat === 'exited') monter('critique', `${x.nom} a échoué`);
+    else if (x.etat === 'restarting') monter('critique', `${x.nom} redémarre en boucle`);
     else if (x.etat !== 'running') monter('critique', `${x.nom} arrêté`);
     else if (x.sante === 'unhealthy') monter('critique', `${x.nom} en mauvaise santé`);
   }

@@ -50,5 +50,11 @@ COPY --from=build /app/public ./public
 # shared modules it imports from lib/
 COPY --from=build /app/assistant ./assistant
 COPY --from=build /app/lib ./lib
+# Ownership of the data folders, run by the one-shot « droits » service (compose.yml), as root
+COPY droits.sh /app/droits.sh
+# Runs as node (uid 1000, like the first user of the host, owner of data/): the only folder of the
+# image it writes to is Next's cache
+RUN mkdir -p .next/cache && chown node:node .next/cache
+USER node
 EXPOSE 3000
 CMD ["node", "server.js"]

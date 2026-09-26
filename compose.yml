@@ -22,9 +22,47 @@ services:
       - dashboard
       - filebrowser
 
+  # One-shot, before the dashboard (which runs as node, uid 1000, without any capability): gives back
+  # to node what is not already its own in its data folders (dashboard/droits.sh). Root with CAP_CHOWN
+  # only (and DAC_READ_SEARCH to walk any folder), no network, read-only, then stops (« Terminé » on
+  # /sante). Same image as the dashboard: the GitHub workflow pins both lines.
+  droits:
+    image: ghcr.io/gorgo126/odin-dashboard:1c7822e7d8aa40fe1241582f5fa2ac2220f2effd@sha256:2f390e2c37ae58f0c1c54fdfbf81693547ebb408b2d6259ebb6d2af55731a8fd
+    container_name: dashboard-droits
+    user: "0:0"
+    entrypoint: ["/app/droits.sh"]
+    network_mode: none
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      odin.ponctuel: "true"
+    volumes:
+      - ${DATA_DIR}/zim:/data
+      - ${DATA_DIR}/config:/config
+      - ${DATA_DIR}/cartes:/cartes
+      - ${DATA_DIR}/livres:/livres
+      - ${DATA_DIR}/assistant:/assistant
+      - ${DATA_DIR}/traduction:/traduction
+      - ${DATA_DIR}/messages:/messages
+    restart: "no"
+
   dashboard:
     image: ghcr.io/gorgo126/odin-dashboard:1c7822e7d8aa40fe1241582f5fa2ac2220f2effd@sha256:2f390e2c37ae58f0c1c54fdfbf81693547ebb408b2d6259ebb6d2af55731a8fd
     container_name: dashboard
+    # Runs as node (image USER); nothing it does needs a capability
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      droits:
+        condition: service_completed_successfully
     environment:
       - HTTP_PORT=${HTTP_PORT}
       # World link probe: TCP 443 targets and a domain to resolve (defaults kept for older .env files)
@@ -166,7 +204,7 @@ services:
 
   socket-proxy:
     # Read-only window on Docker for the /sante page: the dashboard never gets the Docker socket. Only
-    # GET /containers/json (list, state, health, image) and GET /info pass; everything else, including
+    # GET /containers/json (list, state, health, image) and GET /version (Docker's version) pass; everything else, including
     # the inspection of a container (its environment variables) and its logs, is refused (403). Only
     # the host name « dashboard » may connect. Internal network, no published port, not in Caddy.
     # The :ro mount does not stop requests on the socket: the allowlist does. Root without any
@@ -183,7 +221,7 @@ services:
     command:
       - -listenip=0.0.0.0
       - -allowfrom=dashboard
-      - -allowGET=(/v1\.[0-9]+)?/(containers/json|info)
+      - -allowGET=(/v1\.[0-9]+)?/(containers/json|version)
       - -allowhealthcheck
       - -watchdoginterval=600
       - -stoponwatchdog

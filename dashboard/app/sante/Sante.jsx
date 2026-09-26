@@ -73,11 +73,11 @@ export default function Sante({ initiale }) {
               </thead>
               <tbody>
                 {c.liste.map((x) => {
-                  const mal = x.etat !== 'running' || x.sante === 'unhealthy';
+                  const mal = !(x.ponctuel && x.fini) && (x.etat !== 'running' || x.sante === 'unhealthy');
                   return (
                     <tr key={x.nom} className={mal ? 'sante-mal' : undefined}>
                       <td>{x.nom}</td>
-                      <td>{ETATS[x.etat] || x.etat}</td>
+                      <td>{x.ponctuel && x.fini ? 'Terminé' : ETATS[x.etat] || x.etat}</td>
                       <td>{x.sante ? SANTES[x.sante] || x.sante : '–'}</td>
                       <td className="sante-image">{x.image}</td>
                       <td className="sante-image">{x.tag}</td>
