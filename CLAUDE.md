@@ -54,10 +54,24 @@ garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshom
   Revenir sans IA sur odintest : relancer l'installeur sans ODIN_SIMULER_VRAM (il retire la ligne COMPOSE_FILE).
 - Le propriétaire vérifie dans son navigateur sur http://192.168.129.35
 - Une fois validé : fusionner dev dans main et pousser. C'est main que récupère l'installeur.
-- Image du dashboard : à chaque push sur main ou dev touchant dashboard/, GitHub Actions publie
-  ghcr.io/gorgo126/odin-dashboard:<sha> puis fige le compose.yml de cette branche sur cette image, par
-  un commit automatique (github-actions[bot]), version (commit) et empreinte (sha256) ensemble. Faire git pull avant de repousser. L'installeur prend
-  donc l'image de la branche clonée (BRANCHE). Suivre un build : gh run list / gh run watch.
+- Image du dashboard (.github/workflows/dashboard.yml) : à chaque push sur main ou dev touchant dashboard/ (ou le
+  workflow), GitHub Actions construit ghcr.io/gorgo126/odin-dashboard:<sha du commit poussé> (amd64), puis commite
+  sur LA MÊME BRANCHE (checkout de origin/<branche> à jour) la ligne image: de compose.yml, version (commit) et
+  empreinte (sha256) ensemble : « Dashboard : image <sha7> » (github-actions[bot]). L'installeur prend donc l'image
+  de la branche clonée (BRANCHE). Pas de boucle : un push fait avec GITHUB_TOKEN ne déclenche aucun workflow, et ce
+  commit ne touche que compose.yml (hors du filtre paths). Un seul build à la fois par branche, dans l'ordre des
+  pushes (concurrency, cancel-in-progress: false). Suivre un build : gh run list / gh run watch.
+- Synchroniser le clone (Claude Code) : la branche distante reçoit ce commit automatique quelques minutes après
+  chaque push touchant dashboard/. Donc : git pull --rebase origin dev AVANT chaque commit et chaque push (jamais de
+  push --force) ; un push refusé (« fetch first ») se règle par git pull --rebase origin dev puis push. Avant un test
+  sur VM vierge ou une fusion : attendre la fin du build (gh run watch), puis git pull, et utiliser le commit
+  automatique (c'est lui qui porte la bonne image).
+- Fusion dev → main (constaté sur l'historique, jusqu'au 2026-09-26) : le merge apporte le compose.yml de dev, donc
+  l'image construite pour dev (<sha de dev>@sha256 de dev). Le push sur main touche dashboard/ : le workflow
+  RECONSTRUIT l'image depuis le commit de main, puis commite sur main son propre épinglage (<sha de main>@sha256 de
+  main). Pendant les quelques minutes du build, main désigne l'image de dev (même code). Un commit fait directement
+  sur main et touchant dashboard/ produit une image cohérente (construite depuis ce commit, épinglée sur main), mais
+  dev ne l'a pas : refusionner main dans dev. Voir « À faire » : points à corriger.
 - Revenir sur odintest à l'image publiée : ... && docker compose pull dashboard && docker compose up -d --remove-orphans
 - Logs : multipass exec odintest -- bash -lc "cd /opt/odin && docker compose logs --tail 50 <service>"
 - Tester une route interne sans authentification :
@@ -89,7 +103,7 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
    Documents.
 2. Couper : sudo /opt/odin/scripts/hors-ligne.sh couper (persiste au redémarrage).
 3. Redémarrer à froid (multipass stop test, puis multipass start test), puis vérifier : 5 conteneurs, connexion,
-   accueil, recherche, lecteur, /kiwix, dépôt d'un document,
+   accueil, recherche, lecteur, /encyclopedie, dépôt d'un document,
    page Configuration (« Catalogue injoignable » en moins de 3 s, boutons désactivés).
 4. Navigateur, outils de développement ouverts (onglet Réseau) : aucune requête vers un autre hôte
    que l'IP d'ODIN, sur chaque page. Indispensable : le PC du propriétaire, lui, a internet.
@@ -104,7 +118,8 @@ le réseau local, comme une box sans accès internet ; chaque tentative bloquée
 Un seul compose.yml écrit à la main, aucun orchestrateur.
 
 - caddy : façade unique, port ${HTTP_PORT}:80. Routes /documents → filebrowser,
-  /kiwix → kiwix, reste → dashboard. auto_https off.
+  /kiwix/content/* → kiwix pour les fichiers des ZIM seulement (une page HTML → /lire-depuis-kiwix → /lire),
+  reste de /kiwix → /encyclopedie, reste → dashboard. auto_https off.
   Après toute modification du Caddyfile : docker compose restart caddy (up -d ne le relit pas).
 - Authentification unique : forward_auth vers /api/auth/verifier du dashboard. Mot de passe choisi à la
   première visite (data/config/auth.json). Les chemins accessibles sans connexion sont listés dans @public.
@@ -112,7 +127,20 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   la carte seulement maplibre-gl, pmtiles et @protomaps/basemaps, en versions exactes. Rien d'autre.
   Dépendances transitives figées par dashboard/package-lock.json (npm ci au build) ; poppler-utils figé à la version
   exacte d'Alpine (=25.12.0-r0) : si Alpine la retire, le build échoue au lieu de changer en silence.
-- kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid).
+- kiwix : moteur invisible, lit data/zim/library.xml (--monitorLibrary, --skipInvalid). Son interface (bibliothèque,
+  lecteur, recherche, catalogue) n'est plus servie (2026-09-26) : les articles s'ouvrent TOUJOURS dans le lecteur
+  d'ODIN (/lire, lib/lecture.mjs lit kiwix:8080 en interne et gère les liens hors ligne). Entrées : carte
+  « Encyclopédie » → /encyclopedie (liste de library.xml, id = nom du fichier sans .zim) → /lire/<id> ; /recherche,
+  assistant → /lire ; /ouvrir/bibliotheque (ancien cadre) → /encyclopedie ou /lire/<article> ; plus de lien « Ouvrir
+  dans Kiwix » dans le lecteur. Liens d'un article : même ZIM ou autre ZIM (relatif, absolu, accentué) → /lire/<zim>/… ;
+  lien vers une page de Kiwix → /recherche?q=… (sa recherche) ou /encyclopedie ; externes marqués data-externe.
+  Caddy : /kiwix/content/* seulement (images, médias, PDF d'un ZIM, derrière l'authentification) ; une réponse HTML
+  y est renvoyée vers /lire-depuis-kiwix{http.request.uri} (chemin brut : {re.*} de path_regexp est décodé, « A?B »
+  perdait son « ? », essayé), route du dashboard qui répond 302 /lire/<zim>/<article> ; tout autre /kiwix* →
+  /encyclopedie. Pas de --blockexternal. Vérifié sur odintest : 10 adresses de l'interface → /encyclopedie, 5 articles
+  en adresse directe (accents, paramètres) → /lire, images en 200, visiteur → connexion, article réel : 71 liens
+  internes vers /lire du même ZIM, 0 vers /kiwix, 86 externes marqués ; faux kiwix-serve (lireArticle réel) pour les
+  liens vers un autre ZIM ; /recherche : résultats des deux ZIM vers /lire.
 - vecteurs : llama.cpp (ghcr.io/ggml-org/llama.cpp:server-v0.4.1) sert EmbeddingGemma sur le processeur pour
   la recherche avancée et l'index (VECTEURS_URL=http://vecteurs:8080, /v1/embeddings), réseau interne seulement.
   Modèle data/vecteurs/embeddinggemma-300M-Q8_0.gguf (MODELE_VECTEURS), téléchargé par install.sh avant le
@@ -931,6 +959,28 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   de Configuration, plus aucun « Indisponible hors ligne ». Restent : le parcours POINT_ACCES=1 à l'installation sur
   une machine en Ethernet avec NetworkManager, et le contrôle du message dans le navigateur du propriétaire.
 
+### Fusion dev → main : points à corriger (proposés le 2026-09-26, rien d'implémenté)
+
+- Main reconstruit l'image au lieu de reprendre celle de dev : l'image installée par le public n'est pas celle testée
+  sur odintest et sur la VM vierge (même code, autre build, autre empreinte). Proposé : à la fusion, promouvoir
+  l'image de dev (garder son épinglage sha@sha256, ne pas reconstruire sur main ; construire seulement quand un commit
+  de main touche dashboard/ sans venir de dev).
+- Chaque commit automatique propre à main (après une fusion) modifie la même ligne que ceux de dev : conflit sur la
+  ligne image: à la fusion suivante, sauf si main a été refusionné dans dev (ce qui a été fait à la main). Proposé :
+  refusionner main dans dev (ou avancer dev) juste après le commit automatique de main, à chaque fusion.
+- Fusionner avant la fin du build de dev donne à main l'épinglage d'un commit plus ancien de dev ; si le build de main
+  échoue ensuite, main garde une image qui ne correspond pas à son code. Proposé : fusionner seulement quand le dernier
+  commit de dev est le commit automatique « Dashboard : image … » et que gh run list est vert.
+
+### Passage sur vrai matériel (liste)
+
+- Image du dashboard construite en amd64 SEULEMENT (workflow : platforms: linux/amd64 ; le build arm64 émulé bloque
+  GitHub Actions) : une machine ARM (Raspberry Pi, Mac Apple Silicon sous Linux) ne peut pas l'installer. Les autres
+  images publient amd64 et arm64 (empreintes d'index : un passage sur ARM ne changerait pas leurs empreintes).
+- Ollama rocm (compose.amd.yml, ollama/ollama:0.34.2-rocm) : amd64 SEULEMENT (vérifié par imagetools le 2026-09-26).
+- Déjà notés ailleurs, non vérifiés sur vrai matériel : point d'accès Wi-Fi (vrais pilotes, portée, vrais téléphones),
+  option IA sur GPU (NVIDIA, AMD, carte de 8 Go exactement), disque de données physique distinct (DONNEES).
+
 ### Audit hors ligne (liste en cours)
 
 État relevé dans le code le 2026-09-26 (dev 669ec4d) ; lot A (délais, liens de la carte, empreintes) fait le même jour.
@@ -961,7 +1011,8 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   juste après une coupure, tant que la sonde (45 s) dit encore « en ligne », la requête du catalogue peut prendre
   jusqu'à 15 s (DNS, cf. « sonde encore établie → échec en 5 s » pour les articles) ; au démarrage, enLigne() attend
   la première sonde 4 s au plus.
-- Fonctions impossibles hors ligne, désactivées ou masquées proprement. PARTIEL (reste l'interface native de Kiwix).
+- Fonctions impossibles hors ligne, désactivées ou masquées proprement. FAIT (Kiwix : son interface n'est plus servie,
+  articles toujours dans le lecteur, voir l'entrée kiwix d'Architecture).
   Dépend d'internet, dashboard : packs ZIM et catalogue Kiwix (Packs.jsx), livres (Livres.jsx), packs de cartes et
   builds Protomaps (PacksCartes.jsx), langues de traduction (PacksTraduction.jsx), modèle de l'option IA
   (ia/InstallationIA.jsx), articles « Comment faire ? » (comment-faire/Gestion.jsx), liens monde de la carte de
@@ -970,11 +1021,9 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   d'accès), jamais cachés ; le Lecteur grise les liens data-externe. Attribution OpenStreetMap/ODbL/Protomaps
   de /carte (lot A) : toujours affichée, liens data-externe grisés et barrés hors ligne, clic bloqué avec l'avis
   (carte/Plan.jsx, classe hors-liaison sur .cadre : MapLibre gère les classes de son conteneur) ; vérifié par Playwright
-  (réponse de /api/liaison simulée dans le navigateur). Reste : liens externes de l'interface native de Kiwix (/kiwix,
-  cadre /ouvrir), qui échouent sans avertissement. kiwix-serve 3.8.2 n'offre que --blockexternal : page intermédiaire
-  « External Link Detected » par le lecteur de Kiwix, en ligne comme hors ligne, lien toujours cliquable (essayé sur
-  une instance temporaire) ; griser dans Kiwix demanderait d'injecter du script dans ses cadres (écarté). Choix au
-  propriétaire : --blockexternal, ou ouvrir les articles dans le lecteur d'ODIN (/lire) plutôt que dans Kiwix.
+  (réponse de /api/liaison simulée dans le navigateur). Interface native de Kiwix : n'est plus servie (choix du
+  propriétaire, 2026-09-26 : articles toujours dans le lecteur ; --blockexternal écarté, il n'affichait qu'une page
+  « External Link Detected », en ligne comme hors ligne).
   Open WebUI : retiré (voir plus haut). FileBrowser : rien (config/filebrowser.yaml disableUpdateCheck: true ; aucune
   fonction en ligne). LibreTranslate : LT_UPDATE_MODELS=false, rien. Ollama (option) : OLLAMA_NO_CLOUD=true, pull
   seulement depuis /ia. Sonde de connectivité : TCP 443 vers LIAISON_CIBLES et DNS de LIAISON_DNS (voulu).
