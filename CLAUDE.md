@@ -916,12 +916,55 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
 
 ### Audit hors ligne (liste en cours)
 
-- Le conteneur dashboard tourne en root (uid 0, vérifié le 2026-09-26) alors qu'il répond à des requêtes non
-  authentifiées (mur de messages : /messages, GET et POST /api/messages). Évaluer le passage en non-root.
-  PIÈGE lié : un dossier de data/ créé par Docker lors d'une mise à jour sans installeur (git pull + docker compose
-  up, cas des installations existantes) est en root:root 755 (constaté sur odintest pour data/messages) ; un dashboard
-  non root ne pourrait pas y écrire. Il faudra alors un chown au démarrage (point d'entrée) ou dans l'installeur, pour
-  chaque volume où le dashboard écrit (config, cartes, livres, assistant, traduction, messages). Rien d'implémenté.
+État relevé dans le code le 2026-09-26 (dev 669ec4d), rien d'implémenté depuis.
+
+- Dashboard en root alors qu'il répond à des requêtes non authentifiées (mur de messages : /messages, GET et POST
+  /api/messages) ; évaluer le passage en non-root. À FAIRE. Preuve : dashboard/Dockerfile n'a aucune ligne USER
+  (dernière étape FROM node:24.21.0-alpine3.23, CMD node server.js) ; docker exec dashboard id → uid=0(root).
+- Piège lié : un dossier de data/ créé par Docker lors d'une mise à jour sans installeur (git pull + docker compose up)
+  est en root:root 755 (constaté sur odintest pour data/messages) ; un dashboard non root ne pourrait pas y écrire. Il
+  faudra un chown au démarrage (point d'entrée) ou dans l'installeur, pour chaque volume où le dashboard écrit (config,
+  cartes, livres, assistant, traduction, messages). À FAIRE (avec le point précédent). Preuve : seul install.sh
+  fait chown -R "$UTILISATEUR" "$CIBLE" "$DATA", et le Dockerfile n'a pas de point d'entrée (CMD node server.js).
+- Téléchargements de packs et de modèles : délai d'inactivité (ni échec trop tôt, ni attente sans fin). PARTIEL.
+  Fait : packs ZIM (lib/telechargements.mjs, INACTIVITE = 30000, 15 s pour répondre, 3 essais par miroir), langues
+  (lib/traduction-packs.mjs, INACTIVITE = 30000), articles « Comment faire ? » (telechargerFlux, 15 s puis 30 s),
+  modèle IA (lib/ia.mjs, INACTIVITE = 120000 sur la progression d'Ollama), modèle de vecteurs de l'installeur
+  (install.sh, curl --speed-limit 1024 --speed-time 60). Reste : livres (lib/livres.mjs, telechargerFlux avec
+  inactivite: null après 15 s de réponse) et cartes (lib/cartes.mjs, « No inactivity timeout », pmtiles extract et
+  fichier mondial) peuvent rester pendus sans limite ; seule l'annulation manuelle les arrête. Exceptions voulues
+  jusqu'ici (voir « Principe hors ligne ») : pour les cartes, surveiller la progression de pmtiles (« NN% | ») plutôt
+  que les octets.
+- OFFLINE_MODE d'Open WebUI. SANS OBJET : Open WebUI n'existe plus (retiré à l'ancien lot 1). Preuve : aucun service
+  open-webui dans compose*.yml ; install.sh ne le mentionne que dans le bloc « Migration: former assistant (Open WebUI +
+  synchro) », qui retire ses conteneurs, images et data/openwebui.
+- Catalogue lent quand ODIN est hors ligne. FAIT, avec une fenêtre résiduelle. Preuve : app/api/packs/route.js
+  (« Offline or radio silence: no request to the catalogue at all » : infos() seulement si enLigne()), dernières
+  tailles connues affichées hors ligne ; lib/catalogue.mjs garde un échec 60 s (DUREE_ECHEC) et limite la requête à
+  15 s ; cartes.mjs ne lit builds.json qu'en ligne (2 s). Mesuré : 156 ms hors ligne (lot 2 du point d'accès). Reste :
+  juste après une coupure, tant que la sonde (45 s) dit encore « en ligne », la requête du catalogue peut prendre
+  jusqu'à 15 s (DNS, cf. « sonde encore établie → échec en 5 s » pour les articles) ; au démarrage, enLigne() attend
+  la première sonde 4 s au plus.
+- Fonctions impossibles hors ligne, désactivées ou masquées proprement. PARTIEL.
+  Dépend d'internet, dashboard : packs ZIM et catalogue Kiwix (Packs.jsx), livres (Livres.jsx), packs de cartes et
+  builds Protomaps (PacksCartes.jsx), langues de traduction (PacksTraduction.jsx), modèle de l'option IA
+  (ia/InstallationIA.jsx), articles « Comment faire ? » (comment-faire/Gestion.jsx), liens monde de la carte de
+  connectivité (CarteLiaison.jsx, reglages.mjs : World Monitor), liens externes des articles et des licences (Lecteur,
+  data-externe). Tous passent par useLiaison / enLigne : grisés avec « Indisponible hors ligne » (ou le message du point
+  d'accès), jamais cachés ; le Lecteur grise les liens data-externe. Non traités : liens d'attribution
+  OpenStreetMap/ODbL de /carte (carte/Plan.jsx, liens ordinaires) et liens externes de l'interface native de Kiwix
+  (/kiwix, cadre /ouvrir), qui échouent sans avertissement.
+  Open WebUI : retiré (voir plus haut). FileBrowser : rien (config/filebrowser.yaml disableUpdateCheck: true ; aucune
+  fonction en ligne). LibreTranslate : LT_UPDATE_MODELS=false, rien. Ollama (option) : OLLAMA_NO_CLOUD=true, pull
+  seulement depuis /ia. Sonde de connectivité : TCP 443 vers LIAISON_CIBLES et DNS de LIAISON_DNS (voulu).
+  Installeur : entièrement en ligne par nature (apt, dépôt Docker, git clone, docker compose pull, modèle de vecteurs,
+  langues fr et en et fond de carte par l'API du dashboard) ; scripts/point-acces.sh est le seul à fonctionner hors ligne.
+- Versions des images Docker figées (ni latest ni tag flottant). FAIT, sans empreintes. Preuve : compose.yml
+  caddy:2.11.4-alpine, kiwix-serve:3.8.2, filebrowser:1.5.6-stable, llama.cpp:server-v0.4.1, libretranslate:v1.9.6,
+  socket-proxy:1.13.1@sha256:…, dashboard figé sur son commit ; compose.ia.yml ollama:0.34.2, compose.amd.yml
+  0.34.2-rocm ; Dockerfile node:24.21.0-alpine3.23 et go-pmtiles:v1.31.2 ; scripts/maj-bibliotheque.sh reprend l'image
+  de compose.yml. « bge-m3:latest » d'install.sh est un modèle Ollama retiré par la migration, pas une image. Reste :
+  seul socket-proxy est figé par empreinte ; un tag republié changerait l'image en silence.
 
 ## Règles
 
