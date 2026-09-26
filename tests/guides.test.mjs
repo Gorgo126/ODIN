@@ -142,3 +142,4 @@ test('keywords : facultatif, nettoyé, jamais une raison de refuser', () => {
   assert.deepEqual(index.articles[0].keywords, ['potable', 'eau du robinet']);
   assert.deepEqual(construireIndex(publie, validerArchive(lireTarGz(tar(bon)), publie)).articles[0].keywords, []);
 });
+

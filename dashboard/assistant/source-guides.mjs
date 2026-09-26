@@ -1,6 +1,6 @@
 import { normaliser } from '../lib/normalisation.mjs';
 import { lireIndex, lienArticle } from '../lib/guides-index.mjs';
-import { termes, occurrences } from './bm25.mjs';
+import { termes, occurrences, clesUtiles } from './bm25.mjs';
 
 // « Comment faire ? » source of the advanced search and the assistant: the articles installed from
 // odin-node.com, through the text built at installation (guides.json, one entry per h2 section). The
@@ -14,7 +14,7 @@ function sections(index) {
   if (memo.index !== index) {
     memo.index = index;
     memo.sections = index.articles.flatMap((a) => {
-      const cles = normaliser((a.keywords || []).join(' '));
+      const cles = clesUtiles(a.keywords);
       return a.sections.map((s) => ({ a, s, norm: normaliser(`${s.titre} ${s.texte}`), cles }));
     });
   }

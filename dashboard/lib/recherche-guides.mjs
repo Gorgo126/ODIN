@@ -1,6 +1,7 @@
 import { normaliser, motsRequete, phraseRequete, positions } from './normalisation.mjs';
 import { lireIndex, lienArticle } from './guides-index.mjs';
 import { extrait } from './recherche-livres.mjs';
+import { clesUtiles } from '../assistant/bm25.mjs';
 
 // Keyword search in the « Comment faire ? » articles, section by section (the index built at
 // installation: guides.json). Same rules as the books: every word in the section, occurrences, bonus
@@ -12,7 +13,7 @@ function sections(index) {
     memo.index = index;
     memo.sections = index.articles.flatMap((a) => {
       // « keywords » of the manifest: synonyms of the whole article, as good as its title
-      const cles = normaliser((a.keywords || []).join(' '));
+      const cles = clesUtiles(a.keywords);
       return a.sections.map((s) => ({
         a,
         s,
