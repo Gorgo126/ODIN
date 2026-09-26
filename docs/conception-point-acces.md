@@ -210,6 +210,12 @@ pas `http://` (à vérifier, c'est la raison du QR code d'adresse).
 
 ### Lot 3 : bascule pour une machine sans Ethernet
 
+> Réalisé le 2026-09-26 sous une autre forme : activation et désactivation depuis la page /point-acces du tableau
+> de bord, pour toute machine (avec ou sans Ethernet), demande `activer` / `desactiver` en texte simple dans
+> `data/config/point-acces-demande`, retour automatique à l'ancienne connexion (30 s), réactivation si l'ancienne
+> connexion ne revient pas. Détail à jour dans CLAUDE.md (« Activation depuis le tableau de bord ») ; le texte
+> ci-dessous est la conception d'origine.
+
 Quand le Wi-Fi est la seule connexion à internet, il ne peut pas servir de point d'accès en même
 temps. Configuration propose alors « Passer en mode autonome » (coupe internet, lance le réseau ODIN)
 et l'inverse, pour une mise à jour ou un ajout de contenu.

@@ -439,7 +439,10 @@ prendre_carte() {
     # A [device-…] section with managed=0, not keyfile.unmanaged-devices: Ubuntu's list holds
     # « except:type:wifi », and an except: spec wins over the whole list
     printf '# ODIN : interface du point d'"'"'accès Wi-Fi, laissée à scripts/point-acces.sh\n[device-odin-point-acces]\nmatch-device=interface-name:%s\nmanaged=0\n' "$INTERFACE" > "$NM_CONF"
-    nmcli general reload conf 2>/dev/null || systemctl reload NetworkManager 2>/dev/null
+    # The file is for the next boot only. NEVER « nmcli general reload conf » (nor a reload of the
+    # service): seen on Ubuntu 24.04, NetworkManager then took every device, Docker's bridges
+    # included, detached their ports and removed their addresses (ODIN unreachable). At runtime,
+    # the device alone is set unmanaged.
     nmcli device set "$INTERFACE" managed no 2>/dev/null
   fi
   if [ "$GESTIONNAIRE" = networkd ]; then
@@ -467,10 +470,8 @@ rendre_carte() {
   charger_origine
   if [ -f "$NM_CONF" ]; then
     rm -f "$NM_CONF"
-    if nm_actif; then
-      nmcli general reload conf 2>/dev/null || systemctl reload NetworkManager 2>/dev/null
-      nmcli device set "$INTERFACE" managed yes 2>/dev/null
-    fi
+    # No configuration reload (see prendre_carte): the device alone is given back
+    nm_actif && nmcli device set "$INTERFACE" managed yes 2>/dev/null
   fi
   if [ "$GESTIONNAIRE" = nm ] && [ -n "$CONNEXION" ] && nm_actif; then
     # --wait 0: the request only (a process left behind would be killed with the unit); the
