@@ -291,7 +291,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   online suffit ; sinon corps comparé sur son début) : connectivity-check.ubuntu.com. (avec le point final : Host
   normalisé), nmcheck.gnome.org, ping.archlinux.org, fedoraproject.org/static/hotspot.txt.
   Tests du lot 2 : node --test tests/portail.test.mjs (6 : réponses et tailles exactes, hôtes, libération, plage) ;
-  sudo scripts/point-acces-test.sh portail (B6, 33 contrôles : 14 sondes → 302 /portail, /portail 200, Continuer 303,
+  sudo scripts/point-acces-test.sh portail (B6, rejouable : redémarre d'abord le dashboard, qui oublie les appareils
+  libérés ; 33 contrôles : 14 sondes → 302 /portail, /portail 200, Continuer 303,
   14 sondes → réponse identique à l'octet, autre domaine → 302 /, dns.msftncsi.com, ODIN par son adresse sans portail).
   Résultats lot 2 (VM test, 2026-09-25/26) : B6 33/33 ; depuis le PC par l'IP Ethernet, Host de sonde → 302 /connexion
   (aucun portail), liberer → 403, fiche et QR → connexion. B10 : hors-ligne.sh couper, redémarrage à froid, point
@@ -618,9 +619,7 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   avant-fusion-point-acces. Vérifié après la fusion sur VM vierge depuis main (4f707fc) : sans POINT_ACCES, installation
   normale en 155 s (7 conteneurs, aucune unité odin-*, pas de hostapd, pas de PORTAIL_* dans .env, sonde → connexion) ;
   puis radios virtuelles et installeur relancé avec POINT_ACCES=1 (36 s) : B1 à B5 bons, B6 33/33, accès par l'IP
-  Ethernet sans portail, liberer → 403. Le test portail suppose un téléphone pas encore libéré : relancé tout de suite,
-  les 14 sondes « avant Continuer » échouent (libéré pour 12 h), attendu. odintest mise à jour ensuite (installeur, dev
-  a3049cb, sans POINT_ACCES).
+  Ethernet sans portail, liberer → 403. odintest mise à jour ensuite (installeur, dev a3049cb, sans POINT_ACCES).
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
