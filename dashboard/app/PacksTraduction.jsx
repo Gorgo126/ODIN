@@ -1,13 +1,16 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../lib/format.mjs';
-import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { useLiaison, messageHorsLigne } from './useLiaison';
 import { suppressionLangue, supprimer } from '../lib/suppressions.mjs';
 
 // Language packs of the offline translation, like the ZIM packs: size, install, progress, remove
 export default function PacksTraduction({ liaisonInitiale }) {
   const [langues, setLangues] = useState(null);
-  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
+  const liaison = useLiaison(liaisonInitiale);
+  const enLigne = !!liaison?.enLigne;
+  // « Indisponible hors ligne », or the advice to leave the access point when it is on
+  const horsLigne = messageHorsLigne(liaison);
 
   const charger = useCallback(async () => {
     try {
@@ -42,7 +45,7 @@ export default function PacksTraduction({ liaisonInitiale }) {
 
   return (
     <>
-      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Les langues installées restent utilisables.</p>}
+      {!enLigne && <p className="hors-liaison">{horsLigne}. Les langues installées restent utilisables.</p>}
       {langues.map((l) => {
         const t = l.tache;
         const pct = t?.total ? Math.floor((t.recu / t.total) * 100) : 0;
@@ -68,10 +71,10 @@ export default function PacksTraduction({ liaisonInitiale }) {
           action = (
             <span>
               {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}
-              <button disabled={!enLigne} title={enLigne ? undefined : HORS_LIAISON} onClick={() => envoyer(l.code, 'POST')}>
+              <button disabled={!enLigne} title={enLigne ? undefined : horsLigne} onClick={() => envoyer(l.code, 'POST')}>
                 {t?.etat === 'erreur' ? 'Réessayer' : 'Installer'}
               </button>
-              {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
+              {!enLigne && <em className="hors-liaison">{horsLigne}</em>}
             </span>
           );
         }

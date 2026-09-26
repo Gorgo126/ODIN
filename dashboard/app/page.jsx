@@ -6,6 +6,8 @@ import BandeauSante from './BandeauSante';
 import { liaison } from '../lib/liaison.mjs';
 import { reglagesAssistant } from '../lib/assistant.mjs';
 import Sprite from './assistant/Sprite';
+import IconeWifi from './IconeWifi';
+import { lirePointAcces, resumePointAcces } from '../lib/point-acces.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +80,7 @@ const ICONES = {
 };
 
 export default async function Page() {
-  const [etats, etatLiaison] = await Promise.all([etatServices(), liaison()]);
+  const [etats, etatLiaison, wifi] = await Promise.all([etatServices(), liaison(), lirePointAcces()]);
   // Available services first, in the order of SERVICES; the others (not installed, stopped) after them
   const services = [...etats.filter((s) => s.ok), ...etats.filter((s) => !s.ok)];
   const assistant = reglagesAssistant();
@@ -128,6 +130,13 @@ export default async function Page() {
       </section>
 
       <BandeauSante />
+
+      {/* Discreet, last: the access point is an exception, not a service */}
+      <a href="/point-acces" className="carte-wifi">
+        <span className="carte-wifi-icone"><IconeWifi /></span>
+        <span>Point d'accès Wi-Fi</span>
+        <span className={wifi?.actif ? 'carte-wifi-etat actif' : 'carte-wifi-etat'}>{resumePointAcces(wifi)}</span>
+      </a>
     </main>
   );
 }

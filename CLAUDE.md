@@ -340,8 +340,10 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   NON VÉRIFIÉ : coupure au milieu du téléchargement (archive de 68 Ko, reçue d'un coup) ; réécriture des liens du blog sur
   de vrais articles (les 12 articles actuels n'ont AUCUN lien : testée seulement par les tests unitaires) ; empreinte de
   chaque article (formule non publiée : seule l'archive est vérifiée) ; seuils de la recherche avancée pour ces articles.
-- Point d'accès Wi-Fi (option POINT_ACCES, NON VÉRIFIÉE sur du vrai matériel ; brief docs/conception-point-acces.md,
-  lots 1 et 2 (portail captif) faits et dans main depuis le 2026-09-26, lot 3 bascule seulement sur accord du propriétaire). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
+- Point d'accès Wi-Fi (EXPÉRIMENTAL, NON VÉRIFIÉ sur du vrai matériel ; brief docs/conception-point-acces.md,
+  lots 1 et 2 (portail captif) dans main depuis le 2026-09-26 ; activation depuis le tableau de bord et bascule d'une
+  carte qui porte la connexion (ancien lot 3) sur dev depuis le 2026-09-26, voir « Activation depuis le tableau de bord »
+  plus bas : elle remplace ce qui est dit ici de POINT_ACCES et de l'installeur). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
   (paquet dnsmasq-base, PAS dnsmasq qui lance un service sur le port 53) sous systemd. scripts/point-acces.sh
   (detecter, installer, desinstaller, etat ; demarrer, arreter, echec pour les unités ; fonctions chargeables par
   les tests), modèles dans config/point-acces/, fichiers générés dans /etc/odin/point-acces/ (root, 600 : parametres,
@@ -399,6 +401,52 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   point d'accès (un échec passager de hostapd ne doit pas priver la machine de portail, et le lot 3 basculera sans
   install.sh) ; retirés seulement par POINT_ACCES=0 ; docker compose up -d si elles changent. Hôtes exclus :
   <adresse>, <nom>, <nom>.lan, <nom>.local (avahi).
+  Activation depuis le tableau de bord (2026-09-26, dev) : installé partout, INACTIF par défaut. install.sh installe
+  toujours iw hostapd dnsmasq-base qrencode rfkill (apt seulement s'il en manque), puis point-acces.sh installer (plage,
+  mot de passe, unités, AUCUN démarrage) ; POINT_ACCES après sudo SEULEMENT (la ligne de .env est retirée) : 1 = activer
+  --installeur (refuse la carte qui porte la route par défaut), 0 = desactiver, vide = rien ne change. Actions du script
+  (root, entièrement hors ligne, une à la fois par flock /run/odin-point-acces.lock) : activer, desactiver, etat. activer :
+  détection, fichiers générés pour la carte, origine notée UNE fois dans /etc/odin/point-acces/origine (GESTIONNAIRE nm |
+  networkd | aucun, CONNEXION = UUID NM active, ROUTE = la carte portait la route par défaut, WPA = netplan-wpa-<if>
+  existe), carte prise (NM : section [device] managed=0 ; networkd : /etc/systemd/network/00-odin-point-acces.network
+  Unmanaged=yes + networkctl reload, drop-in ConditionPathExists=!/etc/odin/point-acces/carte-prise sur
+  netplan-wpa-<if>.service + stop), cible démarrée, 30 s (POINT_ACCES_DELAI) pour hostapd actif + dnsmasq actif + carte
+  « type AP », sinon retour (unités arrêtées, carte rendue) et erreur notée ; succès : voulu=actif, cible enable
+  --no-reload (survit au redémarrage). desactiver : unités arrêtées, carte rendue (NM : nmcli --wait 0 connection up de
+  l'UUID ; networkd : fichiers retirés, networkctl reload, start netplan-wpa, reconfigure) ; si ROUTE=oui et pas de route
+  par défaut sur la carte en 30 s, point d'accès RÉACTIVÉ (la machine ne reste jamais sans réseau) et erreur notée.
+  OnFailure (odin-point-acces-echec) à tout moment, démarrage compris : si voulu=actif et rien n'émet, retour à
+  l'ancienne connexion. État data/config/point-acces.json : etat (actif|inactif|indisponible|en-cours), raison, actif,
+  carte, modeAP, routeParDefaut, autreConnexion (route par défaut par une autre interface), interface, ssid,
+  motDePasse, adresse, reseau, noms, canal, pays, derniereAction {action, resultat ok|echec|en-cours, date},
+  derniereErreur {message, date}. Plage (choisir_plage, à l'installation) : POINT_ACCES_RESEAU si donnée (refus
+  « plage-occupee » si elle chevauche une route d'une autre interface ou un réseau Docker, docker network inspect),
+  sinon l'actuelle tant qu'elle est libre, sinon la première libre de 10.42 à 10.49 ; 10.42.0.1/24 dans un .env =
+  ancienne valeur par défaut, pas imposée. PORTAIL_* écrits à chaque installation dès que la plage est valide et libre.
+  Demande du tableau de bord : le dashboard écrit data/config/point-acces-demande (écriture puis rename) et RIEN d'autre ;
+  odin-point-acces-demande.path (PathExists) lance point-acces.sh demande : lien symbolique ou dossier écartés, 32 octets
+  lus comme texte, fichier retiré, « activer » ou « desactiver » seulement, tout le reste ignoré et journalisé. Aucun
+  droit, capacité ni montage de plus pour le conteneur (vérifié par docker inspect avant/après). odin-point-acces-etat
+  (au démarrage) réécrit l'état. Dashboard : lib/point-acces.mjs (+ point-acces-textes.mjs sans module Node, pour le
+  navigateur), /api/point-acces (GET état + demande en attente ; POST {action}, 400 hors liste, 409 si non installé,
+  action en cours ou activer sans mode AP), page /point-acces (8 sections du brief, cas de la machine mis en avant :
+  câble si autreConnexion, sinon Wi-Fi seul si routeParDefaut, sans carte si !modeAP ; case « J'ai compris… » ; actif :
+  infos et Désactiver avec son avertissement ; erreur de la dernière action ; page perdue → où retrouver ODIN), carte
+  discrète en bas de l'accueil, panneau de Configuration réduit à un lien. /api/liaison porte pointAcces : les boutons
+  d'installation disent « Internet indisponible — désactivez le point d'accès ou branchez un câble » (messageHorsLigne
+  de useLiaison.js) quand le point d'accès est actif.
+  PIÈGE (vérifié sur VM) : tout daemon-reload fait réécrire à netplan ses .network (générateur), et le networkctl reload
+  SUIVANT reconfigure tous les liens dont le fichier a changé : l'Ethernet perd et reprend son bail DHCP (même adresse sur
+  un vrai réseau, nouvelle sur le commutateur Hyper-V de Multipass, ce qui coupe multipass exec). D'où : aucune commande
+  systemctl qui recharge pendant une bascule (enable/disable --no-reload, condition au lieu de mask), daemon-reload de
+  l'installeur seulement si une unité change. Reste : après un daemon-reload venu d'ailleurs (mise à jour, apt), la
+  bascule suivante d'une carte gérée par networkd renouvelle le bail de l'Ethernet une fois. Sans networkd (NM ou carte
+  libre), jamais de networkctl reload.
+  PIÈGE (vérifié sur VM, Ubuntu 24.04, NetworkManager installé après Docker) : « nmcli general reload conf » fait
+  prendre à NetworkManager TOUS les périphériques (lo, veth, ponts Docker), qui détache les ports et retire les
+  adresses des ponts : Caddy injoignable, ODIN en panne même en local. Le code des lots 1 et 2 (dans main) le faisait
+  à chaque démarrage du point d'accès avec NM. Désormais : jamais de rechargement de NM ; nmcli device set <if> managed
+  no/yes à chaud, fichier conf.d lu au démarrage seulement. Remise en état : systemctl restart NetworkManager puis docker.
   Dashboard : lib/portail.mjs = LA table des sondes (SONDES) et les appareils libérés (IP → 12 h, globalThis, perdus
   au redémarrage du dashboard : le portail revient, accepté). /api/portail/sonde (GET, HEAD, POST) : non libéré → 302
   http://<adresse>/portail ; libéré et sonde connue → réponse exacte + X-NetworkManager-Status: online ; sinon → 302

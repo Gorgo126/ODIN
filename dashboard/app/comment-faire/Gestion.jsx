@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { octets } from '../../lib/format.mjs';
-import { useLiaison } from '../useLiaison';
+import { useLiaison, messageHorsLigne } from '../useLiaison';
 import { suppressionGuides, supprimer } from '../../lib/suppressions.mjs';
 
 // Installation, check and update of the « Comment faire ? » articles. On /comment-faire and in
@@ -35,7 +35,9 @@ export default function Gestion({ initial, liaisonInitiale, avecSuppression = fa
   const [diff, setDiff] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [verification, setVerification] = useState(false);
-  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
+  const liaison = useLiaison(liaisonInitiale);
+  const enLigne = !!liaison?.enLigne;
+  const horsLigne = messageHorsLigne(liaison, SANS_INTERNET);
   const t = etat?.tache;
   const enCours = t?.etat === 'en cours';
   const installe = etat?.installe;
@@ -103,7 +105,7 @@ export default function Gestion({ initial, liaisonInitiale, avecSuppression = fa
   }
 
   const bloque = !enLigne || enCours;
-  const titreBouton = enLigne ? undefined : SANS_INTERNET;
+  const titreBouton = enLigne ? undefined : horsLigne;
   const pct = t?.total ? Math.min(100, Math.floor((t.recu / t.total) * 100)) : 0;
 
   return (
@@ -141,7 +143,7 @@ export default function Gestion({ initial, liaisonInitiale, avecSuppression = fa
         {installe && t?.etat === 'erreur' && <button disabled={bloque} title={titreBouton} onClick={installer}>Réessayer</button>}
         {installe && avecSuppression && <button disabled={enCours} onClick={retirer}>Supprimer les articles</button>}
       </div>
-      {!enLigne && <p className="hors-liaison">{SANS_INTERNET}.{installe ? ' Les articles installés restent lisibles.' : ''}</p>}
+      {!enLigne && <p className="hors-liaison">{horsLigne}.{installe ? ' Les articles installés restent lisibles.' : ''}</p>}
     </div>
   );
 }

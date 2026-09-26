@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../lib/format.mjs';
-import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { useLiaison, messageHorsLigne } from './useLiaison';
 import { suppressionLivre, supprimer } from '../lib/suppressions.mjs';
 
 const CATEGORIES = { sante: 'Santé', eau: 'Eau', energie: 'Énergie', agriculture: 'Agriculture', technique: 'Technique' };
@@ -11,7 +11,10 @@ const auteurs = (liste) => liste.map((a) => a.split(' ').at(-1)).join(', ');
 
 export default function Livres({ liaisonInitiale }) {
   const [livres, setLivres] = useState(null);
-  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
+  const liaison = useLiaison(liaisonInitiale);
+  const enLigne = !!liaison?.enLigne;
+  // « Indisponible hors ligne », or the advice to leave the access point when it is on
+  const horsLigne = messageHorsLigne(liaison);
 
   const charger = useCallback(async () => {
     try {
@@ -47,7 +50,7 @@ export default function Livres({ liaisonInitiale }) {
 
   return (
     <>
-      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Les livres installés restent lisibles.</p>}
+      {!enLigne && <p className="hors-liaison">{horsLigne}. Les livres installés restent lisibles.</p>}
       {livres.map((l) => {
         const t = l.tache;
         const pct = t?.total ? Math.min(100, Math.floor((t.recu / t.total) * 100)) : 0;
@@ -81,10 +84,10 @@ export default function Livres({ liaisonInitiale }) {
           action = (
             <span>
               {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}
-              <button disabled={!enLigne} title={enLigne ? undefined : HORS_LIAISON} onClick={() => envoyer(l.id, 'POST')}>
+              <button disabled={!enLigne} title={enLigne ? undefined : horsLigne} onClick={() => envoyer(l.id, 'POST')}>
                 {t?.etat === 'erreur' ? 'Réessayer' : 'Installer'}
               </button>
-              {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
+              {!enLigne && <em className="hors-liaison">{horsLigne}</em>}
             </span>
           );
         }

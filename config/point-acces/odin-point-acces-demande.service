@@ -1,0 +1,8 @@
+# Runs the request of the dashboard; the value is checked against a fixed list by the script.
+[Unit]
+Description=ODIN : action demandée pour le point d'accès Wi-Fi
+
+[Service]
+Type=oneshot
+ExecStart=@SCRIPT@ demande
+TimeoutStartSec=300

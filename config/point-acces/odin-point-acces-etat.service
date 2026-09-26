@@ -1,0 +1,14 @@
+# State of the access point written at boot (card present, AP mode, default route…), for the dashboard.
+[Unit]
+Description=ODIN : état du point d'accès Wi-Fi
+RequiresMountsFor=@DATA@
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=@SCRIPT@ etat
+TimeoutStartSec=60
+StandardOutput=null
+
+[Install]
+WantedBy=multi-user.target

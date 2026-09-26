@@ -42,3 +42,6 @@ export function useLiaison(initiale = null) {
 }
 
 export const HORS_LIAISON = 'Indisponible hors ligne';
+// Offline because the Wi-Fi card now serves ODIN's own network (/api/liaison: pointAcces)
+export const HORS_POINT_ACCES = 'Internet indisponible — désactivez le point d\'accès ou branchez un câble';
+export const messageHorsLigne = (liaison, defaut = HORS_LIAISON) => liaison?.pointAcces ? HORS_POINT_ACCES : defaut;

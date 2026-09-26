@@ -14,8 +14,8 @@ import Panneau from '../Panneau';
 import Assistant from './Assistant';
 import { reglagesAssistant, demander } from '../../lib/assistant.mjs';
 import { DEFAUTS } from '../../assistant/reglages.mjs';
-import { etatPointAcces } from '../../lib/portail.mjs';
-import { RAISONS, ETATS } from '../../lib/point-acces.mjs';
+import { lirePointAcces, resumePointAcces } from '../../lib/point-acces.mjs';
+import IconeWifi from '../IconeWifi';
 import { etatGuides } from '../../lib/guides.mjs';
 import GestionGuides from '../comment-faire/Gestion';
 
@@ -86,21 +86,14 @@ const iconeGuides = (
 );
 
 // Radio waves: Wi-Fi access point
-const iconeWifi = (
-  <svg viewBox="0 0 24 24" {...trait}>
-    <path d="M2 8.5a15 15 0 0 1 20 0" />
-    <path d="M5 12a10 10 0 0 1 14 0" />
-    <path d="M8.5 15.5a5 5 0 0 1 7 0" />
-    <path d="M12 19h.01" />
-  </svg>
-);
+const iconeWifi = <IconeWifi />;
 
 const pluriel = (n, mot, e = '') => `${n} ${mot}${n > 1 ? 's' : ''} installé${e}${n > 1 ? 's' : ''}`;
 
 export default async function Configuration() {
   const [livres, cartes, etatLiaison, reglages, pdf, langues] = await Promise.all([contenu(), installees(), liaison(), lireReglages(), listeLivres(), languesInstallees().catch(() => [])]);
   const assistant = reglagesAssistant();
-  const [wifi, guides] = await Promise.all([etatPointAcces(), etatGuides()]);
+  const [wifi, guides] = await Promise.all([lirePointAcces(), etatGuides()]);
   // The index answers at once; a worker still starting must not hold the page
   const etatIndex = await demander('etat', {}, 3000).catch(() => null);
   const resume = pluriel(livres.length, 'contenu');
@@ -212,20 +205,11 @@ export default async function Configuration() {
         id="point-acces"
         icone={iconeWifi}
         titre="Point d'accès Wi-Fi"
-        sousTitre="Réseau Wi-Fi propre à ODIN, sans box ni internet (option non vérifiée sur du vrai matériel)"
-        resume={wifi ? ETATS[wifi.etat] || wifi.etat : 'Non installé'}
+        sousTitre="Réseau Wi-Fi propre à ODIN, sans box ni internet (fonction expérimentale)"
+        resume={resumePointAcces(wifi)}
       >
-        {!wifi ? (
-          <p>Option non installée. Pour l'activer, relancez l'installeur avec <code>POINT_ACCES=1</code> après <code>sudo</code>.</p>
-        ) : (
-          <div className="carte">
-            <p><strong>État : {ETATS[wifi.etat] || wifi.etat}</strong>{wifi.raison && <> · {RAISONS[wifi.raison] || wifi.raison}</>}</p>
-            {wifi.etat !== 'inactif' && (
-              <p>Réseau <strong>{wifi.ssid}</strong>{wifi.canal ? ` · canal ${wifi.canal}` : ''}{wifi.pays ? ` · pays ${wifi.pays}` : ''}{wifi.interface ? ` · carte ${wifi.interface}` : ''}</p>
-            )}
-            {wifi.motDePasse && <p><a href="/point-acces/fiche" className="bouton">Fiche à imprimer (QR codes, mot de passe)</a></p>}
-          </div>
-        )}
+        {/* Everything (explanations, activation, information to note) lives on its own page */}
+        <p>État : <strong>{resumePointAcces(wifi)}</strong>. Activation, désactivation et informations de connexion : <a href="/point-acces" className="bouton">Point d'accès Wi-Fi</a></p>
       </Panneau>
     </main>
   );

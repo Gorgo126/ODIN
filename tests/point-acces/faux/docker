@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Fake docker: network subnets chosen by the test (FAUX_DOCKER_RESEAUX, one per line)
+case "$1 $2" in
+  "network ls") [ -n "${FAUX_DOCKER_RESEAUX:-}" ] && echo reseau1 ;;
+  "network inspect") printf '%s' "${FAUX_DOCKER_RESEAUX:-}" | tr '\n' ' ' ;;
+  *) exit 1 ;;
+esac

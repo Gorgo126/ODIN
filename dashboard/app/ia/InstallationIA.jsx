@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { octets } from '../../lib/format.mjs';
-import { useLiaison, HORS_LIAISON } from '../useLiaison';
+import { useLiaison, messageHorsLigne } from '../useLiaison';
 import DateLocale from '../DateLocale';
 import { suppressionModeleIA, supprimer } from '../../lib/suppressions.mjs';
 
@@ -26,7 +26,10 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
   const [e, setE] = useState(initial);
   const [occupe, setOccupe] = useState(null);
   const [erreur, setErreur] = useState(null);
-  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
+  const liaison = useLiaison(liaisonInitiale);
+  const enLigne = !!liaison?.enLigne;
+  // « Indisponible hors ligne », or the advice to leave the access point when it is on
+  const horsLigne = messageHorsLigne(liaison);
 
   const charger = useCallback(async () => {
     try {
@@ -120,7 +123,7 @@ export default function InstallationIA({ initial, liaisonInitiale }) {
               </div>
             );
           } else {
-            const bloque = x.bloque || (!enLigne && HORS_LIAISON) || (installe && 'Désinstallez d\'abord l\'autre modèle') || (enCours && 'Un autre téléchargement est en cours');
+            const bloque = x.bloque || (!enLigne && horsLigne) || (installe && 'Désinstallez d\'abord l\'autre modèle') || (enCours && 'Un autre téléchargement est en cours');
             actions = (
               <div className="ia-actions">
                 {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}

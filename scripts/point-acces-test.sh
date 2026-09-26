@@ -7,6 +7,11 @@
 #   sudo scripts/point-acces-test.sh verifier        points 1 to 5 of the brief, one line each
 #   sudo scripts/point-acces-test.sh portail         point 6: captive portal, every probe before and after release
 #   sudo scripts/point-acces-test.sh deconnecter
+#   sudo scripts/point-acces-test.sh box demarrer|arreter      fake box (Wi-Fi BOX-TEST + DHCP) on the 3rd radio
+#   sudo scripts/point-acces-test.sh client networkd|nm|retirer ODIN's card joins the box (netplan or NetworkManager)
+#   sudo scripts/point-acces-test.sh demande activer|desactiver as the dashboard does; waits for the result
+#   sudo scripts/point-acces-test.sh hostapd casser|reparer    hostapd of ODIN fails at every start (drop-in)
+#   sudo scripts/point-acces-test.sh bilan               state, route of the card, managers, one line each
 #   sudo scripts/point-acces-test.sh nettoyer        namespaces removed, hwsim no longer loaded at boot
 set -uo pipefail
 
@@ -207,6 +212,114 @@ portail() {
   [ "$ECHECS" -eq 0 ] && echo "Tout est bon." || echo "$ECHECS échec(s)."
 }
 
+# --- Switch of a card that carries the connection (fake box on wlan2, in the « box » namespace) ---
+
+BOX_SSID=BOX-TEST
+BOX_MDP=box-test-1234
+BOX_IP=192.168.77.1
+ODIN_IF=wlan0
+NETPLAN_TEST=/etc/netplan/60-odin-test-wifi.yaml
+CASSE=/etc/systemd/system/odin-hostapd.service.d/odin-test-casse.conf
+
+box() {
+  local itf; itf=$(if_de "$BOX")
+  case "$1" in
+    demarrer)
+      box arreter >/dev/null 2>&1
+      ip netns exec "$BOX" ip link set "$itf" up
+      ip netns exec "$BOX" ip addr replace "$BOX_IP/24" dev "$itf"
+      printf 'interface=%s\ndriver=nl80211\nssid=%s\nhw_mode=g\nchannel=1\nwpa=2\nwpa_key_mgmt=WPA-PSK\nrsn_pairwise=CCMP\nwpa_passphrase=%s\n' "$itf" "$BOX_SSID" "$BOX_MDP" > /run/odin-test-box-hostapd.conf
+      ip netns exec "$BOX" /usr/sbin/hostapd -B -P /run/odin-test-box-hostapd.pid /run/odin-test-box-hostapd.conf >/dev/null
+      ip netns exec "$BOX" /usr/sbin/dnsmasq --conf-file=/dev/null --interface="$itf" --bind-interfaces --except-interface=lo \
+        --dhcp-range=192.168.77.10,192.168.77.50,255.255.255.0,1h --dhcp-option=option:router,$BOX_IP \
+        --dhcp-leasefile=/run/odin-test-box.leases --pid-file=/run/odin-test-box-dnsmasq.pid --port=0
+      echo "Box $BOX_SSID sur $itf ($BOX_IP)" ;;
+    arreter)
+      local f; for f in /run/odin-test-box-hostapd.pid /run/odin-test-box-dnsmasq.pid; do
+        [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null; rm -f "$f"
+      done
+      echo "Box arrêtée" ;;
+  esac
+}
+
+# ODIN's card becomes a client of the box, with a higher metric than the Ethernet (the VM keeps its
+# own access): the card « carries a default route », which is what the access point must handle
+client() {
+  local i
+  case "$1" in
+    networkd)
+      client retirer >/dev/null 2>&1
+      cat > "$NETPLAN_TEST" <<YAML
+network:
+  version: 2
+  wifis:
+    $ODIN_IF:
+      dhcp4: true
+      dhcp4-overrides: { route-metric: 600 }
+      access-points:
+        "$BOX_SSID": { password: "$BOX_MDP" }
+YAML
+      chmod 600 "$NETPLAN_TEST"
+      # Not « netplan apply »: it renews the Ethernet lease too, which cuts multipass exec
+      netplan generate && systemctl daemon-reload && networkctl reload \
+        && systemctl restart "netplan-wpa-$ODIN_IF.service" && networkctl reconfigure "$ODIN_IF" ;;
+    nm)
+      client retirer >/dev/null 2>&1
+      nmcli device set "$ODIN_IF" managed yes 2>/dev/null
+      nmcli device wifi rescan ifname "$ODIN_IF" >/dev/null 2>&1; sleep 3
+      nmcli -w 30 device wifi connect "$BOX_SSID" password "$BOX_MDP" ifname "$ODIN_IF" name odin-test-box >/dev/null
+      nmcli connection modify odin-test-box ipv4.route-metric 600 >/dev/null && nmcli -w 30 connection up odin-test-box >/dev/null ;;
+    retirer)
+      systemctl stop "netplan-wpa-$ODIN_IF.service" 2>/dev/null
+      rm -f "$NETPLAN_TEST"; netplan generate && systemctl daemon-reload && networkctl reload
+      ip -4 addr flush dev "$ODIN_IF"
+      command -v nmcli >/dev/null && nmcli connection delete odin-test-box >/dev/null 2>&1
+      echo "Client retiré"; return ;;
+  esac
+  for i in $(seq 40); do ip route show default dev "$ODIN_IF" | grep -q . && break; sleep 1; done
+  ip route show default dev "$ODIN_IF" | grep -q . && echo "Carte $ODIN_IF cliente de la box : $(ip -4 -o addr show dev "$ODIN_IF" | awk '{ print $4 }')" || { echo "Carte $ODIN_IF : pas de route par défaut"; return 1; }
+}
+
+# Same file as the dashboard writes; waits for the host to finish (its unit), then prints the state
+demande() {
+  local data f i
+  data=$(sed -n "s/^DATA=//p" "$ETC/parametres" | tr -d "'\"")
+  f="$data/config/point-acces-demande"
+  printf '%s\n' "$1" > "$f.tmp" && mv -f "$f.tmp" "$f"
+  local debut=$SECONDS
+  for i in $(seq 150); do
+    sleep 1
+    # « activating » while a oneshot runs: only inactive or failed means done
+    [ ! -e "$f" ] && [[ "$(systemctl show -p ActiveState --value odin-point-acces-demande.service)" =~ ^(inactive|failed)$ ]] && break
+  done
+  echo "Demande « $1 » traitée en $((SECONDS - debut)) s"
+  bilan
+}
+
+# The daemon-reload of the test makes netplan rewrite its files: networkd takes them at once (the
+# Ethernet lease is renewed here, during the test setup), so that ODIN's switches are measured clean
+recharger() { systemctl daemon-reload; networkctl reload 2>/dev/null; sleep 3; }
+
+hostapd() {
+  case "$1" in
+    casser) mkdir -p "$(dirname "$CASSE")"; printf '[Service]\nExecStart=\nExecStart=/bin/false\n' > "$CASSE"; recharger; echo "hostapd d'ODIN cassé" ;;
+    reparer) rm -f "$CASSE"; rmdir "$(dirname "$CASSE")" 2>/dev/null; recharger; echo "hostapd d'ODIN réparé" ;;
+  esac
+}
+
+bilan() {
+  local j; j=$(cat "$ETAT" 2>/dev/null)
+  echo "  état        $(sed -n 's/^  "etat": "\(.*\)",/\1/p' <<<"$j") (actif $(sed -n 's/^  "actif": \(.*\),/\1/p' <<<"$j"))"
+  echo "  action      $(tr -d '\n' <<<"$j" | sed -n 's/.*"derniereAction": \({[^}]*}\|null\).*/\1/p')"
+  echo "  erreur      $(tr -d '\n' <<<"$j" | sed -n 's/.*"derniereErreur": \({[^}]*}\|null\).*/\1/p')"
+  echo "  route       $(ip route show default dev "$ODIN_IF" 2>/dev/null | head -1)"
+  echo "  mode        $(iw dev "$ODIN_IF" info 2>/dev/null | awk '$1 == "type" { print $2 }')  adresses $(ip -4 -o addr show dev "$ODIN_IF" | awk '{ printf "%s ", $4 }')"
+  echo "  unités      hostapd $(systemctl is-active odin-hostapd.service) · dnsmasq $(systemctl is-active odin-dnsmasq.service) · cible $(systemctl is-enabled odin-point-acces.target 2>/dev/null)"
+  echo "  netplan-wpa $(systemctl is-enabled "netplan-wpa-$ODIN_IF.service" 2>/dev/null) / $(systemctl is-active "netplan-wpa-$ODIN_IF.service" 2>/dev/null)"
+  command -v nmcli >/dev/null && echo "  NM          $(nmcli -t -f DEVICE,STATE,CONNECTION device status 2>/dev/null | grep "^$ODIN_IF:")"
+  echo "  fichiers    voulu=$(cat "$ETC/voulu" 2>/dev/null || echo -) origine=$( [ -f "$ETC/origine" ] && tr '\n' ' ' < "$ETC/origine" || echo -)"
+}
+
 nettoyer() {
   deconnecter >/dev/null 2>&1
   ip netns del "$TEL" 2>/dev/null; ip netns del "$BOX" 2>/dev/null
@@ -220,6 +333,11 @@ case "${1:-}" in
   deconnecter) deconnecter ;;
   verifier) verifier; [ "$ECHECS" -eq 0 ] ;;
   portail) portail; [ "$ECHECS" -eq 0 ] ;;
-  nettoyer) nettoyer ;;
-  *) echo "Usage : sudo $0 preparer|connecter [mdp]|verifier|deconnecter|nettoyer"; exit 1 ;;
+  box) box "${2:-}" ;;
+  client) client "${2:-}" ;;
+  demande) demande "${2:-}" ;;
+  hostapd) hostapd "${2:-}" ;;
+  bilan) bilan ;;
+  nettoyer) box arreter >/dev/null 2>&1; client retirer >/dev/null 2>&1; hostapd reparer >/dev/null; nettoyer ;;
+  *) echo "Usage : sudo $0 preparer|connecter [mdp]|verifier|portail|box|client|demande|hostapd|bilan|deconnecter|nettoyer"; exit 1 ;;
 esac
