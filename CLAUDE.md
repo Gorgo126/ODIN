@@ -302,7 +302,17 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   15 minutes de marche inchangés (premiers-secours ne remonte pas) ; plus d'électricité : autonomie électrique 0,377
   (nouveau, proche) ; je suis perdu : orientation 0,444 → 0,451 ; appeler le 112 : inchangé (deux articles hors sujet en
   proche, 0,422 et 0,351, déjà là avant). Seuils 0,46 / 0,35 gardés ; marges minces : pertinents à 0,351 et 0,359, hors
-  sujet à 0,351 et 0,422, « je suis perdu » (LA réponse) seulement proche à 0,451. Contre un site simulé (fetch remplacé,
+  sujet à 0,351 et 0,422, « je suis perdu » (LA réponse) seulement proche à 0,451.
+  Mot-clé entier (2026-09-26, e22ef57) : un keyword normalisé (forme() de synonymes.mjs : accents, casse, ponctuation ;
+  NOMBRES GARDÉS) présent tel quel dans la question → sections de l'article en tête des candidates, paragraphes vectorisés
+  d'abord (exactsDabord, index.mjs), puis motsClesExacts (source-guides.mjs) : son meilleur passage reçoit l'ajustement qu'il
+  faut pour passer devant les autres articles et atteindre « fort » (seuil guides), sauf cosinus < 0,25 (PLANCHER_MOT_CLE,
+  contradiction nette de l'embedding) ; cosinus brut inchangé (seuils de l'assistant). Recherche par mots-clés : même
+  correspondance, article en tête. Cause des deux cas : « appeler le 112 » était entièrement filtré par clesUtiles (verbe
+  courant + nombre) ; « coupure de courant » correspondait mais sans aucun bonus. Résultat : coupure de courant →
+  autonomie électrique 1re, fort (cos 0,359 +0,101) ; appeler le 112 → premiers-secours 2e, fort, 0,568 (cosinus réel :
+  il manquait seulement parmi les candidats) ; plus d'électricité → autonomie 1re, fort ; je suis perdu → orientation fort ;
+  les 6 autres identiques. « fort » à 0,44 simulé : aucun changement depuis e22ef57 (avant : seulement « je suis perdu »). Contre un site simulé (fetch remplacé,
   GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
   bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
   9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
@@ -856,5 +866,8 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   Toute vérification sur une sortie exacte (JSON, SHA-256, digest, en-têtes, octets) : « rtk proxy <commande> », ou sortie
   écrite dans un fichier puis lue par python3/node, et comparaison faite par le programme (code de sortie, égalité), jamais
   à l'œil sur une sortie réécrite. Vérifications du 2026-09-26 refaites ainsi : toutes confirmées.
+- odintest ne fait pas tourner l'image publiée mais une build locale (compose.dev.yml : odin-dashboard:dev) : pour savoir
+  ce qui tourne, comparer les fichiers du conteneur au dépôt (sha256sum de dashboard/lib et assistant, copiés tels quels dans
+  /app) plutôt que se fier aux dates.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
