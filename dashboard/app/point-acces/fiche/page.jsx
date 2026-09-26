@@ -14,7 +14,7 @@ export default async function Fiche() {
       <header className="entete">
         <a href="/" className="retour-accueil"><img src="/logo.png" alt="ODIN" className="logo logo-petit" /></a>
         <nav className="entete-liens">
-          <a href="/configuration#point-acces" className="bouton">Configuration</a>
+          <a href="/point-acces" className="bouton">Point d'accès Wi-Fi</a>
           {pret && <Imprimer />}
         </nav>
       </header>

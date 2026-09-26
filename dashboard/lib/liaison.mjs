@@ -125,7 +125,10 @@ export async function liaison() {
     dns: reglages.silence ? null : r?.dns ?? null,
     dernierTest: reglages.silence ? null : r?.dernierTest ?? null,
     dernierContact: etat.dernierContact,
-    liens: reglages.liens
+    liens: reglages.liens,
+    // The Wi-Fi access point is on (scripts/point-acces.sh): the buttons that need internet say how to
+    // get it back
+    pointAcces: !!(await lireJson('/config/point-acces.json', null))?.actif
   };
 }
 

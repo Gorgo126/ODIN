@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { octets } from '../lib/format.mjs';
-import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { useLiaison, messageHorsLigne } from './useLiaison';
 import { suppressionCarte, supprimer } from '../lib/suppressions.mjs';
 
 const GROS = 1e9;
@@ -9,7 +9,10 @@ const ENORME = 50e9;
 
 export default function PacksCartes({ liaisonInitiale }) {
   const [liste, setListe] = useState(null);
-  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
+  const liaison = useLiaison(liaisonInitiale);
+  const enLigne = !!liaison?.enLigne;
+  // « Indisponible hors ligne », or the advice to leave the access point when it is on
+  const horsLigne = messageHorsLigne(liaison);
   const [tailles, setTailles] = useState({});
   const demandees = useRef(new Set());
 
@@ -73,7 +76,7 @@ export default function PacksCartes({ liaisonInitiale }) {
   return (
     <>
       <p className="compte">Données © contributeurs d'OpenStreetMap, licence ODbL 1.0 ; tuiles Protomaps.</p>
-      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Les cartes installées restent consultables.</p>}
+      {!enLigne && <p className="hors-liaison">{horsLigne}. Les cartes installées restent consultables.</p>}
       {enLigne && !liste.joignable && <p>Catalogue des cartes injoignable pour le moment.</p>}
       {liste.packs.map((p) => {
         const t = p.tache;
@@ -102,10 +105,10 @@ export default function PacksCartes({ liaisonInitiale }) {
           action = (
             <span>
               {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}
-              <button disabled={!enLigne || !liste.joignable || !taille} title={enLigne ? undefined : HORS_LIAISON} onClick={() => installer(p, taille)}>
+              <button disabled={!enLigne || !liste.joignable || !taille} title={enLigne ? undefined : horsLigne} onClick={() => installer(p, taille)}>
                 {t?.etat === 'erreur' ? 'Réessayer' : 'Installer'}
               </button>
-              {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
+              {!enLigne && <em className="hors-liaison">{horsLigne}</em>}
             </span>
           );
         }

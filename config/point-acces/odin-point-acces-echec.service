@@ -1,7 +1,9 @@
-# Started by OnFailure= once hostapd, dnsmasq or the network setup has given up.
+# Started by OnFailure= once hostapd, dnsmasq or the network setup has given up: the script goes back
+# to the connection of before (fallback) and records the error.
 [Unit]
 Description=ODIN : échec du point d'accès Wi-Fi
 
 [Service]
 Type=oneshot
 ExecStart=@SCRIPT@ echec
+TimeoutStartSec=300

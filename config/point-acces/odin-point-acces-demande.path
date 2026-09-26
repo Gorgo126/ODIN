@@ -1,0 +1,12 @@
+# Request of the dashboard (activer or desactiver) dropped in data/config: the container writes one
+# file and nothing else; the host reads it as data (scripts/point-acces.sh demande).
+[Unit]
+Description=ODIN : demande du tableau de bord pour le point d'accès Wi-Fi
+RequiresMountsFor=@DATA@
+
+[Path]
+PathExists=@DATA@/config/point-acces-demande
+Unit=odin-point-acces-demande.service
+
+[Install]
+WantedBy=multi-user.target

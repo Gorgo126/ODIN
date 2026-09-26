@@ -2,7 +2,8 @@
 case "$*" in
   "route show default dev "*) printf '%s' "${FAUX_ROUTE_DEFAUT:-}" ;;
   "-4 -o addr show dev "*) printf '%s' "${FAUX_ADRESSES:-}" ;;
-  "-4 route show") printf '%s' "${FAUX_ROUTES:-}" ;;
+  "-4 route show") printf '%s\n' "${FAUX_ROUTES:-}" ;;
+  "route show default") printf '%s' "${FAUX_ROUTE_DEFAUT:-}" ;;
   "link set "*) ;;
   *) exit 1 ;;
 esac

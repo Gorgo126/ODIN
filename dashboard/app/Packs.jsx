@@ -2,12 +2,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { octets } from '../lib/format.mjs';
-import { useLiaison, HORS_LIAISON } from './useLiaison';
+import { useLiaison, messageHorsLigne } from './useLiaison';
 import { suppressionZim, supprimer } from '../lib/suppressions.mjs';
 
 export default function Packs({ liaisonInitiale }) {
   const [packs, setPacks] = useState(null);
-  const enLigne = !!useLiaison(liaisonInitiale)?.enLigne;
+  const liaison = useLiaison(liaisonInitiale);
+  const enLigne = !!liaison?.enLigne;
+  // « Indisponible hors ligne », or the advice to leave the access point when it is on
+  const horsLigne = messageHorsLigne(liaison);
   const router = useRouter();
   const avant = useRef(false);
 
@@ -56,7 +59,7 @@ export default function Packs({ liaisonInitiale }) {
 
   return (
     <>
-      {!enLigne && <p className="hors-liaison">{HORS_LIAISON}. Le contenu installé reste consultable.</p>}
+      {!enLigne && <p className="hors-liaison">{horsLigne}. Le contenu installé reste consultable.</p>}
       {enLigne && packs.length > 0 && packs.every((p) => !p.disponible) && (
         <p>Catalogue Kiwix injoignable pour le moment.</p>
       )}
@@ -84,11 +87,11 @@ export default function Packs({ liaisonInitiale }) {
           action = (
             <span>
               {t?.etat === 'erreur' && <em className="erreur">{t.erreur}</em>}
-              <button disabled={!enLigne || !p.disponible} title={enLigne ? undefined : HORS_LIAISON} onClick={() => installer(p.id)}>
+              <button disabled={!enLigne || !p.disponible} title={enLigne ? undefined : horsLigne} onClick={() => installer(p.id)}>
                 {t?.etat === 'erreur' ? 'Réessayer' : p.installation === 'maj' ? 'Mettre à jour' : p.installation === 'autre' ? 'Remplacer' : 'Installer'}
               </button>
               {p.installation === 'maj' && <button onClick={() => desinstaller(p)}>Désinstaller</button>}
-              {!enLigne && <em className="hors-liaison">{HORS_LIAISON}</em>}
+              {!enLigne && <em className="hors-liaison">{horsLigne}</em>}
             </span>
           );
         }

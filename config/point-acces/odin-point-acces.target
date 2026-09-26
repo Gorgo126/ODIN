@@ -1,4 +1,5 @@
-# ODIN : point d'accès Wi-Fi (option POINT_ACCES, scripts/point-acces.sh).
+# ODIN : point d'accès Wi-Fi (scripts/point-acces.sh). Enabled only while the access point is wanted
+# (activer), so it comes back after a reboot; disabled by desactiver.
 # DefaultDependencies=no: this target does not wait for its services, so multi-user.target (which
 # orders itself after what it wants) is never delayed by the Wi-Fi. Shutdown ordering put back by hand.
 [Unit]
