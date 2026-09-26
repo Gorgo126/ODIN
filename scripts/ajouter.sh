@@ -45,7 +45,7 @@ const lire = async () => (await fetch(API, { cache: 'no-store' })).json();
   const r = await fetch(`${API}/${encodeURIComponent(arg)}`, { method: 'POST' });
   const v = await r.json().catch(() => ({}));
   if (!r.ok) {
-    console.error(`${v.erreur || `Erreur ${r.status}`}${r.status === 400 && /inconnu/i.test(v.erreur || '') ? ' — voir scripts/ajouter.sh --liste' : ''}`);
+    console.error(/inconnu/i.test(v.erreur || '') ? `${v.erreur} : ${arg} — voir scripts/ajouter.sh --liste` : v.erreur || `Erreur ${r.status}`);
     process.exit(1);
   }
   process.on('SIGINT', () => { console.log('\nAffichage arrêté : le téléchargement continue dans ODIN (Configuration → Encyclopédie).'); process.exit(0); });
