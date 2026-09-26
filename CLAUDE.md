@@ -879,6 +879,18 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   d'hydratation React 418 (extrait Kiwix coupé dans un <b>, date formatée côté serveur) → balises équilibrées,
   app/DateLocale.jsx.
 
+## À faire
+
+- Point d'accès Wi-Fi (fusionné dans main le 2026-09-26, ee32fc5, avant la fin de ces tests) :
+  - NetworkManager installé AVANT Docker et ODIN, carte gérée par NM (cas d'Ubuntu Desktop) : fait sur VM
+    l'activation depuis le tableau de bord et 2 redémarrages (ponts Docker intacts, ODIN joignable en local et par le
+    Wi-Fi d'ODIN) ; NON FAITS : 3e redémarrage (Multipass bloqué), désactivation puis redémarrage, et le même parcours
+    avec POINT_ACCES=1 à l'installation sur une machine en Ethernet. VM vierge depuis main non refaite, odintest pas
+    encore mise à jour sur 1f390ef.
+  - Message « Internet indisponible — désactivez le point d'accès ou branchez un câble » sur les boutons quand le
+    point d'accès est actif : vérifié une fois sur VM (Playwright, 5 panneaux, puis retour normal), à revérifier dans
+    le navigateur du propriétaire.
+
 ## Règles
 
 - Rien en dur : ni IP, ni ports, ni noms de fichiers. Configuration dans .env, modèle dans .env.exemple.
