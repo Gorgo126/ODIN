@@ -5,7 +5,7 @@
 ### Le savoir du monde, même quand internet s'arrête.
 
 Un serveur de connaissances **100 % hors ligne**, installable en une commande sur Ubuntu ou Debian.<br>
-Wikipédia, des livres, des cartes et vos documents, avec une recherche qui comprend vos questions,<br>
+Wikipédia, des livres, des cartes, des fiches pratiques et vos documents, avec une recherche qui comprend vos questions,<br>
 pour tous les appareils du réseau local.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-c8963e?style=flat-square)](#licence)
@@ -39,7 +39,7 @@ navigateur, **sans application, sans compte en ligne et sans aucune connexion ex
 
 | | Service | Ce qu'il fait |
 |---|---|---|
-| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de l'encyclopédie et de la bibliothèque, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
+| 🔎 | **Recherche avancée** | Une question en langage courant (« j'ai du mal à respirer »), et les meilleurs passages de vos documents, de l'encyclopédie, de la bibliothèque et des fiches pratiques, avec leur source et un lien vers la bonne page. Rien n'est rédigé, donc rien ne peut être inventé. |
 | 📚 | **Encyclopédie** | Wikipédia, Wiktionnaire, Wikisource, Gutenberg, Vikidia… au format ZIM, avec recherche plein texte et un lecteur d'articles intégré. |
 | 📖 | **Bibliothèque** | Des livres de référence en PDF, avec leur fiche d'attribution, lisibles sur ordinateur comme sur téléphone. Aucun n'est encore proposé : le premier attend l'accord de son éditeur (voir Licences). |
 | ❓ | **Comment faire ?** | Les fiches pratiques du blog d'[odin-node.com](https://odin-node.com) (eau, abri, feu, premiers secours, énergie…), avec leurs schémas, installées une fois puis lisibles et cherchables hors ligne. |
@@ -60,7 +60,10 @@ Physique · Chimie · Histoire · Géographie · Informatique · Changement clim
 Wiktionnaire · Wikisource · Projet Gutenberg · Wikilivres · Wikiversité · Wikivoyage
 
 La liste se modifie dans [`catalogue/packs.txt`](catalogue/packs.txt). Les fichiers proviennent du
-[catalogue Kiwix](https://library.kiwix.org).
+[catalogue Kiwix](https://library.kiwix.org) : ODIN essaie en quelques secondes les premiers miroirs
+proposés et télécharge depuis le plus rapide, passe au suivant si l'un ne répond pas, et vérifie
+l'empreinte SHA-256 du fichier complet. Un téléchargement interrompu reprend là où il s'était arrêté,
+même sur un autre miroir.
 
 Les cartes s'installent de la même façon (**Configuration → Cartes**), chacune avec sa taille :
 
@@ -77,7 +80,9 @@ OpenStreetMap), pour ne télécharger que la région voulue. La liste se modifie
 Des fiches pratiques pour tenir sans réseau, écrites pour le blog d'[odin-node.com](https://odin-node.com) :
 rendre l'eau potable, garder sa chaleur, allumer un feu par temps humide, les gestes de premiers secours,
 reconnaître une sirène d'alerte, calculer son autonomie électrique… Elles se lisent par catégorie, avec
-leurs schémas, et répondent à la recherche (étiquette « Comment faire ? »).
+leurs schémas, et répondent à la recherche (étiquette « Comment faire ? »). Chaque fiche porte aussi des
+mots-clés fournis par le site : une question qui en reprend un tel quel, comme « coupure de courant » ou
+« appeler le 112 », mène d'abord à la bonne fiche.
 
 Rien n'est installé d'office : la carte **Comment faire ?** de l'accueil propose **Installer les
 articles** (quelques centaines de Ko). Ensuite, **Vérifier les mises à jour** compare avec le site et
@@ -93,8 +98,8 @@ C'est le cœur d'ODIN. Elle ne demande ni carte graphique ni modèle de langage.
 1. **Elle comprend la demande** grâce à une table de synonymes en français, écrite à la main
    ([`catalogue/synonymes.json`](catalogue/synonymes.json)) : « je me suis brûlé » cherche
    « brûlure », « mal à la tête » cherche « céphalée, migraine », « l'eau de la rivière » cherche
-   « eau potable ». Santé, eau, feu, froid et nourriture sont couverts ; la table s'enrichit sans
-   toucher au code.
+   « eau potable ». Santé, eau, feu, froid, nourriture, alerte et énergie sont couverts ; la table
+   s'enrichit sans toucher au code.
 2. **Elle cherche dans toutes les sources à la fois**, par le sens et par les mots : vos documents, les
    packs de l'encyclopédie, les livres PDF de la bibliothèque et les fiches « Comment faire ? ».
 3. **Elle montre les meilleurs passages**, groupés par document, les mots cherchés surlignés, avec
@@ -138,8 +143,8 @@ si un conteneur est arrêté, redémarre en boucle ou échoue à son test de san
 - **Conteneurs** : état, santé, image et version de chaque service.
 - **Versions** : commit installé (écrit par l'installeur : après une mise à jour faite à la main par
   `git pull`, il peut être ancien), image du tableau de bord, Docker.
-- **Espace occupé**, du plus gros au plus petit : encyclopédie, livres, cartes, langues, modèles de
-  l'assistant (option IA), vos documents, et le reste du disque. Chaque contenu retirable a son bouton
+- **Espace occupé**, du plus gros au plus petit : encyclopédie, livres, cartes, langues, fiches
+  « Comment faire ? », modèles de l'assistant (option IA), vos documents, et le reste du disque. Chaque contenu retirable a son bouton
   « Désinstaller », le même que dans Configuration.
 
 Le tableau de bord n'a pas accès au socket Docker : il lit l'état des conteneurs à travers un relais
@@ -162,6 +167,14 @@ Ajoutez **`?debug=1`** à l'adresse de la recherche (`/recherche?q=…&debug=1`)
 chaque passage (proximité de sens, mots-clés, règles de classement) et les passages écartés. L'option
 ne vaut que pour la page ouverte et n'est enregistrée nulle part.
 
+#### Mesurer la recherche
+
+Un banc de 16 questions de référence vérifie le classement attendu (source, document, niveau, et les
+résultats hors sujet qui ne doivent pas sortir) : [`scripts/banc-recherche.sh`](scripts/banc-recherche.sh),
+sur une machine qui a les contenus de référence (WikiMed, le livre *Là où il n'y a pas de docteur*, les
+fiches « Comment faire ? »). Il s'arrête en erreur si un classement régresse ; toute modification de la
+recherche doit le passer.
+
 ## Comment ça marche
 
 ```mermaid
@@ -170,6 +183,7 @@ flowchart LR
         direction TB
         I["install.sh"] --> S["Services Docker"]
         C["Catalogue Kiwix"] -->|packs ZIM| S
+        G["odin-node.com"] -->|fiches « Comment faire ? »| S
     end
     subgraph usage["② Utilisation (sans internet)"]
         direction TB
@@ -207,7 +221,7 @@ flowchart TB
 | Service | Image (version figée) | Rôle |
 |---|---|---|
 | `caddy` | `caddy:2.11.4-alpine` | Porte d'entrée, routage, authentification déléguée au tableau de bord. |
-| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche avancée (index SQLite de vos documents), lecteur d'articles, carte (MapLibre GL), ajout de packs et, en option, l'assistant IA. Contient l'outil `pmtiles` qui extrait les régions. |
+| `dashboard` | `ghcr.io/gorgo126/odin-dashboard` | Next.js 15 (app router, sortie standalone). Accueil, recherche avancée (index SQLite de vos documents), lecteur d'articles, fiches « Comment faire ? », carte (MapLibre GL), ajout de packs et, en option, l'assistant IA. Contient l'outil `pmtiles` qui extrait les régions. |
 | `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2` | Sert les archives ZIM de `data/zim`. Détecte les nouveaux contenus sans redémarrage. |
 | `filebrowser` | `gtstef/filebrowser:1.5.6-stable` | FileBrowser Quantum, sur `data/documents`. |
 | `vecteurs` | `ghcr.io/ggml-org/llama.cpp:server-v0.4.1` | Calcule le sens des passages (EmbeddingGemma, sur le processeur) pour la recherche avancée. Joignable seulement à l'intérieur d'ODIN. |
@@ -232,7 +246,8 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
 ├── catalogue/           # contenus (packs.txt), cartes (cartes.txt) et langues (traduction.json) proposés
 ├── config/              # configuration de FileBrowser
 ├── dashboard/           # code du tableau de bord (Next.js)
-├── scripts/             # ajout de contenus en ligne de commande, outils de test
+├── scripts/             # ajout de contenus en ligne de commande, banc de la recherche, outils de test
+├── tests/               # tests automatiques et questions du banc de la recherche
 └── data/                # vos données, jamais versionnées
     ├── zim/             #   archives ZIM + library.xml
     ├── cartes/          #   packs de cartes (.pmtiles)
@@ -240,7 +255,8 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
     ├── vecteurs/        #   modèle de la recherche avancée (EmbeddingGemma, 334 Mo)
     ├── assistant/       #   index de vos documents pour la recherche avancée (SQLite)
     ├── traduction/      #   modèles de traduction (français et anglais : 158 Mo)
-    └── config/          #   mot de passe (haché avec scrypt), version installée
+    └── config/          #   mot de passe (haché avec scrypt), version installée,
+                         #   fiches « Comment faire ? » (guides/)
 ```
 
 ### Hors ligne par conception
@@ -257,6 +273,8 @@ branche, et `compose.yml` est figé automatiquement sur celle-ci.
   2 secondes, et un téléchargement interrompu s'arrête après 30 secondes sans données. On peut
   aussi l'annuler, ou le reprendre plus tard là où il s'était arrêté. Les tailles des packs restent
   affichées hors ligne.
+- **Rien n'est vérifié en tâche de fond** : les fiches « Comment faire ? » ne consultent le site que sur
+  demande (« Vérifier les mises à jour »), et les boutons qui demandent internet sont grisés sans lui.
 - **Testé réellement déconnecté** : [`scripts/hors-ligne.sh`](scripts/hors-ligne.sh) coupe internet
   sur une machine de test en gardant le réseau local, et consigne chaque tentative de sortie.
 
@@ -287,7 +305,7 @@ les adresses où joindre ODIN.
 
 1. Depuis n'importe quel appareil du réseau, ouvrez **http://odin.local**, ou l'adresse IP affichée à la fin de l'installation.
 2. Choisissez le mot de passe qui protégera ODIN.
-3. Dans **Configuration**, installez les contenus, les cartes et les langues de traduction voulus tant que la connexion est disponible.
+3. Dans **Configuration**, installez les contenus, les cartes, les langues de traduction et les fiches « Comment faire ? » voulus tant que la connexion est disponible.
 4. Posez une question dans la barre de recherche, en langage courant : « comment rendre l'eau potable ? ».
 
 C'est prêt : vous pouvez débrancher internet.
@@ -429,7 +447,8 @@ Vous pouvez aussi déposer vos propres fichiers `.zim` dans `/opt/odin/data/zim`
 ### Mettre à jour
 
 Relancez simplement la commande d'installation. Elle met à jour les sources et les services, et ne
-touche pas à vos données dans `data/`.
+touche pas à vos données dans `data/`. Les fiches « Comment faire ? » se mettent à jour à part, depuis
+**Configuration → Comment faire ?** (« Vérifier les mises à jour », puis « Mettre à jour »).
 
 ## Licences
 
