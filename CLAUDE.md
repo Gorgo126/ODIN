@@ -26,12 +26,16 @@ toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
 ## Flux de travail
 
 Ce dépôt, sur Windows, est le seul endroit où le code se modifie.
-Le serveur de test est la VM Multipass "odintest" (Ubuntu 24.04, 192.168.129.35), où le dépôt est
-cloné dans /opt/odin. Ne jamais y modifier de fichier directement : il ne fait que git pull.
-odintest a été créée neuve le 2026-09-25 et installée depuis main (2cf0c62, NOM_HOTE=odintest) : pour la faire
-suivre dev, relancer l'installeur avec BRANCHE=dev. L'ancienne VM de test « nomad » (192.168.129.19) est gardée
-arrêtée, remise à son snapshot « vierge » ; ses snapshots (dont avant-reinstallation = son état complet avant la
-réinstallation, avec packs, documents et mot de passe) y restent. Multipass ne sait pas renommer une VM, et un clone
+Trois VM Multipass, trois rôles :
+- odintest (Ubuntu 24.04, 192.168.129.35) : LE banc qui suit dev. VM durable, avec packs et mot de passe, jamais
+  supprimée. Le dépôt y est cloné dans /opt/odin. Ne jamais y modifier de fichier directement : il ne fait que git pull
+  (ou l'installeur). Créée neuve le 2026-09-25 et installée depuis main (2cf0c62, NOM_HOTE=odintest) : pour la faire
+  suivre dev, relancer l'installeur avec BRANCHE=dev.
+- test : VM jetable, créée neuve pour valider l'installeur (VM vierge, test hors ligne, réseau), puis supprimée.
+  odintest et test (8 Go chacune) ne tiennent pas ensemble en mémoire : arrêter odintest pendant un test sur test.
+- nomad (192.168.129.19) : ANCIENNE VM de test, n'est plus le banc. Gardée arrêtée, remise à son snapshot « vierge »
+  (aucun ODIN installé) ; ses snapshots (dont avant-reinstallation = son état complet avant la réinstallation, avec
+  packs, documents et mot de passe) y restent. Ne rien y tester sans l'accord du propriétaire. Multipass ne sait pas renommer une VM, et un clone
 garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshome.net et reste bloqué au démarrage.
 
 - On travaille sur la branche dev. odintest suit dev.
@@ -909,6 +913,15 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   pointAcces=true, message « Internet indisponible — désactivez le point d'accès ou branchez un câble » dans le HTML
   de Configuration, plus aucun « Indisponible hors ligne ». Restent : le parcours POINT_ACCES=1 à l'installation sur
   une machine en Ethernet avec NetworkManager, et le contrôle du message dans le navigateur du propriétaire.
+
+### Audit hors ligne (liste en cours)
+
+- Le conteneur dashboard tourne en root (uid 0, vérifié le 2026-09-26) alors qu'il répond à des requêtes non
+  authentifiées (mur de messages : /messages, GET et POST /api/messages). Évaluer le passage en non-root.
+  PIÈGE lié : un dossier de data/ créé par Docker lors d'une mise à jour sans installeur (git pull + docker compose
+  up, cas des installations existantes) est en root:root 755 (constaté sur odintest pour data/messages) ; un dashboard
+  non root ne pourrait pas y écrire. Il faudra alors un chown au démarrage (point d'entrée) ou dans l'installeur, pour
+  chaque volume où le dashboard écrit (config, cartes, livres, assistant, traduction, messages). Rien d'implémenté.
 
 ## Règles
 

@@ -1,7 +1,7 @@
 # Point d'accès Wi-Fi et portail captif
 
 Brief de conception pour Claude Code. À placer dans `docs/conception-point-acces.md`.
-À lire avec CLAUDE.md, dont toutes les règles s'appliquent (branche dev, nomad, VM vierge, test hors ligne, rien en dur).
+À lire avec CLAUDE.md, dont toutes les règles s'appliquent (branche dev, banc odintest, VM vierge test, test hors ligne, rien en dur).
 
 ## But
 
@@ -235,7 +235,7 @@ et l'inverse, pour une mise à jour ou un ajout de contenu.
 
 ## Tests (sans matériel Wi-Fi)
 
-Jamais sur nomad : ces tests touchent au réseau et au pare-feu. VM `test`, selon CLAUDE.md.
+Jamais sur odintest (le banc durable) : ces tests touchent au réseau et au pare-feu. VM `test`, selon CLAUDE.md.
 
 **A. Détection, tests unitaires** (`tests/point-acces/`) : sorties `iw` enregistrées et outils
 simulés, pour : aucune carte, carte sans mode AP, carte compatible, Wi-Fi occupé (route par défaut),
