@@ -249,7 +249,8 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   celui-ci les charge aussi par <img>.
   Recherche : bloc « Comment faire ? » au-dessus de la bibliothèque sur /recherche (mots-clés, une ligne par article, meilleure
   section) ; source « guides » de la recherche avancée et de l'assistant (origine comment-faire, étiquette « Comment faire ? »,
-  paragraphes des 5 sections les plus riches en mots de la requête, 4 vectorisés ; articles de la catégorie sante = guide
+  paragraphes des 5 sections les plus riches en mots de la requête (mots comptés depuis leur début, positions() : en
+  sous-chaîne, « sonne » trouvait « personne » et « sirène qui sonne » ne sortait rien), 4 vectorisés ; articles de la catégorie sante = guide
   médical pour les urgences). Seuils guides = ceux des livres (0,45 / 0,3), NON CALIBRÉS. Index relu quand la version change :
   installation, mise à jour et suppression visibles à la question suivante (vérifié : trouvé → supprimé, rien → réinstallé,
   trouvé).
@@ -259,7 +260,13 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   débord à 390 px ; manifeste local modifié à la main (un article en moins, un sha256 changé) → « Nouveaux (1) », « Modifiés
   (1) », mise à jour en 1,5 s, puis « à jour » ; dashboard coupé d'internet (docker network disconnect, jamais le pare-feu
   sur odintest) : sonde encore « établie » → échec en 5 s (DNS), sonde « rompue » → refus en 46 ms, articles et schémas
-  lisibles ; suppression puis réinstallation depuis l'interface (1,3 s). Contre un site simulé (fetch remplacé,
+  lisibles ; suppression puis réinstallation depuis l'interface (1,3 s) ; faux article ajouté au manifeste et à l'index
+  locaux (présent partout) → « Supprimés (1) » avec son titre → mise à jour → absent de sa page (404), de la catégorie, de
+  /recherche, de la recherche avancée et de passagesGuides (source de l'assistant, pas installé sur odintest).
+  Recherche avancée sur odintest (AUCUN pack, livre ni document : pas de concurrence, à refaire avec WikiMed et un livre) :
+  « je me suis brûlé » → premiers secours › Brûlure (fort, 0,511), puis feu par temps humide (proche, 0,309, hors sujet) ;
+  « eau pas potable » → eau potable › Clarifier d'abord (fort, 0,533) ; « sirène qui sonne » → alerte › Reconnaître la
+  sirène (fort, 0,484). source-livres.mjs compte encore en sous-chaîne (même défaut possible, non corrigé : série mesurée). Contre un site simulé (fetch remplacé,
   GUIDES_DOSSIER) : empreinte fausse → manifeste relu → installé ; 404 deux fois → erreur, version intacte ; archive à la
   bonne empreinte mais avec articles/../../x → refusée, rien écrit ; format 2 → refusé. Test hors ligne sur VM test (dev
   9dc6ccd, installée en 158 s) : articles installés, hors-ligne.sh couper, redémarrage à froid, 7 conteneurs ; accueil,
@@ -779,5 +786,10 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 - NetworkManager, liste unmanaged-devices : une spec « except: » qui correspond l'emporte sur toute la liste. Pour
   écarter une seule carte, une section [device-xxx] avec match-device et managed=0 ; vérifier au démarrage dans le
   journal de NM (« state change »), --print-config ne suffit pas.
+- Caractères perdus à l'écriture : des sessions de Claude Code du 2026-09-21 ont écrit certains symboles comme des espaces
+  (« Installé · vérifié » dans le compte rendu, « Installé  vérifié » dans le fichier ; « / » et « ODIN » de la barre du
+  lecteur devenus « » et « ODIN » précédé d'une espace ; « [−] », « A− », « ↗ » vides). Rien n'a atteint git : chaque ligne est
+  fautive dès son premier commit. Rétablis le 2026-09-26 (« · », « — ODIN » des titres, / de git). Reste h2::before de
+  globals.css (content: ' ', symbole d'origine inconnu). Chercher : grep -nE "[^ ]  +[^ /]" hors commentaires.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.
