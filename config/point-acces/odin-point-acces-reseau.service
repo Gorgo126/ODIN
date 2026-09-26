@@ -1,0 +1,14 @@
+# Interface, channel, address and firewall of the access point; stopping it undoes everything.
+# After docker.service: the DOCKER-USER chain must exist before the rule goes in.
+[Unit]
+Description=ODIN : réseau du point d'accès Wi-Fi
+After=docker.service network.target
+OnFailure=odin-point-acces-echec.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=30
+TimeoutStopSec=20
+ExecStart=@SCRIPT@ demarrer
+ExecStop=@SCRIPT@ arreter

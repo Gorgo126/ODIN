@@ -1,6 +1,6 @@
 # Packs « livre » (PDF) : conception
 
-Statut : **conception validée (v2, 21/09/2026). Étapes 1 et 2 validées ; étape 3 codée sur dev**, en test sur nomad.
+Statut : **conception validée (v2, 21/09/2026). Étapes 1 et 2 validées ; étape 3 codée sur dev**, en test sur odintest.
 L'étape 2 (lecture) comprend aussi la page `/livres` et la carte d'accueil, prévues à l'étape 4. Étapes 5 et 6 à venir.
 Premier cas réel : *Là où il n'y a pas de docteur* (Hesperian, édition française 2019).
 
@@ -287,7 +287,7 @@ ajoutez-le depuis Configuration, section Livres. » Déjà installé : rien à f
   sur le terrain. La version exacte et son empreinte seront figées à l'étape 2. Par exemple 5.6.205 : 7,1 Mo en
   `legacy`, 6,8 Mo en standard, publiée le 29/03/2026.
 - Le visualiseur a eu une faille grave (CVE-2024-4367), corrigée depuis la 4.2.67. On prend une version récente, et
-  sa mise à jour suit la règle des images figées : volontaire, testée sur nomad puis hors ligne.
+  sa mise à jour suit la règle des images figées : volontaire, testée sur odintest puis hors ligne.
 
 ### Pourquoi pas la visionneuse du navigateur
 
@@ -416,7 +416,7 @@ courant et propagé aux pages impaires. Si `pages.json` manque (extraction inter
 - Le dashboard la lit (montage en lecture seule) et l'affiche :
   - sur la fiche du panneau Livres : « Assistant IA : indexation 212/639 pages, environ 14 min restantes » ;
   - sur `/livres` : « Assistant IA : pas encore disponible pour ce livre », tant que l'indexation n'est pas finie.
-- **Mesure prévue à l'étape 5 sur nomad** :
+- **Mesure prévue à l'étape 5 sur odintest** :
   - durée totale des 639 pages avec bge-m3 ;
   - pages par minute ;
   - charge CPU et mémoire d'Ollama pendant l'indexation ;
@@ -438,7 +438,7 @@ démarrage (piège connu), d'où l'usage de l'API.
      À la place : « La dose dépend de l'âge et du poids : lisez-la dans *Là où il n'y a pas de docteur*,
      p. 566. » Suivi du rappel de vérifier dans le livre.
 2. **Bandeau global permanent**, non masquable (`POST /api/v1/configs/banners`, type `warning`, route présente dans
-   la version figée, vérifié sur nomad) : « Assistant local, il peut se tromper. Pour la santé, vérifiez toujours
+   la version figée, vérifié sur odintest) : « Assistant local, il peut se tromper. Pour la santé, vérifiez toujours
    dans le livre la page citée. Aucune dose de médicament n'est donnée ici : lisez-la dans le livre. »
 3. **Dans ODIN**, chaque « p. 566 » visible (recherche, `/livres`) est un lien vers la visionneuse à cette page.
    Le bandeau du lecteur répète l'avertissement.
@@ -484,20 +484,20 @@ Deux changements : création de `data/livres`, et installation du livre par déf
 - Un cas de plus : **installation lancée hors ligne**. Le livre par défaut échoue en moins de 15 s avec le message
   prévu, et le reste de l'installation continue.
 
-### Découpage en étapes testables sur nomad (branche dev)
+### Découpage en étapes testables sur odintest (branche dev)
 
-Chaque étape est commitée sur dev, testée par toi sur nomad, puis validée avant la suivante.
+Chaque étape est commitée sur dev, testée par toi sur odintest, puis validée avant la suivante.
 
-| # | Étape | Ce que tu testes sur nomad |
+| # | Étape | Ce que tu testes sur odintest |
 |---|---|---|
 | 1 | Catalogue, installation, désinstallation : `livres.json`, `lib/livres.mjs`, API, panneau Livres ; création de la release `livres-v1` (après accord d'Hesperian) | Installer, vérifier `fiche.json`, désinstaller. Mode manuel hors ligne : bouton grisé. **Empreintes** : une entrée de test temporaire avec une empreinte fausse pour la source, et une autre fausse pour les deux (messages, rien sur le disque) ; puis le miroir seul (source volontairement injoignable). |
 | 2 | Lecture : archive pdf.js figée, route Caddy, page `/livres/<id>` | Ouvrir à la page 566 sur PC, Android et iPhone ; onglet Réseau : aucune requête vers un autre hôte. |
 | 3 | Extraction `pdftotext` et recherche unifiée | Comparer la qualité avec pdf.js ; « paracétamol » : bloc Livres avec page et chapitre, clic vers la bonne page surlignée ; résultats ZIM inchangés. |
 | 4 | Page `/livres` et carte d'accueil « Livres » | Fiche d'attribution complète ; liens licence, dons et site ; grisés hors ligne. |
-| 5 | IA : collection par livre, progression, « Assistant santé », bandeau | **Mesure du temps d'indexation des 639 pages par bge-m3 sur nomad** ; progression visible et juste ; questions de test : pages citées, **aucune dose chiffrée**. |
+| 5 | IA : collection par livre, progression, « Assistant santé », bandeau | **Mesure du temps d'indexation des 639 pages par bge-m3 sur odintest** ; progression visible et juste ; questions de test : pages citées, **aucune dose chiffrée**. |
 | 6 | `install.sh` (dossier et livre par défaut), test sur VM vierge et test hors ligne, CLAUDE.md et README | Protocole complet de CLAUDE.md, plus l'installation lancée hors ligne. Fusion dans main ensuite. |
 
-Sur nomad, les étapes 1 à 5 fonctionnent sans modifier `install.sh` : Docker crée `data/livres` au premier `up`.
+Sur odintest, les étapes 1 à 5 fonctionnent sans modifier `install.sh` : Docker crée `data/livres` au premier `up`.
 
 ## 9. Dette connue : Node 20
 
@@ -505,7 +505,7 @@ Sur nomad, les étapes 1 à 5 fonctionnent sans modifier `install.sh` : Docker c
   il ne reçoit plus de correctifs de sécurité.
 - Ce chantier **ne dépend pas de Node** : visualiseur en fichiers statiques, extraction par `pdftotext`. Il n'aggrave
   donc pas la dette. Seul le repli prévu à l'étape 3 (`pdfjs-dist`) y serait lié.
-- **Chantier séparé** : passer le dashboard et la synchro à Node 22 ou 24 (images figées, test sur nomad puis hors
+- **Chantier séparé** : passer le dashboard et la synchro à Node 22 ou 24 (images figées, test sur odintest puis hors
   ligne). Il apporterait aussi SQLite intégré (FTS5), utile si le nombre de livres grandit.
 
 ## 10. Licence Hesperian : à régler avant publication
@@ -534,7 +534,7 @@ Conséquences :
   indexation pour la recherche et un assistant local qui cite les pages. Il faudrait leur demander l'accord pour
   la distribution, le miroir GitHub et l'indexation. **La rédaction de ce message est à ta charge ou à me demander.**
 - Tant que l'accord n'est pas reçu :
-  - le développement et les tests sur nomad continuent ;
+  - le développement et les tests sur odintest continuent ;
   - la release `livres-v1` n'est pas publiée : le catalogue ne contient alors que la source officielle ;
   - la fusion dans main attend.
 

@@ -15,10 +15,13 @@ export default async function Connexion({ searchParams }) {
   return (
     <main className="connexion">
       <h1><img src="/logo.png" alt="ODIN" className="logo" /></h1>
-      <p>
+      {/* Old terminal screen: amber text, frame label, blinking block cursor */}
+      <p className="terminal" data-titre={premier ? 'ODIN · Initialisation' : 'ODIN · Accès protégé'}>
+        <span className="terminal-invite" aria-hidden="true">&gt;</span>
         {premier
           ? 'Première utilisation : choisissez le mot de passe qui protégera ce serveur.'
           : 'Connexion requise.'}
+        <span className="curseur" aria-hidden="true" />
       </p>
       <form method="post" action="/api/auth/connexion">
         <input type="hidden" name="retour" value={retour} />

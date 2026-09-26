@@ -1,5 +1,5 @@
 {
-  "_lisezmoi": "Série écrite par le propriétaire (2026-09-23), réponses attendues fixées par Claude d'après son jugement du premier rapport : documents qui répondent vraiment. sans_contenu : rien d'adapté dans les packs de nomad (hors bilan). Même format que tests/recherche.json. Ne pas ajuster la table de synonymes sur cette série.",
+  "_lisezmoi": "Série écrite par le propriétaire (2026-09-23), réponses attendues fixées par Claude d'après son jugement du premier rapport : documents qui répondent vraiment. sans_contenu : rien d'adapté dans les packs de odintest (hors bilan). Même format que tests/recherche.json. Ne pas ajuster la table de synonymes sur cette série.",
   "questions": [
     { "q": "le bébé ne respire plus", "attendu": ["Réanimation cardiopulmonaire", "Compression thoracique", "livre:133-134"] },
     { "q": "on n'a plus d'eau potable", "attendu": ["Eau potable", "Désinfection", "Chloration", "livre:220-224"] },

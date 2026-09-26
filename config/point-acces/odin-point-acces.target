@@ -1,0 +1,12 @@
+# ODIN : point d'accès Wi-Fi (option POINT_ACCES, scripts/point-acces.sh).
+# DefaultDependencies=no: this target does not wait for its services, so multi-user.target (which
+# orders itself after what it wants) is never delayed by the Wi-Fi. Shutdown ordering put back by hand.
+[Unit]
+Description=ODIN : point d'accès Wi-Fi
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=shutdown.target
+Wants=odin-point-acces-reseau.service odin-hostapd.service odin-dnsmasq.service
+
+[Install]
+WantedBy=multi-user.target

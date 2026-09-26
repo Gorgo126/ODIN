@@ -487,12 +487,58 @@ fetch("http://localhost:3000/api/packs", { signal: AbortSignal.timeout(120000) }
   .catch(() => process.exit(1));
 ' || echo "  Tailles non relevées : elles le seront à la prochaine visite de Configuration avec internet."
 
+msg "Point d'accès Wi-Fi"
+# Option POINT_ACCES (docs/conception-point-acces.md): given after sudo, else kept from .env. Never
+# blocking: no card, an unusable card or a failed start only prints the reason, and ODIN stays
+# reachable through the existing network.
+[ -n "${POINT_ACCES:-}" ] || POINT_ACCES=$(sed -n 's/^POINT_ACCES=//p' "$CIBLE/.env" | tail -1)
+[ "${POINT_ACCES:-0}" = 1 ] || POINT_ACCES=0
+if grep -q '^POINT_ACCES=' "$CIBLE/.env"; then
+  sed -i "s/^POINT_ACCES=.*/POINT_ACCES=$POINT_ACCES/" "$CIBLE/.env"
+else
+  printf '# Point d'"'"'accès Wi-Fi (option) : 1 = ODIN crée son propre réseau Wi-Fi\nPOINT_ACCES=%s\n' "$POINT_ACCES" >> "$CIBLE/.env"
+fi
+POINT_ACCES_FIN=""
+if [ "$POINT_ACCES" = 1 ]; then
+  # dnsmasq-base, not dnsmasq: the full package starts a system service on port 53
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iw hostapd dnsmasq-base qrencode rfkill >/dev/null 2>&1; then
+    sortie=$(bash "$CIBLE/scripts/point-acces.sh" installer 2>&1) || true
+    POINT_ACCES_FIN=$(tail -1 <<<"$sortie")
+    sed 's/^/  /' <<<"$sortie"
+  else
+    POINT_ACCES_FIN="Point d'accès Wi-Fi indisponible : paquets impossibles à installer (iw, hostapd, dnsmasq-base, qrencode, rfkill)."
+    echo "  $POINT_ACCES_FIN"
+  fi
+elif [ -f /etc/systemd/system/odin-point-acces.target ] || [ -d /etc/odin/point-acces ]; then
+  # Option turned off: units, generated files, firewall rule and NetworkManager setting removed
+  bash "$CIBLE/scripts/point-acces.sh" desinstaller || true
+else
+  echo "  Option désactivée (POINT_ACCES=1 après sudo pour l'activer)."
+fi
+# Captive portal (Caddy and dashboard): as soon as the option is on and its range is valid and free,
+# whatever the state of the access point now (a passing hostapd failure must not leave the machine
+# without portal for good). Removed only by POINT_ACCES=0. Compose recreates caddy and the dashboard
+# when these values change.
+avant_portail=$(grep '^PORTAIL_' "$CIBLE/.env" || true)
+sed -i '/^# Portail captif/d; /^PORTAIL_/d' "$CIBLE/.env"
+if [ "$POINT_ACCES" = 1 ]; then
+  portail=$(bash "$CIBLE/scripts/point-acces.sh" portail 2>/dev/null || true)
+  if [ -n "$portail" ]; then
+    printf '# Portail captif du point d'"'"'accès Wi-Fi (écrit par install.sh)\n%s\n' "$portail" >> "$CIBLE/.env"
+  fi
+fi
+if [ "$(grep '^PORTAIL_' "$CIBLE/.env" || true)" != "$avant_portail" ]; then
+  echo "  Portail captif : $(grep -q '^PORTAIL_' "$CIBLE/.env" && echo 'activé' || echo 'retiré')."
+  docker compose up -d --remove-orphans >/dev/null 2>&1 || echo "  Avertissement : redémarrage de Caddy et du tableau de bord impossible."
+fi
+
 msg "Terminé"
 echo
 echo "  Ouvrez ODIN depuis n'importe quel appareil du réseau :"
 ip -4 -o addr show scope global \
   | awk '$2 !~ /^(docker|br-|veth)/ { split($4, a, "/"); print "    http://" a[1] }'
 echo
+[ -n "$POINT_ACCES_FIN" ] && echo "  $POINT_ACCES_FIN" && echo
 echo "  À la première visite, choisissez le mot de passe qui protégera ODIN."
 echo "  Le contenu (Wikipédia, livres, médecine...) s'installe depuis le tableau de bord."
 echo

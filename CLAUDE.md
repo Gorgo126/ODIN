@@ -26,29 +26,35 @@ toutes ses pages sans aucun accès extérieur, et ne rien envoyer dehors.
 ## Flux de travail
 
 Ce dépôt, sur Windows, est le seul endroit où le code se modifie.
-Le serveur de test est la VM Multipass "nomad" (Ubuntu 24.04, 192.168.129.19), où le dépôt est
+Le serveur de test est la VM Multipass "odintest" (Ubuntu 24.04, 192.168.129.35), où le dépôt est
 cloné dans /opt/odin. Ne jamais y modifier de fichier directement : il ne fait que git pull.
+odintest a été créée neuve le 2026-09-25 et installée depuis main (2cf0c62, NOM_HOTE=odintest) : pour la faire
+suivre dev, relancer l'installeur avec BRANCHE=dev. L'ancienne VM de test « nomad » (192.168.129.19) est gardée
+arrêtée, remise à son snapshot « vierge » ; ses snapshots (dont avant-reinstallation = son état complet avant la
+réinstallation, avec packs, documents et mot de passe) y restent. Multipass ne sait pas renommer une VM, et un clone
+garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshome.net et reste bloqué au démarrage.
 
-- On travaille sur la branche dev. nomad suit dev.
+- On travaille sur la branche dev. odintest suit dev.
 - Pour tester : commit et push sur dev, puis
-  multipass exec nomad -- bash -lc "cd /opt/odin && git pull && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
+  multipass exec odintest -- bash -lc "cd /opt/odin && git pull --ff-only origin dev && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
   (--remove-orphans retire les conteneurs d'un service supprimé de compose.yml ; install.sh fait de même)
-  Si le .env de nomad porte COMPOSE_FILE (option IA, simulée sur nomad depuis le lot 5), les -f l'ignorent
+  « origin dev » explicite : l'installeur crée la branche sans suivi (pas de --track), un git pull seul tenterait de fusionner main.
+  Si le .env de odintest porte COMPOSE_FILE (option IA, simulée sur odintest depuis le lot 5), les -f l'ignorent
   et --remove-orphans supprimerait Ollama : ajouter -f compose.ia.yml avant -f compose.dev.yml.
-  Revenir sans IA sur nomad : relancer l'installeur sans ODIN_SIMULER_VRAM (il retire la ligne COMPOSE_FILE).
-- Le propriétaire vérifie dans son navigateur sur http://192.168.129.19
+  Revenir sans IA sur odintest : relancer l'installeur sans ODIN_SIMULER_VRAM (il retire la ligne COMPOSE_FILE).
+- Le propriétaire vérifie dans son navigateur sur http://192.168.129.35
 - Une fois validé : fusionner dev dans main et pousser. C'est main que récupère l'installeur.
 - Image du dashboard : à chaque push sur main ou dev touchant dashboard/, GitHub Actions publie
   ghcr.io/gorgo126/odin-dashboard:<sha> puis fige le compose.yml de cette branche sur cette image, par
   un commit automatique (github-actions[bot]). Faire git pull avant de repousser. L'installeur prend
   donc l'image de la branche clonée (BRANCHE). Suivre un build : gh run list / gh run watch.
-- Revenir sur nomad à l'image publiée : ... && docker compose pull dashboard && docker compose up -d --remove-orphans
-- Logs : multipass exec nomad -- bash -lc "cd /opt/odin && docker compose logs --tail 50 <service>"
+- Revenir sur odintest à l'image publiée : ... && docker compose pull dashboard && docker compose up -d --remove-orphans
+- Logs : multipass exec odintest -- bash -lc "cd /opt/odin && docker compose logs --tail 50 <service>"
 - Tester une route interne sans authentification :
-  multipass exec nomad -- docker exec caddy wget -qO- http://dashboard:3000/...
+  multipass exec odintest -- docker exec caddy wget -qO- http://dashboard:3000/...
 
 Avant une modification importante, proposer un snapshot :
-multipass stop nomad && multipass snapshot nomad --name <nom> && multipass start nomad
+multipass stop odintest && multipass snapshot odintest --name <nom> && multipass start odintest
 Ne jamais restaurer ni supprimer une VM sans l'accord explicite du propriétaire.
 
 Toute modification de install.sh doit être validée sur une VM vierge :
@@ -58,15 +64,15 @@ sudo BRANCHE=dev bash (défaut : main ; la variable se place après sudo, sinon 
 multipass exec test -- bash -lc "curl -fsSL https://raw.githubusercontent.com/Gorgo126/ODIN/<commit>/install.sh | sudo BRANCHE=dev NOM_HOTE=test bash"
 NOM_HOTE=test est obligatoire sur une VM vierge : sinon la VM se renomme "odin" et, au redémarrage, Multipass ne la
 joint plus (il la cherche sous test.mshome.net). Arrêter/démarrer la VM : multipass stop test / start test.
-Supprimer ensuite la VM de test (multipass delete test --purge), jamais nomad.
+Supprimer ensuite la VM de test (multipass delete test --purge), jamais odintest.
 Recherche avancée et option IA : VM vierge et test hors ligne faits au lot 7 (2026-09-23), voir « Disques ».
 La VM vierge installe l'image publiée pour la branche : après un push touchant le dashboard,
 attendre le commit automatique de GitHub Actions et installer depuis ce commit.
-Mémoire : nomad et test (8 Go chacune) ne tiennent pas ensemble ; arrêter nomad pendant le test.
+Mémoire : odintest et test (8 Go chacune) ne tiennent pas ensemble ; arrêter odintest pendant le test.
 
 ### Test hors ligne
 
-Sur une VM test, jamais sur nomad (il modifie le pare-feu du système). Coupe internet mais garde
+Sur une VM test, jamais sur odintest (il modifie le pare-feu du système). Coupe internet mais garde
 le réseau local, comme une box sans accès internet ; chaque tentative bloquée est journalisée.
 
 1. Préparer en ligne (VM vierge ci-dessus) : mot de passe, un petit pack (climat), un PDF dans
@@ -137,7 +143,7 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   TRADUCTION_LANGUES (.env, défaut fr,en) : langues de la première installation seulement (aucun modèle présent) ;
   ensuite le disque fait foi, install.sh ne garantit que fr et en, une langue désinstallée ne revient jamais seule.
   Toutes les paires passent par l'anglais (pivot automatique d'Argos : fr→de = fr→en→de, moins précis).
-  Vérifié sur nomad (2026-09-25) : relecture des modèles en 1,5 à 2,7 s, 23 traductions envoyées pendant ce temps,
+  Vérifié sur odintest (2026-09-25) : relecture des modèles en 1,5 à 2,7 s, 23 traductions envoyées pendant ce temps,
   0 échec, conteneur non redémarré ; un seul signal pour 5 installations simultanées ; docker stop en 2,2 s ; kill -9
   du maître → conteneur relancé ; dashboard redémarré en cours d'installation → rien sur le disque, langue absente ;
   empreinte fausse → refus, rien d'installé ; redémarrage à froid avec fr et en seuls ; aucune écriture de
@@ -169,7 +175,7 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   seul ; aucun port, absent de Caddy. Socket monté en :ro, ce qui n'empêche AUCUNE requête (connect() n'écrit pas
   le fichier) : seule la liste blanche protège. user 0:0 sans aucune capacité (cap_drop ALL, read_only,
   no-new-privileges) : le socket appartient à root et le groupe docker n'a pas le même numéro partout.
-  Vérifié sur nomad (2026-09-25) : inspection, logs, top, /images, /version → 403 ; POST stop/restart, DELETE → 405 ;
+  Vérifié sur odintest (2026-09-25) : inspection, logs, top, /images, /version → 403 ; POST stop/restart, DELETE → 405 ;
   chemins détournés (../, %2F) → 403 ; conteneur tiers sur le réseau → 403.
 - État du serveur (lib/sante.mjs, /api/sante, page /sante, bandeau app/BandeauSante.jsx en bas de l'accueil, 30 s ;
   page 10 s). RAM, charge, uptime lus dans /proc du conteneur : Docker ne les virtualise pas, ce sont ceux de l'hôte
@@ -178,13 +184,13 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   n'a NI nombre de redémarrages NI date de démarrage (seulement dans l'inspection, refusée) : « Depuis » vient du
   texte Status (« Up 3 hours »), et les redémarrages ne sont pas affichés. Santé : champ Health (API Docker ≥ 1.52),
   sinon le texte Status ; ignorée pour un conteneur arrêté (Docker garde le dernier résultat). Image affichée
-  « image remplacée depuis le démarrage » quand le tag pointe maintenant vers une autre image (cas de caddy sur nomad
+  « image remplacée depuis le démarrage » quand le tag pointe maintenant vers une autre image (cas de caddy sur odintest
   le 2026-09-25 : conteneur sur de23def33b17 = caddy:2-alpine, alors que caddy:2.11.4-alpine est une autre image).
   Niveau : rouge si disque > 95 %, conteneur arrêté, en redémarrage ou unhealthy ; orange si disque > 85 % ou relais
   injoignable (délai 2 s : la page s'affiche avec « état des conteneurs indisponible »). Seuils du disque 85/95
   partout (niveauDisque de lib/format.mjs, jauge de l'accueil comprise). Lectures partagées 2 s entre les clients.
   Version : data/config/version ({commit, branche, installe}), écrit par CHAQUE passage de install.sh après le clone ;
-  un git pull seul (nomad) ne le met pas à jour : la version affichée est celle du dernier passage de l'installeur,
+  un git pull seul (odintest) ne le met pas à jour : la version affichée est celle du dernier passage de l'installeur,
   « Inconnu » sur une installation antérieure. L'image du dashboard (tag = commit) est affichée à côté.
   Espace par contenu (lib/espace-contenus.mjs, état dans lib/espace-cache.mjs, /api/sante/espace ; POST = recalculer) :
   calcul en arrière-plan, jamais attendu par une requête, un seul à la fois (relancé une fois s'il a été invalidé
@@ -201,10 +207,124 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   mémorisée (tailles.json, réécrite à la prochaine lecture du catalogue en ligne). Un téléchargement du même pack en
   cours est annulé et attendu d'abord. L'assistant relit le catalogue Kiwix dès que la date de library.xml change
   (assistant/wikis.mjs). Un ZIM hors catalogue ou d'une autre variante que celle du catalogue (medecine nopic sur
-  nomad) n'est pas désinstallable depuis ODIN.
+  odintest) n'est pas désinstallable depuis ODIN.
+
+- Point d'accès Wi-Fi (option POINT_ACCES, NON VÉRIFIÉE sur du vrai matériel ; brief docs/conception-point-acces.md,
+  lot 1 fait, lots 2 portail captif et 3 bascule à venir). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
+  (paquet dnsmasq-base, PAS dnsmasq qui lance un service sur le port 53) sous systemd. scripts/point-acces.sh
+  (detecter, installer, desinstaller, etat ; demarrer, arreter, echec pour les unités ; fonctions chargeables par
+  les tests), modèles dans config/point-acces/, fichiers générés dans /etc/odin/point-acces/ (root, 600 : parametres,
+  hostapd.conf avec @CANAL@, dnsmasq.conf, mot-de-passe), hostapd.conf du démarrage dans /run/odin-point-acces/.
+  Les unités ne lisent jamais .env : parametres fige interface, plage, SSID, pays et DATA à l'installation.
+  Unités : odin-point-acces.target (WantedBy multi-user, DefaultDependencies=no + Conflicts/Before=shutdown.target
+  remis à la main : la target est atteinte sans attendre ses services, donc multi-user.target non plus),
+  odin-point-acces-reseau.service (oneshot, After=docker.service, TimeoutStartSec=30, scan de 8 s au plus :
+  rfkill, NetworkManager, canal, adresse, IPv6 coupé sur l'interface seule, pare-feu ; son arrêt défait tout),
+  odin-hostapd et odin-dnsmasq (BindsTo le réseau, Restart=on-failure, 5 essais en 2 min), odin-point-acces-echec
+  (OnFailure= des trois : état echec-demarrage). hostapd.service de la distribution masqué.
+  Détection : iw dev (interface imposée par POINT_ACCES_INTERFACE sinon la première libre avec « * AP » dans
+  Supported interface modes), occupée si route par défaut, adresse autre que la nôtre ou « Connected to » ;
+  une installation existante garde son interface tant qu'elle existe (sinon une autre carte serait prise et
+  l'ancienne adresse ferait croire la plage occupée : vu au test). Pays : PAYS, sinon fuseau → zone.tab, sinon 00
+  (pas de country_code dans hostapd.conf alors). Canal : scan, groupe le moins chargé parmi 1/6/11, 6 à égalité ou
+  en échec. Raisons : aucune-carte, pas-de-mode-ap, wifi-occupe, echec-demarrage, plage-occupee.
+  Pare-feu (Docker 29.8.1 : backend iptables, via iptables-nft) : iptables et ip6tables
+  -I DOCKER-USER -i <if> -m conntrack ! --ctstate DNAT -j DROP (FORWARD si la chaîne n'existe pas), posée par le
+  démarrage sans doublon (-C), retirée par l'arrêt. Jamais forwarding=0 sur l'interface : l'accès à Caddy passe par
+  le DNAT de Docker. Politique FORWARD de Docker déjà DROP, la règle est une garantie de plus.
+  dnsmasq : interface=<if>, except-interface=lo (sinon il écoute aussi 127.0.0.1 et ::1), bind-interfaces, no-resolv,
+  no-hosts, host-record <nom>,<nom>.lan, address=/#/<ip>, local=/#/ (AAAA : réponse vide ; sans lui REFUSED, faute de
+  serveur amont ; filter-AAAA n'y change rien), baux dans /run/odin-point-acces/.
+  NetworkManager : /etc/NetworkManager/conf.d/odin-point-acces.conf avec une section [device-odin-point-acces]
+  match-device=interface-name:<if> et managed=0, plus nmcli device set managed no/yes. PAS keyfile.unmanaged-devices :
+  la liste d'Ubuntu contient « except:type:wifi », et une exclusion except: l'emporte sur toute la liste, donc
+  « += interface-name:<if> » ne rend jamais une carte Wi-Fi non gérée (--print-config l'affiche pourtant) ;
+  « = » donnerait l'Ethernet et les ponts Docker à NM. La déclaration reste tant que l'option est installée (seul
+  desinstaller la retire) : retirée à chaque arrêt, NM prenait la carte au démarrage suivant pendant ~10 s, assez
+  pour rejoindre un réseau Wi-Fi enregistré (vu au lot 2 : journal de NM, « unmanaged -> unavailable »).
+  État : ${DATA}/config/point-acces.json (etat actif|inactif|indisponible, raison, interface, ssid, motDePasse, adresse,
+  noms [<nom>.lan, <nom>.local si avahi], canal, pays, maj), 640 au propriétaire de data/config : le conteneur
+  dashboard tourne en root (vérifié le 2026-09-25) et le lira au lot 2 ; à revoir si l'image passe en non-root.
+  QR codes point-acces-wifi.svg et point-acces-adresse.svg (qrencode) à côté. « actif » écrit par ExecStartPost de
+  hostapd et dnsmasq quand les deux tournent et que la carte est en mode AP ; un service dans son ExecStartPost n'est
+  pas « active » : attendre « active » faisait s'attendre les deux (10 s perdues, état jamais écrit au démarrage).
+  install.sh (« Point d'accès Wi-Fi », avant « Terminé ») : POINT_ACCES après sudo, sinon celui de .env (gardé),
+  paquets iw hostapd dnsmasq-base qrencode rfkill, puis installer ; 0 sur une machine où l'option était active :
+  desinstaller (unités, /etc/odin/point-acces, règles, déclaration NM, adresse ; état inactif). Une mise à jour
+  régénère les fichiers et ne redémarre que si l'un d'eux change (comparaison des fichiers générés). Le mot de passe
+  (xxxx-xxxx-xxxx sans 0/o/1/l) est gardé aux mises à jour, perdu par POINT_ACCES=0.
+  Tests A : bash tests/point-acces/lancer.sh (25 cas, faux iw/ip/timedatectl dans tests/point-acces/faux).
+  Tests B : sudo scripts/point-acces-test.sh preparer|connecter|verifier|nettoyer, sur une VM test SEULEMENT
+  (mac80211_hwsim de linux-modules-extra-$(uname -r), 3 radios : wlan0 ODIN, wlan1 dans l'espace de noms
+  « telephone » avec wpa_supplicant et udhcpc de busybox, wlan2 dans « box » pour le lot 3 ; hwsim chargé au
+  démarrage par /etc/modules-load.d pour le test). Les espaces de noms ne survivent pas au redémarrage : preparer.
+  Portail captif (lot 2) : Caddyfile, bloc en tête de :80 : remote_ip {$PORTAIL_RESEAU} et Host absent de
+  {$PORTAIL_HOTES} → rewrite /api/portail/sonde, chemin d'origine dans X-Odin-Chemin, Host gardé. Caddy voit la vraie
+  IP du client (vérifié par capture sur le pont Docker : source 10.42.0.42, X-Forwarded-For: 10.42.0.42 ; le port
+  publié passe par le DNAT de Docker). Une variable à espaces ({$PORTAIL_HOTES}) donne bien plusieurs hôtes (caddy
+  adapt). compose.yml : PORTAIL_RESEAU=${PORTAIL_RESEAU:-192.0.2.0/32} (plage de documentation, ne correspond à rien)
+  et PORTAIL_HOTES=${PORTAIL_HOTES:-portail.invalid} pour caddy, PORTAIL_RESEAU pour le dashboard. install.sh les
+  écrit dans .env dès que POINT_ACCES=1 et la plage valide et libre (point-acces.sh portail), QUEL QUE SOIT l'état du
+  point d'accès (un échec passager de hostapd ne doit pas priver la machine de portail, et le lot 3 basculera sans
+  install.sh) ; retirés seulement par POINT_ACCES=0 ; docker compose up -d si elles changent. Hôtes exclus :
+  <adresse>, <nom>, <nom>.lan, <nom>.local (avahi).
+  Dashboard : lib/portail.mjs = LA table des sondes (SONDES) et les appareils libérés (IP → 12 h, globalThis, perdus
+  au redémarrage du dashboard : le portail revient, accepté). /api/portail/sonde (GET, HEAD, POST) : non libéré → 302
+  http://<adresse>/portail ; libéré et sonde connue → réponse exacte + X-NetworkManager-Status: online ; sinon → 302
+  http://<adresse>/. /api/portail/liberer : formulaire HTML (pas de JavaScript ni de cookie), 303 vers
+  /portail?libre=1, 403 hors de PORTAIL_RESEAU. /portail public (Caddy @public : /portail, /api/portail/*), consigne
+  Android visible par tous après « Continuer ». /point-acces/fiche (protégée, imprimable) et /api/point-acces/qr/{wifi,
+  adresse} (SVG en <img>, CSP sandbox). Panneau « Point d'accès Wi-Fi » de Configuration. Le dashboard n'écrit rien.
+  dnsmasq : dns.msftncsi.com → 131.107.255.255 (sonde DNS de Windows 10).
+  Sondes (réponses vérifiées le 2026-09-25 dans les sources, et identiques aux serveurs réels) :
+  Android (AOSP NetworkStack, config.xml, CaptivePortalProbeResult, NetworkMonitor) : connectivitycheck.gstatic.com,
+  www.google.com, play.googleapis.com, clients3/clients1.google.com, connectivitycheck.android.com, /generate_204 et
+  /gen_204 → 204 vide ; un 302 = portail (redirections non suivies). Apple (Apple Support « Use Apple products on
+  enterprise networks » ; aucune règle publiée) : captive.apple.com, tout chemin → 200 text/html, page Success de 69
+  octets (\n final) ; www.apple.com/library/test/success.html → même page, 68 octets ; anciens hôtes
+  (appleiphonecell.com, itools.info, ibook.info, airport.us, thinkdifferent.us) : SOURCES SECONDAIRES seulement.
+  Windows (Microsoft Learn, NCSI) : www.msftconnecttest.com et ipv6.msftconnecttest.com /connecttest.txt → 200
+  « Microsoft Connect Test » ; www.msftncsi.com/ncsi.txt → « Microsoft NCSI » ; Windows 11 et le Wi-Fi décident par
+  HTTP. Firefox (all.js, CaptiveDetect.sys.mjs ; domaine changé le 2026-08-10) : firefox-portal-detection.com
+  /generate_204 → 204 vide, /success.txt → « success\n » ; ESR 140 : detectportal.firefox.com/canonical.html → le
+  meta refresh exact (90 octets), /success.txt. NetworkManager (nm-connectivity.c : l'en-tête X-NetworkManager-Status:
+  online suffit ; sinon corps comparé sur son début) : connectivity-check.ubuntu.com. (avec le point final : Host
+  normalisé), nmcheck.gnome.org, ping.archlinux.org, fedoraproject.org/static/hotspot.txt.
+  Tests du lot 2 : node --test tests/portail.test.mjs (6 : réponses et tailles exactes, hôtes, libération, plage) ;
+  sudo scripts/point-acces-test.sh portail (B6, 33 contrôles : 14 sondes → 302 /portail, /portail 200, Continuer 303,
+  14 sondes → réponse identique à l'octet, autre domaine → 302 /, dns.msftncsi.com, ODIN par son adresse sans portail).
+  Résultats lot 2 (VM test, 2026-09-25/26) : B6 33/33 ; depuis le PC par l'IP Ethernet, Host de sonde → 302 /connexion
+  (aucun portail), liberer → 403, fiche et QR → connexion. B10 : hors-ligne.sh couper, redémarrage à froid, point
+  d'accès revenu seul, B1 à B6 bons, pages (accueil, recherche, lecteur, /kiwix, Documents, livres, carte, traduction,
+  santé, /portail, /portail?libre=1, fiche) sans requête vers un autre hôte ni erreur de console, Configuration « hors
+  ligne » en 156 ms, dépôt dans FileBrowser ; journal : sonde du dashboard (TCP 443 et DNS de wikipedia.org), NTP,
+  et les tentatives volontaires des tests (téléphone et VM vers 1.1.1.1) : aucune ligne due à l'option. Redémarrages
+  à froid avec NetworkManager : réseau et portail revenus, carte « unmanaged » dès le démarrage (après correction),
+  multi-user.target à 14 s, hostapd cassé → echec-demarrage et ODIN complet. Tests A et B du lot 1 relancés : bons.
+  VM vierge (dev 605589c) : POINT_ACCES=1 sans carte → indisponible, portail activé quand même, 165 s ; radios et
+  relance → B1 à B6 bons. Pack climat de B10 téléchargé par curl sur la VM (IPv6) puis inscrit par ODIN : le miroir
+  Kiwix ne répondait qu'en IPv6.
+  Résultats (VM test, 2026-09-25, Ubuntu 24.04, noyau 6.8.0-139, Docker 29.8.1) : A 25/25. B 1 à 5 : actif, JSON et
+  QR, mauvais mot de passe refusé, bail .42 dans la plage, passerelle et DNS = ODIN, tout nom → ODIN, http://test.lan
+  → page de connexion, 1.1.1.1 (TCP 443 et ping) et la box injoignables alors que la VM a internet. Cohabitation avec
+  hors-ligne.sh dans les deux ordres : page joignable, rien ne sort, règle en place. B 7 : redémarrage à froid, réseau
+  revenu seul ; multi-user.target à 18 s, réseau Wi-Fi à 26 s (hors de la chaîne critique) ; hostapd cassé exprès :
+  5 relances puis echec-demarrage, ODIN complet, démarrage non retardé. B 8 : relance → mot de passe inchangé ;
+  POINT_ACCES=0 → unités, fichiers, règles v4/v6 retirés, carte sans adresse, IPv6 rétabli, Ethernet et internet
+  intacts. Avec network-manager installé (netplan garde networkd pour l'Ethernet, resté « unmanaged ») : B 1 à 5 et 8
+  bons, carte « unmanaged » pendant l'option puis « disconnected » (rendue à NM) après POINT_ACCES=0. VM vierge :
+  POINT_ACCES=1 sans carte → « Point d'accès Wi-Fi indisponible : Aucune carte Wi-Fi détectée », installation normale
+  (166 s) ; puis radios virtuelles et relance (POINT_ACCES repris de .env) → B 1 à 5 bons.
+  NON VÉRIFIÉ : vrais pilotes (Intel, MediaTek, Realtek), portée, nombre d'appareils ; B9 (lot 3). Sur de VRAIS
+  appareils : les fenêtres de portail d'iOS (mini-navigateur), d'Android et de Windows ; Android après « Continuer »
+  (sonde HTTPS impossible hors ligne : « connectivité limitée », il peut garder la 4G comme réseau par défaut et
+  rendre ODIN injoignable ; la consigne de /portail suffit-elle ?) ; le risque de l'expérience Google
+  dns_probe_private_ip_no_internet (désactivée par défaut, activable à distance) : une sonde qui résout vers une IP
+  privée donnerait « échec » sans page de portail ; DNS privé / DoH forcé ; « odin.lan » pris pour une recherche.
+  Premier test réel prévu : Ubuntu desktop en clé USB live (NetworkManager).
 
 Images Docker figées sur une version précise dans compose.yml (jamais latest, main ni stable).
-Une montée de version se fait volontairement, une image à la fois, après test sur nomad puis hors ligne.
+Une montée de version se fait volontairement, une image à la fois, après test sur odintest puis hors ligne.
 Le dashboard est figé sur l'image de son commit (ghcr.io/gorgo126/odin-dashboard:<sha complet>),
 mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de travail).
 
@@ -253,7 +373,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   féminin, expression la plus longue d'abord, relue quand le fichier change). assistant/recherche-avancee.mjs
   (route et évaluation) : requêtes Kiwix = phrase, termes de la table, mots seuls (accents gardés, 6 au plus) ;
   question vectorisée avec ses termes. Termes de la table alignés sur des titres qui existent dans les packs.
-  Mesure (nomad, 2026-09-23, tests/recherche.json : 33 questions + 3 hors sujet, dashboard/assistant/
+  Mesure (odintest, 2026-09-23, tests/recherche.json : 33 questions + 3 hors sujet, dashboard/assistant/
   evaluation-recherche.mjs) : phrase brute hybride 10/33 en tête, 12/33 trouvées ; BM25 + synonymes 15/33
   en tête avec les seuils de couverture (sans seuil : 18/33 en tête, 32/33 dans les 3 premiers, MRR 0,74,
   1 hors-sujet sur 3 mal écarté), 0,35 s ; hybride + synonymes 31/33 en tête, 33/33 dans les 3 premiers,
@@ -290,9 +410,9 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   « mon fils a avalé de l'eau de javel », « la plaie devient verte », « le bébé ne respire plus ». Ils mesurent
   la recherche sur des formulations que la table n'a jamais vues. Reste aussi la section « Économies d'eau
   potable » devant « Traitement de l'eau non potable » (écart de cosinus 0,18, hors de portée des ajustements).
-  Catalogue (point 5 du propriétaire) : aucun pack de nomad ne traite du chauffage sans électricité, des
+  Catalogue (point 5 du propriétaire) : aucun pack de odintest ne traite du chauffage sans électricité, des
   puits ni du potager ; ce sont des manques de contenu, pas du moteur. À couvrir par le catalogue de packs.
-  Lot 4 (vecteurs par llama.cpp, installé par install.sh sur nomad) : même score 31/33, 2,2 s par question,
+  Lot 4 (vecteurs par llama.cpp, installé par install.sh sur odintest) : même score 31/33, 2,2 s par question,
   indexation 4,4 morceaux/s (3,05 avec Ollama), 450 Mo de RAM ; un index construit par Ollama reste valide.
   Candidats de l'option IA (relevés le 2026-09-23, à refaire au lot 5 avec ce qui existera alors) :
   tranche 8 Go : qwen3:8b-q4_K_M (5,2 Go, texte, Apache 2.0, hybride : think false, respecté par qwen3:1.7b
@@ -301,7 +421,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   ministral-3:14b-instruct-2512-q4_K_M (9,1 Go, Apache 2.0, encodeur d'images inclus). Écartés : Gemma 3
   (texte seul en 1b et 270m seulement, licence Gemma), Mistral Small 3.x (24B, 15 Go), ministral-3:8b
   (6 Go avec l'encodeur d'images). Replis de 2024 : qwen2.5:7b/14b-instruct, llama3.1:8b, mistral-nemo:12b.
-- Option IA (lot 5). CHEMIN GPU NON VÉRIFIÉ : aucune carte pour tester (nomad est une VM ; seul le parcours
+- Option IA (lot 5). CHEMIN GPU NON VÉRIFIÉ : aucune carte pour tester (odintest est une VM ; seul le parcours
   en simulation est testé). install.sh (« Matériel pour l'option IA ») liste les cartes par sysfs (classe 03xx ;
   noms par lspci s'il existe), mémoire des cartes NVIDIA par nvidia-smi, AMD par mem_info_vram_total ; runtime
   nvidia de Docker (docker info) ; /dev/kfd pour AMD. Écrit data/config/materiel.json (cartes, option, raison :
@@ -320,7 +440,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   part du modèle en mémoire graphique ; avertissement si débordement sur le processeur), activer, désinstaller.
   data/config/ia.json : modèle, actif, vérification. L'assistant n'existe que si OLLAMA_URL et un modèle actif ;
   sinon la carte de l'accueil est grisée « Non installé » et mène à /ia.
-  Vérifié en simulation sur nomad (2026-09-23) : 14B refusé (8 Go), essai téléchargé, empreinte bonne, test
+  Vérifié en simulation sur odintest (2026-09-23) : 14B refusé (8 Go), essai téléchargé, empreinte bonne, test
   gpu 0 (processeur, attendu en simulation).
   Test GPU réel : NON FAIT. Le PC du propriétaire a une RTX 3080 (10 Go, pilote 610.88) visible par nvidia-smi
   dans WSL ; le test prévu passait par Docker Desktop/WSL2 (docker run --gpus all), sans rien installer. Docker
@@ -378,7 +498,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   de 0,1 du meilleur cosinus (ou 1er par mots-clés), le guide médical gardé en cas d'urgence. Après un appel,
   /api/ps (1,5 s au plus) : modèle en partie ou entièrement hors de la carte graphique → avertissement sous la
   réponse. Sans modèle actif, /assistant redirige vers /ia. Replis testés contre un faux Ollama (scratchpad) ;
-  pas de test de bout en bout avec un vrai modèle depuis le retour de nomad hors simulation.
+  pas de test de bout en bout avec un vrai modèle depuis le retour de odintest hors simulation.
   Renvois : le modèle numérote les extraits, l'affichage numérote les sources. Les passages d'un même
   document deviennent une source, numérotée dans l'ordre de citation, et le texte final (champ texte de
   l'événement fin) porte ces numéros. La ligne des sources ne liste que les sources citées :
@@ -444,7 +564,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   tests/questions.json (10 réponses, 5 proches, 5 hors sujet) ; assistant/evaluation.mjs (commande en tête).
   Banc : docker exec -i dashboard node assistant/banc.mjs < tests/banc-embeddings.json (travaille dans
   /tmp du conteneur ; le modèle comparé doit être présent dans Ollama, à retirer ensuite).
-  Résultat du banc (nomad, 2026-09-22, livre de 639 pages, 1453 morceaux, 5 questions) : embeddinggemma:300m
+  Résultat du banc (odintest, 2026-09-22, livre de 639 pages, 1453 morceaux, 5 questions) : embeddinggemma:300m
   en 768 dimensions retenu (MRR vecteurs 0,90 ; 256 d : 0,85 ; bge-m3 : 0,75), 1,7 morceau/s contre 0,7 pour
   bge-m3, 650 Mo chargé contre 1,2 Go ; vecteurs 768 d : 29 Mo pour 10 000 morceaux. Ollama n'occupe que
   2 cœurs sur 4 par défaut : num_thread = nombre de cœurs (ancien lot 3) donne 3,05 morceaux/s (livre en 8 min) ;
@@ -452,7 +572,7 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
   au lieu de 1 ; 0 ferait mieux sur le livre mais perdrait les termes exacts). Question pendant une
   indexation : 50 à 370 ms. Modèles comparés (ancien lot 3, tests/documents) : qwen3:1.7b retenu (1er mot 5 s,
   16/20) ; qwen3.5:2b plus lent (9 s, 2,7 Go), lecture du prompt moins bien mise en cache, invente en issue 2.
-  RAM mesurée sur nomad pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
+  RAM mesurée sur odintest pendant une question : 3,3 Go utilisés sur 7,9 (Ollama 2,6 Go avec les deux modèles).
 
 Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
@@ -483,12 +603,12 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   22 Go → 5,1 Go utilisés. Trouvé et corrigé : un clone --depth 1 -b main ne pouvait pas changer de branche
   (checkout --track refusé) ; l'échec laissait les fichiers de dev sous le HEAD de main.
 - Fusion dans main le 2026-09-23 : 054013b (image figée par 306def3). Main d'avant, pour revenir en arrière si
-  l'installation publique pose problème : af1581102effa1915320c9a61f015394859abbcd. Snapshot nomad :
+  l'installation publique pose problème : af1581102effa1915320c9a61f015394859abbcd. Snapshot (sur l’ancienne VM nomad, voir Flux de travail) :
   avant-fusion-main. Vérifié après la fusion sur VM vierge depuis main : installation complète, pas de
   LIVRES_NON_PUBLIES dans .env, « Aucun livre n'est disponible », contrôle hors ligne (15 pages, licence sous
   l'article, aucune requête vers un autre hôte ; journal : sonde et NTP seulement).
 - Fusion dans main le 2026-09-25 (traduction) : 4d4c757 (image figée par ede7f5e). Main d'avant : 306def3fdad2146481fda1f966240de4fd583a98.
-  Snapshot nomad : avant-fusion-traduction. Vérifié avant sur VM vierge (dev 76d0f8f) : installation en 158 s, fr et en
+  Snapshot (sur l’ancienne VM nomad, voir Flux de travail) : avant-fusion-traduction. Vérifié avant sur VM vierge (dev 76d0f8f) : installation en 158 s, fr et en
   seuls (158 Mo), LibreTranslate sans téléchargement ; allemand installé, traduit, désinstallé depuis le panneau ; relance
   de l'installeur : rien de cassé, l'allemand ne revient pas, données et mot de passe inchangés ; pack climat,
   recherche, lecteur, documents, assistant → /ia. Premier téléchargement du pack : 3 ETIMEDOUT (miroir Kiwix), bon au
@@ -514,7 +634,7 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 
 - Rien en dur : ni IP, ni ports, ni noms de fichiers. Configuration dans .env, modèle dans .env.exemple.
 - Tout doit fonctionner hors ligne à l'exécution : voir « Principe hors ligne ».
-- Ne jamais modifier ni supprimer data/ sur nomad : ZIM, documents et mot de passe y vivent.
+- Ne jamais modifier ni supprimer data/ sur odintest : ZIM, documents et mot de passe y vivent.
 - Ne jamais committer data/ ni .env.
 - Fins de ligne Linux obligatoires (.gitattributes) : les scripts bash cassent avec des fins de ligne Windows.
 - Style : thème années 90 (angles vifs, biseaux --biseau, reliefs --relief/--creux, police --mono),
@@ -529,7 +649,7 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   Demande écrite envoyée par le propriétaire à permissions@hesperian.org le 2026-09-23 : en attente.
   Même avec l'accord, le PDF devra venir d'Hesperian : catalogue/livres.json le prend aujourd'hui sur
   dokotoro.org, un site tiers ; changer la source (et l'empreinte) avant toute publication.
-  Les tests sur nomad (branche dev) sont autorisés.
+  Les tests sur odintest (branche dev) sont autorisés.
 
 ## Pièges déjà rencontrés
 
@@ -565,7 +685,7 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
 - fetch de Node 24 (undici) vers kiwix-serve (Connection: close, gros articles) : plantage sur
   assert(!this.paused) dans Parser.finish, qui arrête le fil. L'assistant lit Kiwix avec le module http
   (assistant/http.mjs). lib/recherche.mjs et lib/lecture.mjs utilisent encore fetch vers Kiwix.
-- Cœurs (vérifié au lot 7, nomad 4 cœurs) : vecteurs à ~380 % pendant l'indexation (-t nproc) ; deux lots en
+- Cœurs (vérifié au lot 7, odintest 4 cœurs) : vecteurs à ~380 % pendant l'indexation (-t nproc) ; deux lots en
   parallèle ne vont pas plus vite (calcul saturé). pdftotext : un cœur par fichier, mais 1,9 s pour 639 pages,
   négligeable devant les vecteurs. Kiwix : 4 fils par défaut. Ollama : num_thread = cœurs. Aucun autre piège.
 - multipass exec ne transmet pas l'entrée standard (un « cat > fichier » ou un « docker exec -i … < - » par un
@@ -582,7 +702,15 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   maître s'arrête et le conteneur redémarre en entier. Pour relire les modèles : SIGTERM au worker. Pas de fichier pid
   non plus (--pid) : il survit à un kill -9 du maître et bloque le démarrage suivant (« Already running »).
 - Miroirs Kiwix : download.kiwix.org renvoie vers un miroir choisi par lb.download.kiwix.org ; le 2026-09-25,
-  ftp.nluug.nl ne répondait plus qu'en IPv6 depuis nomad. La VM a l'IPv6, pas les conteneurs : curl sur la VM
+  ftp.nluug.nl ne répondait plus qu'en IPv6 depuis odintest. La VM a l'IPv6, pas les conteneurs : curl sur la VM
   passe, le dashboard échoue (UND_ERR_CONNECT_TIMEOUT). Tester avec curl -4 avant de chercher dans ODIN.
+- /run est monté noexec sur Ubuntu : un script d'accroche (udhcpc -s, dhcpcd -c) placé dans /run n'est jamais
+  exécuté, sans erreur visible. Les mettre ailleurs (/var/lib/…).
+- iw : les modes sont indentés « \t\t * AP » (deux tabulations, une espace) ; « AP » apparaît aussi dans AP/VLAN et
+  dans « valid interface combinations » : ne lire que la section Supported interface modes.
+- mac80211_hwsim n'est pas dans l'image cloud d'Ubuntu : paquet linux-modules-extra-$(uname -r).
+- NetworkManager, liste unmanaged-devices : une spec « except: » qui correspond l'emporte sur toute la liste. Pour
+  écarter une seule carte, une section [device-xxx] avec match-device et managed=0 ; vérifier au démarrage dans le
+  journal de NM (« state change »), --print-config ne suffit pas.
 - Hors ligne, chaque résolution DNS bloque un fil libuv plusieurs secondes et les lectures de fichiers
   attendent derrière : UV_THREADPOOL_SIZE=16 dans l'image du dashboard.

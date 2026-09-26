@@ -59,7 +59,7 @@ export function configGeneration() {
     keepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
     // Inactivity delay of Ollama calls: long enough to load a model on CPU
     inactivite: 120000,
-    // All the cores (Ollama's own default used only half of them on nomad)
+    // All the cores (Ollama's own default used only half of them on odintest)
     threads: threads(),
     numCtx: 4096
   };
