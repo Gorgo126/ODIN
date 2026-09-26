@@ -12,7 +12,18 @@ import { classer, noterCouverture, termes } from './bm25.mjs';
 import { termePrincipal } from './terme.mjs';
 import { passagesWikis } from './wikis.mjs';
 import { passagesLivres } from './source-livres.mjs';
-import { passagesGuides } from './source-guides.mjs';
+import { passagesGuides, PAR_ARTICLE } from './source-guides.mjs';
+
+// « Comment faire ? »: the best passages, PAR_ARTICLE at most from one article, so that an article
+// whose keywords match every paragraph cannot take all the places given to the embeddings
+function unParArticle(passages, n) {
+  const vus = new Map();
+  return passages.filter((p) => {
+    const k = (vus.get(p.titre) || 0) + 1;
+    vus.set(p.titre, k);
+    return k <= PAR_ARTICLE;
+  }).slice(0, n);
+}
 import { normaliser } from '../lib/normalisation.mjs';
 
 // Index of the personal documents: files, chunks, full-text index (FTS5) and vectors (Float32 BLOB,
@@ -524,7 +535,7 @@ export class Index {
     const principal = termeSur && terme
       ? { terme: normaliser(terme), source: 'synonymes' }
       : termePrincipal(terme, question, frequence, wikis.map((p) => p.titre), enTete);
-    const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires }), ...classer(guides, req, 4, { terme: principal.terme, secondaires })];
+    const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires }), ...unParArticle(classer(guides, req, 20, { terme: principal.terme, secondaires }), 4)];
     if (q && externes.length) {
       const t = Date.now();
       try {

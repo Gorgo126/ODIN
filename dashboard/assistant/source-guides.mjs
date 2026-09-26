@@ -25,12 +25,14 @@ function sections(index) {
 // At most PAR_ARTICLE sections of one article among the candidates: an article whose keywords match
 // has them in every section, and would otherwise take every place (seen: « coupure de courant »,
 // 8 sections of the energy article, the two other relevant articles gone)
-const PAR_ARTICLE = 2;
+export const PAR_ARTICLE = 2;
 
 export async function passagesGuides(requetes, { sections: nombre = 6 } = {}) {
   const mots = termes(requetes);
   const index = await lireIndex();
   if (!mots.length || !index) return [];
+  // A question made only of such words (« je suis perdu ») keeps them all
+  const sens = mots.some(peutEtreNom) ? peutEtreNom : () => true;
   const candidates = [];
   for (const x of sections(index)) {
     let distincts = 0;
@@ -40,10 +42,10 @@ export async function passagesGuides(requetes, { sections: nombre = 6 } = {}) {
     // everywhere); every word still counts in the occurrences, which break ties.
     for (const m of mots) {
       // The article's keywords (manifest) count as one occurrence in each of its sections
-      const k = occurrences(x.norm, m) + (x.cles && peutEtreNom(m) ? occurrences(x.cles, m, 1) : 0);
+      const k = occurrences(x.norm, m) + (x.cles && sens(m) ? occurrences(x.cles, m, 1) : 0);
       if (!k) continue;
       total += k;
-      if (peutEtreNom(m)) distincts++;
+      if (sens(m)) distincts++;
     }
     if (distincts) candidates.push({ ...x, score: distincts * 100 + total });
   }
