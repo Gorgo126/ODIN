@@ -57,11 +57,11 @@ export default async function Recherche({ searchParams }) {
 
         {requete && guides && guides.total > 0 && (
           <section className="bloc-resultats">
-            <h2>Comment faire ?  {nombre(guides.total)} article{guides.total > 1 ? 's' : ''}</h2>
+            <h2>Comment faire ? · {nombre(guides.total)} article{guides.total > 1 ? 's' : ''}</h2>
             {guides.resultats.map((r) => (
               <a key={r.slug} href={r.lien} className="carte resultat resultat-guide">
                 <span className="livre-badges"><span className="badge">Comment faire ?</span></span>
-                <strong>{r.titre}{r.section ? `  ${r.section}` : ''}</strong>
+                <strong>{r.titre}{r.section ? ` · ${r.section}` : ''}</strong>
                 <p dangerouslySetInnerHTML={{ __html: r.extrait }} />
               </a>
             ))}

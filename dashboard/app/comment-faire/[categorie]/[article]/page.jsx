@@ -19,7 +19,7 @@ export default async function Article({ params }) {
 
   // The fragment has no h1: the title comes from the manifest (contract)
   const html = `<h1>${echapper(a.title)}</h1>`
-    + `<p class="guide-date">Publié le ${dateFr(a.published)}${a.updated !== a.published ? `, mis à jour le ${dateFr(a.updated)}` : ''}  odin-node.com</p>`
+    + `<p class="guide-date">Publié le ${dateFr(a.published)}${a.updated !== a.published ? `, mis à jour le ${dateFr(a.updated)}` : ''} · odin-node.com</p>`
     + a.html;
 
   return (

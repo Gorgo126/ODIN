@@ -19,7 +19,7 @@ export default async function Categorie({ params }) {
   return (
     <main>
       <Entete />
-      <p className="guides-fil"><a href="/comment-faire">Comment faire ?</a>  {c.title}</p>
+      <p className="guides-fil"><a href="/comment-faire">Comment faire ?</a> › {c.title}</p>
       <h1 className="titre-page">{c.title}</h1>
       <p className="guides-intro">{c.description}</p>
       {articles.length === 0 && <p className="vide">Aucun article dans cette catégorie.</p>}

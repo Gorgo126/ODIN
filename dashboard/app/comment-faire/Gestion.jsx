@@ -109,13 +109,13 @@ export default function Gestion({ initial, liaisonInitiale, avecSuppression = fa
   return (
     <div className="guides-gestion">
       {installe
-        ? <p className="guides-etat">{installe.articles} articles installés  version {installe.version}, publiée le {date(installe.generated_at)}, installée le {date(installe.installeLe)}  {octets(installe.taille)}</p>
+        ? <p className="guides-etat">{installe.articles} articles installés · version {installe.version}, publiée le {date(installe.generated_at)}, installée le {date(installe.installeLe)} · {octets(installe.taille)}</p>
         : <p className="vide">Aucun article installé.</p>}
 
       {enCours && (
         <div className="progression">
           <div className="jauge"><div style={{ width: (t.etape === 'telechargement' ? pct : t.etape === 'manifeste' ? 0 : 100) + '%' }} /></div>
-          <em>{ETAPES[t.etape] || 'Installation'}{t.etape === 'telechargement' && t.total ? `  ${pct} %  ${octets(t.recu)} / ${octets(t.total)}` : ''}</em>
+          <em>{ETAPES[t.etape] || 'Installation'}{t.etape === 'telechargement' && t.total ? ` · ${pct} % · ${octets(t.recu)} / ${octets(t.total)}` : ''}</em>
         </div>
       )}
       {!enCours && t?.etat === 'erreur' && <p className="erreur">{t.erreur}</p>}
@@ -137,7 +137,7 @@ export default function Gestion({ initial, liaisonInitiale, avecSuppression = fa
 
       <div className="guides-boutons">
         {!installe && <button disabled={bloque} title={titreBouton} onClick={installer}>{t?.etat === 'erreur' ? 'Réessayer' : 'Installer les articles'}</button>}
-        {installe && <button disabled={bloque || verification} title={titreBouton} onClick={verifier}>{verification ? 'Vérification' : 'Vérifier les mises à jour'}</button>}
+        {installe && <button disabled={bloque || verification} title={titreBouton} onClick={verifier}>{verification ? 'Vérification…' : 'Vérifier les mises à jour'}</button>}
         {installe && t?.etat === 'erreur' && <button disabled={bloque} title={titreBouton} onClick={installer}>Réessayer</button>}
         {installe && avecSuppression && <button disabled={enCours} onClick={retirer}>Supprimer les articles</button>}
       </div>
