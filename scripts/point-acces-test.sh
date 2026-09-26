@@ -285,7 +285,8 @@ demande() {
   local debut=$SECONDS
   for i in $(seq 150); do
     sleep 1
-    [ ! -e "$f" ] && ! systemctl is-active --quiet odin-point-acces-demande.service && break
+    # « activating » while a oneshot runs: only inactive or failed means done
+    [ ! -e "$f" ] && [[ "$(systemctl show -p ActiveState --value odin-point-acces-demande.service)" =~ ^(inactive|failed)$ ]] && break
   done
   echo "Demande « $1 » traitée en $((SECONDS - debut)) s"
   bilan
