@@ -304,7 +304,7 @@ emet() {
 ecrire_etat() {
   local fichier="$DATA/config/point-acces.json" force=${1:-}
   [ -d "$DATA/config" ] || return 0
-  local mdp= canal=null noms action=null erreur=null a r d m etat raison= actif=non
+  local mdp= canal=null noms= action=null erreur=null a= r= d= m= etat= raison= actif=non
   [ -f "$ETC/mot-de-passe" ] && mdp=$(<"$ETC/mot-de-passe")
   [ -f "$RUN/canal" ] && canal=$(<"$RUN/canal")
   noms="[$(echapper_json "$NOM.lan")"

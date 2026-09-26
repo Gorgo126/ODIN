@@ -70,6 +70,12 @@ cas "commande injectée : ignorée, rien exécuté" "Demande ignorée : « activ
 cas "lien symbolique : ignoré" $'Demande ignorée : lien symbolique.\nabsente' "$dem; ln -s /etc/hostname \"\$f\"; demande 2>&1; [ -e \"\$f\" ] || [ -L \"\$f\" ] || echo absente"
 cas "rien à faire sans demande" "" "$dem; demande 2>&1"
 
+echo "État écrit pour le tableau de bord"
+json='mkdir -p "$VIDE/j/config" "$POINT_ACCES_ETC"; echo abcd-efgh-jkmn > "$POINT_ACCES_ETC/mot-de-passe"; printf "RESEAU=10.43.0.1/24\nDATA=%s\nSSID=ODIN\n" "$VIDE/j" > "$POINT_ACCES_ETC/parametres"; charger_parametres; noter_action activer echec; noter_erreur "Échec « test »" 2>/dev/null; ecrire_etat; python3 -c "import json,sys; e=json.load(open(sys.argv[1])); print(e[\"etat\"], e[\"raison\"], e[\"carte\"], e[\"modeAP\"], e[\"routeParDefaut\"], e[\"autreConnexion\"], e[\"actif\"], e[\"adresse\"], e[\"motDePasse\"], e[\"derniereAction\"][\"resultat\"], e[\"derniereErreur\"][\"message\"])" "$VIDE/j/config/point-acces.json"'
+FAUX_IW_DEV= cas "sans carte : JSON valide, indisponible" "indisponible aucune-carte False False False False False 10.43.0.1 abcd-efgh-jkmn echec Échec « test »" "$json"
+FAUX_IW_DEV="$S/iw-dev-une.txt" FAUX_IW_PHY="$S/iw-phy-ap.txt" FAUX_ROUTE_DEFAUT="default via 192.168.1.1 dev wlp2s0" \
+  cas "carte qui porte la connexion : inactif, routeParDefaut" "inactif None True True True False False 10.43.0.1 abcd-efgh-jkmn echec Échec « test »" "$json"
+
 echo "Pays"
 FAUX_FUSEAU=UTC cas "fuseau UTC" "00" "pays"
 FAUX_FUSEAU=Europe/Brussels cas "fuseau Europe/Brussels" "BE" "pays"
