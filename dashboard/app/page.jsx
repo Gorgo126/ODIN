@@ -21,6 +21,7 @@ const DESCRIPTIONS = {
   guidesAbsent: "Fiches pratiques pour tenir sans réseau (eau, abri, feu, premiers secours…). À installer une fois, depuis internet.",
   livres: "Ouvrages de référence en PDF, avec leur fiche d'attribution, lisibles hors ligne sur ordinateur comme sur téléphone.",
   traduction: "Traduction de textes entre les langues installées, sur ce serveur, sans internet.",
+  messages: "Mur de messages du réseau local : chaque téléphone connecté à ODIN peut y laisser un mot, sans mot de passe.",
   carte: "Cartes OpenStreetMap consultables hors ligne, jusqu'au niveau des rues pour les régions installées."
 };
 
@@ -68,6 +69,15 @@ const ICONES = {
       <path d="M6 8.5c1.2 2 3 3.6 5 4.5" />
       <path d="M12 21l4.5-10L21 21" />
       <path d="M13.6 17.5h5.8" />
+    </svg>
+  ),
+  // Pinned note
+  messages: (
+    <svg viewBox="0 0 24 24" {...trait}>
+      <path d="M4 4h16v12l-4 4H4z" />
+      <path d="M16 20v-4h4" />
+      <path d="M8 9h8" />
+      <path d="M8 13h5" />
     </svg>
   ),
   carte: (

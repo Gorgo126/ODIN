@@ -580,3 +580,27 @@ a.carte.guides-categorie em { margin: auto 0 0; font-family: var(--mono); }
 .pa-encours::before { content: '▶ '; }
 .pa-alerte { margin: .8rem 0; padding: .7rem .9rem; border: 1px solid var(--or); box-shadow: var(--creux); }
 .pa-alerte p { margin: .3rem 0 0; }
+
+/* Message wall (/messages): phone first */
+.mur { max-width: 44rem; }
+.mur-formulaire { display: grid; gap: .6rem; padding: .9rem; border: 1px solid var(--bord); background: var(--fond); box-shadow: var(--relief); }
+.mur-formulaire label { display: grid; gap: .25rem; }
+.mur-formulaire label span { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+.mur-formulaire input, .mur-formulaire textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 1rem; padding: .55rem .65rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; box-shadow: var(--creux); }
+.mur-formulaire textarea { resize: vertical; min-height: 5rem; line-height: 1.45; }
+.mur-formulaire input:focus, .mur-formulaire textarea:focus { outline: 1px solid var(--or); }
+.mur-envoi { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.mur-envoi small { font-family: var(--mono); font-size: .75rem; opacity: .7; }
+.mur-envoi small.mur-trop { color: #dc2626; opacity: 1; }
+.mur-envoi button { padding: .6rem 1.2rem; min-height: 2.6rem; border: 1px solid var(--or); background: var(--or); color: #111; cursor: pointer; }
+.mur-envoi button:disabled { opacity: .45; cursor: default; }
+.mur-erreur { color: #dc2626; font-weight: 600; margin: .6rem 0 0; }
+.mur-vide { opacity: .7; font-family: var(--mono); font-size: .85rem; }
+.mur-fil { list-style: none; margin: 1.2rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.mur-message { padding: .65rem .8rem; border: 1px solid var(--bord); border-left: 3px solid var(--or); background: var(--fond); box-shadow: var(--relief); }
+.mur-tete { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.mur-tete strong { color: var(--or); overflow-wrap: anywhere; }
+.mur-tete time { font-family: var(--mono); font-size: .75rem; opacity: .7; cursor: help; }
+.mur-supprimer { margin-left: auto; padding: .2rem .5rem; border: 1px solid var(--bord); background: none; color: inherit; font-size: .7rem; cursor: pointer; }
+.mur-supprimer:hover { border-color: #dc2626; color: #dc2626; }
+.mur-message p { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }

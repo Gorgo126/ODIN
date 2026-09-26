@@ -16,7 +16,9 @@ export const SERVICES = [
   { id: 'carte', nom: 'Cartes', lien: '/carte', interne: true },
   { id: 'traduction', nom: 'Traduction', lien: '/traduction', interne: true },
   { id: 'documents', nom: 'Documents personnels', url: 'http://filebrowser:80/documents/', lien: '/documents/' },
-  { id: 'assistant', nom: 'Assistant IA', lien: '/assistant', interne: true }
+  { id: 'assistant', nom: 'Assistant IA', lien: '/assistant', interne: true },
+  // Local message wall: nothing to install, always available
+  { id: 'messages', nom: 'Messages', lien: '/messages', interne: true, toujours: true }
 ];
 
 // Translation: available when LibreTranslate answers /languages (same test as its healthcheck)

@@ -59,6 +59,8 @@ services:
       - ${DATA_DIR}/assistant:/assistant
       # Translation models: written here (language packs), read-only for libretranslate
       - ${DATA_DIR}/traduction:/traduction
+      # Message wall (/messages): SQLite base
+      - ${DATA_DIR}/messages:/messages
     restart: unless-stopped
 
   kiwix:

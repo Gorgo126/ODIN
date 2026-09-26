@@ -94,7 +94,7 @@ if [ -n "${DONNEES:-}" ]; then
   fi
 fi
 DATA=$(dossier_donnees)
-mkdir -p "$DATA"/{zim,vecteurs,config,documents,filebrowser,cartes,livres,assistant}
+mkdir -p "$DATA"/{zim,vecteurs,config,documents,filebrowser,cartes,livres,assistant,messages}
 [ -f "$DATA/zim/library.xml" ] || printf '<?xml version="1.0" encoding="UTF-8"?>\n<library version="20110515">\n</library>\n' > "$DATA/zim/library.xml"
 [ "$UTILISATEUR" != "root" ] && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE" "$DATA"
 # Version installed, shown by /sante (« commit installé »). Written by every run of this installer

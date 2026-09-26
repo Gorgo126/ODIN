@@ -28,6 +28,16 @@
 		}
 	}
 
+	# Message wall: the page and its thread (read, post) without the password. Deletion
+	# (/api/messages/<id>) and every other method stay behind the authentication.
+	@messages {
+		path /messages /api/messages
+		method GET HEAD POST
+	}
+	handle @messages {
+		reverse_proxy dashboard:3000
+	}
+
 	@public path /connexion /connexion/* /api/auth/* /_next/* /favicon.ico /logo.png /portail /api/portail/*
 	handle @public {
 		reverse_proxy dashboard:3000
