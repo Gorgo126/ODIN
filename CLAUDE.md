@@ -35,6 +35,8 @@ réinstallation, avec packs, documents et mot de passe) y restent. Multipass ne 
 garde l'ancien nom d'hôte : Multipass le cherche alors sous <nouveau nom>.mshome.net et reste bloqué au démarrage.
 
 - On travaille sur la branche dev. odintest suit dev.
+- Recherche : toute modification doit faire passer le banc de mesure (voir « Recherche avancée : règles de score et
+  banc de mesure ») : multipass exec odintest -- /opt/odin/scripts/banc-recherche.sh, code de sortie 0.
 - Pour tester : commit et push sur dev, puis
   multipass exec odintest -- bash -lc "cd /opt/odin && git pull --ff-only origin dev && docker compose -f compose.yml -f compose.dev.yml up -d --build --remove-orphans"
   (--remove-orphans retire les conteneurs d'un service supprimé de compose.yml ; install.sh fait de même)
@@ -706,6 +708,52 @@ mise à jour automatiquement par GitHub Actions sur chaque branche (voir Flux de
 
 Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /configuration, /traduction, /sante, /comment-faire, /recherche (recherche avancée puis mots-clés), /lire/<pack>/<article>
 (lecteur maison), /ouvrir/<service> (cadre avec barre ODIN), /connexion.
+
+## Recherche avancée : règles de score et banc de mesure
+
+Référence unique des règles (le détail de leur histoire est dans « Recherche avancée » et « Comment faire ? » plus haut).
+NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire passer le banc de mesure.
+
+- Sources et candidats : wikis (recherche plein texte de Kiwix, 15 articles, paragraphes classés par BM25, 8 vectorisés),
+  livres (pages de pages.json, 5 pages les plus riches, 4 paragraphes vectorisés), Mes documents (index FTS5 + vecteurs),
+  « Comment faire ? » (sections de guides.json : 6 au plus, 2 par article ; 4 paragraphes vectorisés, 2 par article).
+  Livres et articles comptent les mots comme le BM25 (occurrences() de bm25.mjs : mot entier, ou début de mot dès 5 lettres ;
+  jamais à l'intérieur d'un mot : « sonne » ne trouve pas « personne »).
+- Mots porteurs de sens (peutEtreNom, assistant/lexique.mjs) : 3 lettres ou plus, ni mot outil, ni verbe courant, ni nombre,
+  adverbe, mot de temps ou de personne. Seuls eux font une section « Comment faire ? » candidate et sont cherchés dans les
+  keywords (clesUtiles) ; une question qui n'en a aucun (« je suis perdu ») garde tous ses mots. Pour un keyword, les nombres
+  comptent aussi comme porteurs de sens (« 112 »).
+- Score d'un passage = cosinus (EmbeddingGemma) + ajustement. Ajustements (bm25.mjs, AJUSTEMENTS) : titre exact du terme
+  principal +0,15, section générale +0,03, cas particulier -0,05 ; mots-clés « Comment faire ? » ci-dessous.
+- Niveaux (constantes.mjs, seuils ; score = cosinus + ajustement) : fort ≥ réponse, proche ≥ proches, sinon écarté.
+  documents 0,40 / 0,18 ; wikis 0,48 / 0,42 ; livres 0,45 / 0,30 ; guides 0,46 / 0,35 (PROVISOIRES, 6 puis 16 questions).
+  Sans vecteurs : couverture de la requête, 0,75 / 0,50. Les issues de l'assistant utilisent le cosinus BRUT (sans ajustement).
+- Table de synonymes (catalogue/synonymes.json, assistant/synonymes.mjs) : expression reconnue par ses mots utiles dans
+  n'importe quel ordre ; une expression de plusieurs mots qui ne garde qu'une racine sans ses petits mots (« la courante »)
+  doit être trouvée telle qu'écrite ; la plus précise d'abord.
+- Keywords « Comment faire ? », correspondance exacte : un keyword entier présent dans la question après normalisation
+  (forme() : accents, casse, ponctuation ; NOMBRES GARDÉS). Force de la correspondance (correspondance(), source-guides.mjs) :
+  COMPLÈTE si le keyword a 2 mots porteurs de sens ou plus, OU couvre au moins 2/3 (COUVERTURE) des mots utiles de la question
+  (motsUtiles : 3 lettres, pas un mot outil) ; MODÉRÉE sinon.
+  Complète : sections de l'article en tête des candidates, paragraphes vectorisés d'abord, puis son meilleur passage ajusté
+  pour passer devant les autres articles et atteindre fort. Modérée : aucune priorité, +0,05 (BONUS_MODERE) sans jamais
+  franchir fort par ce bonus. Planchers (cosinus sous lequel l'embedding contredit le keyword, rien n'est ajouté) : 0,25 pour
+  un keyword de plusieurs mots porteurs de sens, 0,35 s'il n'en a qu'un (PLANCHERS). Keyword complet partagé par plusieurs
+  articles : seul le meilleur cosinus est forcé, les autres reçoivent le bonus modéré. Recherche par mots-clés (/recherche) :
+  complète +1000, modérée +3.
+- Banc de mesure : scripts/banc-recherche.sh (tests/banc-recherche.json : questions et attentes ; tests/banc-recherche.mjs :
+  comparaison), sur odintest : multipass exec odintest -- /opt/odin/scripts/banc-recherche.sh (DETAIL=1 : les 5 premiers
+  résultats de chaque question ; un autre fichier de questions en argument). Passe par /api/recherche dans le conteneur du
+  dashboard (route, index, toutes les sources) ; le lanceur et les questions viennent du dépôt (pas besoin de reconstruire
+  l'image). Code de sortie : 0 aucune régression, 1 régression (attente ratée et 5 premiers résultats affichés), 2 banc non
+  applicable (contenu requis absent : WikiMed, livre « Là où il n'y a pas de docteur », articles version 5d520da938b4101c ;
+  ou dashboard injoignable). Attentes par source et début de titre : niveau (fort, present, proche), rangMax, tete (premier
+  de sa source), absent, pasFort ; jamais de score exact. 16 questions (10 de référence + 6 keywords génériques), 34 attentes,
+  ~45 s. Vérifié le 2026-09-26 : 34/34 ; attentes inversées exprès → code 1 ; version d'articles inconnue → code 2.
+  RÈGLE : toute modification de la recherche (assistant/*.mjs de recherche, sources, bm25, synonymes, constantes, lib/
+  recherche*, catalogue/synonymes.json, contenu requis) doit faire passer le banc (code 0) avant d'être poussée vers main.
+  Une attente ne change que par décision explicite, avec sa raison (nouveau contenu, jugement du propriétaire), jamais pour
+  faire passer une régression ; un défaut corrigé ajoute sa question au banc.
 
 ## Disques (lot 7)
 
