@@ -951,6 +951,23 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   Configuration, livres, carte, traduction, santé) sans requête hors de la VM, catalogue des packs en 11 ms, dépôt dans
   FileBrowser, DNS pendant l'usage : wikipedia.org (sonde) seulement, journal : sonde et NTP seulement. VM supprimée ; main
   refusionné dans dev ; odintest sur dev (3298212), banc 34/34.
+- Fusion dans main le 2026-09-26 (soir) : mur de messages, audit hors ligne lots A et B (délais, empreintes, Kiwix derrière
+  le lecteur, dashboard en non-root et service droits), README. Avance rapide de main sur dev 2d2561b (aucun commit de
+  fusion), image reconstruite pour main et épinglée par da43e30 (2d2561b@sha256:4fe09c6c…). Main d'avant, pour revenir en
+  arrière : d2fad37 (d2fad37 CLAUDE.md, image ee32fc5). Dev avancé ensuite sur main (main = dev = da43e30), odintest sur
+  dev. Vérifié AVANT la fusion sur VM vierge (dev 2d2561b, image bb8267b, 179 s) : 7 conteneurs + droits terminé,
+  uid 1000, tout data/ en 1000:1000, mot de passe, mur (visiteur : lecture et publication 201, suppression 401,
+  Configuration → connexion, lien sur la page de connexion), pack climat, /kiwix → /encyclopedie, article dans /lire,
+  PDF déposé par FileBrowser puis trouvé par la recherche avancée (6 s), articles « Comment faire ? » ; hors ligne
+  (hors-ligne.sh couper, redémarrage à froid) : 7 conteneurs, uid 1000, liaison rompue, Chromium (Playwright) en 390 px :
+  mur publié par un visiteur, 14 pages en 200 (Encyclopédie, Documents, carte, traduction, santé, Configuration
+  « Indisponible hors ligne »…), 86 liens externes grisés dans le lecteur, attribution de la carte barrée, aucune
+  erreur de console, aucune requête vers un autre hôte (seul un blob: local de MapLibre, faux positif du test) ; journal :
+  sonde (TCP 443 vers 1.1.1.1, 8.8.8.8, 9.9.9.9 ; DNS wikipedia.org), NTP, snapd (api.snapcraft.io) et une requête AAAA
+  « caddy.home » d'origine non identifiée. APRÈS la fusion, VM vierge depuis main (da43e30, commande publique sans
+  BRANCHE, 175 s) : version {da43e30, main}, image de main, uid 1000, mur, /sante neutre, aucun livre proposé, pas de
+  LIVRES_NON_PUBLIES. Vu : l'installeur recrée caddy et dashboard à sa toute fin (PORTAIL_* écrits) ; une requête
+  dans la seconde qui suit « Terminé » reçoit un 502 (déjà le cas depuis la fusion du point d'accès).
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
