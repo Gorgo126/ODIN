@@ -800,6 +800,20 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   normale en 155 s (7 conteneurs, aucune unité odin-*, pas de hostapd, pas de PORTAIL_* dans .env, sonde → connexion) ;
   puis radios virtuelles et installeur relancé avec POINT_ACCES=1 (36 s) : B1 à B5 bons, B6 33/33, accès par l'IP
   Ethernet sans portail, liberer → 403. odintest mise à jour ensuite (installeur, dev a3049cb, sans POINT_ACCES).
+- Fusion dans main le 2026-09-26 (« Comment faire ? », miroirs Kiwix par métalien et essai de débit, table de synonymes,
+  ajouter.sh par l'API, banc de mesure) : commit de fusion 70a9213902e4c359f5c60172b5821b9fc78301bc, image figée par 3298212 :
+  ghcr.io/gorgo126/odin-dashboard:70a9213902e4c359f5c60172b5821b9fc78301bc, digest
+  sha256:53f6000222037df07e6af928129ae39ad3b82292efc4d5dec2e6dc5bdd819a46 (lu sans rtk). Main d'avant :
+  972b8bd4096ea7292e0ecca54c861c40fe20e5a3. Snapshot de odintest : avant-fusion-comment-faire. Banc de mesure avant la fusion
+  sur odintest : 34/34 (articles c139f8128106cf7f). VM vierge depuis main, commande publique du README (NOM_HOTE=test, sans
+  BRANCHE) : 166 s, 7 conteneurs sains, bonne image et bon digest, version {commit 3298212, main} ; « Aucun livre n'est
+  disponible » (API vide, pas de LIVRES_NON_PUBLIES) ; articles installés (c139f81, 13), « à jour » ; lecture d'articles avec
+  schémas, bureau et 390 px, sans débord ni erreur ni requête hors de la VM ; pack voyage depuis le dashboard : ftp.fau.de
+  choisi par l'essai de débit (nluug en échec), SHA-256 identique au métalien ; hors ligne après redémarrage à froid :
+  7 conteneurs, vérifier et installer refusés en 15 ms, pages (accueil, recherche, lecteur, /kiwix, Comment faire, fiche,
+  Configuration, livres, carte, traduction, santé) sans requête hors de la VM, catalogue des packs en 11 ms, dépôt dans
+  FileBrowser, DNS pendant l'usage : wikipedia.org (sonde) seulement, journal : sonde et NTP seulement. VM supprimée ; main
+  refusionné dans dev ; odintest sur dev (3298212), banc 34/34.
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
