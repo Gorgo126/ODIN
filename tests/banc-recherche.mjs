@@ -1,9 +1,10 @@
 // Search benchmark: the questions of tests/banc-recherche.json through /api/recherche (route, index,
 // every source), compared with the expected ranking. Runs inside the dashboard container (Node only, no
 // dependency), started by scripts/banc-recherche.sh. Plain text output.
-// Exit code: 0 = every expectation met, 1 = regression, 2 = benchmark not applicable (content missing,
-// dashboard not answering).
-import { readFileSync } from 'fs';
+// Exit code: 0 = every expectation met, 1 = regression, 2 = benchmark not applicable (a pack, book or
+// article the expectations need is missing, dashboard not answering). Another version of the articles
+// than the reference one is only a warning: the site's content evolves.
+import { readFileSync, realpathSync } from 'fs';
 
 const B = 'http://127.0.0.1:3000';
 const banc = JSON.parse(readFileSync(process.argv[2] || '/tmp/banc-recherche.json', 'utf8'));
@@ -21,11 +22,20 @@ async function requis() {
   for (const id of banc.requis.packs || []) if (packs.find((p) => p.id === id)?.installation !== 'installe') manque.push(`pack ${id}`);
   const livres = await lire('/api/livres');
   for (const id of banc.requis.livres || []) if (!livres.find((l) => l.id === id)?.installe) manque.push(`livre ${id}`);
-  const guides = await lire('/api/guides');
-  if (banc.requis.guides && guides.installe?.version !== banc.requis.guides) {
-    manque.push(`articles « Comment faire ? » version ${banc.requis.guides} (installée : ${guides.installe?.version || 'aucune'})`);
+  // The installed articles, by identifier (index of the installed version, read in the container)
+  let installes = [];
+  let version = null;
+  try {
+    const g = JSON.parse(readFileSync(`${realpathSync('/config/guides/actuel')}/guides.json`, 'utf8'));
+    installes = g.articles.map((a) => a.slug);
+    version = g.version;
+  } catch {}
+  for (const slug of banc.requis.articles || []) if (!installes.includes(slug)) manque.push(`article ${slug}`);
+  const avertissements = [];
+  if (banc.requis.guidesReference && version && version !== banc.requis.guidesReference) {
+    avertissements.push(`articles « Comment faire ? » en version ${version}, attentes écrites avec ${banc.requis.guidesReference} : à surveiller, pas bloquant`);
   }
-  return manque;
+  return { manque, avertissements };
 }
 
 const nom = (g) => `${g.origine === 'wiki' ? g.etiquette : g.origine === 'livre' ? 'Livre' : 'Comment faire ?'} · ${g.titre}`;
@@ -54,8 +64,9 @@ function verifier(a, groupes) {
 
 (async () => {
   let manque;
+  let avertissements;
   try {
-    manque = await requis();
+    ({ manque, avertissements } = await requis());
   } catch (e) {
     console.log(`Banc non applicable : dashboard injoignable (${e.message}).`);
     process.exit(2);
@@ -64,6 +75,7 @@ function verifier(a, groupes) {
     console.log(`Banc non applicable : contenu manquant : ${manque.join(', ')}.`);
     process.exit(2);
   }
+  for (const a of avertissements) console.log(`Avertissement : ${a}.\n`);
   let attentes = 0;
   let echecs = 0;
   const t0 = Date.now();
@@ -80,7 +92,7 @@ function verifier(a, groupes) {
       if (!groupes.length) console.log('      (aucun résultat)');
     }
   }
-  console.log(`\n${banc.questions.length} questions, ${attentes} attentes, ${echecs} échec(s), ${Math.round((Date.now() - t0) / 1000)} s.`);
+  console.log(`\n${banc.questions.length} questions, ${attentes} attentes, ${echecs} échec(s), ${Math.round((Date.now() - t0) / 1000)} s${avertissements.length ? `, ${avertissements.length} avertissement(s)` : ''}.`);
   process.exit(echecs ? 1 : 0);
 })().catch((e) => {
   console.log(`Banc interrompu : ${e.message}`);

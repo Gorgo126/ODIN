@@ -746,10 +746,13 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   résultats de chaque question ; un autre fichier de questions en argument). Passe par /api/recherche dans le conteneur du
   dashboard (route, index, toutes les sources) ; le lanceur et les questions viennent du dépôt (pas besoin de reconstruire
   l'image). Code de sortie : 0 aucune régression, 1 régression (attente ratée et 5 premiers résultats affichés), 2 banc non
-  applicable (contenu requis absent : WikiMed, livre « Là où il n'y a pas de docteur », articles version 5d520da938b4101c ;
-  ou dashboard injoignable). Attentes par source et début de titre : niveau (fort, present, proche), rangMax, tete (premier
+  applicable (un pack, un livre ou un article « Comment faire ? » cité par les attentes est absent — requis : medecine,
+  pas-de-docteur, 9 articles par identifiant — ou dashboard injoignable). Version des articles : guidesReference (version
+  avec laquelle les attentes ont été écrites, c139f8128106cf7f depuis le 2026-09-26) ; une autre version installée donne un
+  AVERTISSEMENT, pas un blocage (le contenu du site évolue). Attentes par source et début de titre : niveau (fort, present, proche), rangMax, tete (premier
   de sa source), absent, pasFort ; jamais de score exact. 16 questions (10 de référence + 6 keywords génériques), 34 attentes,
-  ~45 s. Vérifié le 2026-09-26 : 34/34 ; attentes inversées exprès → code 1 ; version d'articles inconnue → code 2.
+  ~45 s. Vérifié le 2026-09-26 : 34/34 ; attentes inversées exprès → code 1 ; article requis inexistant → code 2 ;
+  autre version de référence → avertissement et code 0.
   RÈGLE : toute modification de la recherche (assistant/*.mjs de recherche, sources, bm25, synonymes, constantes, lib/
   recherche*, catalogue/synonymes.json, contenu requis) doit faire passer le banc (code 0) avant d'être poussée vers main.
   Une attente ne change que par décision explicite, avec sa raison (nouveau contenu, jugement du propriétaire), jamais pour
