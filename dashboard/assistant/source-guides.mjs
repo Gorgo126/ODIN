@@ -32,7 +32,7 @@ export async function passagesGuides(requetes, { sections: nombre = 5 } = {}) {
     // Words counted as the BM25 counts them (occurrences): « sonne » must not match « personne »
     for (const m of mots) {
       // The article's keywords (manifest) count as one occurrence in each of its sections
-      const k = occurrences(x.norm, m) + (x.cles && occurrences(x.cles, m, 1));
+      const k = occurrences(x.norm, m) + (x.cles ? occurrences(x.cles, m, 1) : 0);
       if (k) { distincts++; total += k; }
     }
     if (distincts) candidates.push({ ...x, score: distincts * 100 + total });
