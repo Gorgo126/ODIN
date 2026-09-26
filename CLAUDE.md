@@ -210,7 +210,7 @@ Un seul compose.yml écrit à la main, aucun orchestrateur.
   odintest) n'est pas désinstallable depuis ODIN.
 
 - Point d'accès Wi-Fi (option POINT_ACCES, NON VÉRIFIÉE sur du vrai matériel ; brief docs/conception-point-acces.md,
-  lot 1 fait, lots 2 portail captif et 3 bascule à venir). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
+  lots 1 et 2 (portail captif) faits et dans main depuis le 2026-09-26, lot 3 bascule seulement sur accord du propriétaire). Sur l'hôte, jamais dans un conteneur : hostapd et dnsmasq
   (paquet dnsmasq-base, PAS dnsmasq qui lance un service sur le port 53) sous systemd. scripts/point-acces.sh
   (detecter, installer, desinstaller, etat ; demarrer, arreter, echec pour les unités ; fonctions chargeables par
   les tests), modèles dans config/point-acces/, fichiers générés dans /etc/odin/point-acces/ (root, 600 : parametres,
@@ -613,6 +613,14 @@ Pages : / (liaison monde, services, recherche, stockage, bandeau d'état), /conf
   de l'installeur : rien de cassé, l'allemand ne revient pas, données et mot de passe inchangés ; pack climat,
   recherche, lecteur, documents, assistant → /ia. Premier téléchargement du pack : 3 ETIMEDOUT (miroir Kiwix), bon au
   second essai.
+- Fusion dans main le 2026-09-26 (point d'accès Wi-Fi lots 1 et 2, page de connexion, odintest) : acfb9e0 (image
+  figée par 4f707fc). Main d'avant : 2cf0c625096be8469e524a514209ba11fb6a3ca4. Snapshot de odintest :
+  avant-fusion-point-acces. Vérifié après la fusion sur VM vierge depuis main (4f707fc) : sans POINT_ACCES, installation
+  normale en 155 s (7 conteneurs, aucune unité odin-*, pas de hostapd, pas de PORTAIL_* dans .env, sonde → connexion) ;
+  puis radios virtuelles et installeur relancé avec POINT_ACCES=1 (36 s) : B1 à B5 bons, B6 33/33, accès par l'IP
+  Ethernet sans portail, liberer → 403. Le test portail suppose un téléphone pas encore libéré : relancé tout de suite,
+  les 14 sondes « avant Continuer » échouent (libéré pour 12 h), attendu. odintest mise à jour ensuite (installeur, dev
+  a3049cb, sans POINT_ACCES).
 - Livres non publiés : « publie »: false dans catalogue/livres.json (Hesperian) ; proposé seulement si
   LIVRES_NON_PUBLIES=1, que install.sh écrit dans .env hors de la branche main et retire sur main. Sans livre :
   « Aucun livre n'est disponible pour l'instant. » (Configuration et /livres) ; recherche et bandeau vérifiés.
