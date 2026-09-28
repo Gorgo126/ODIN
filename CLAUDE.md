@@ -624,6 +624,28 @@ digest de l'étape « image » ; le workflow échoue si elle manque) : voir Flux
   le lien ouvre /livres/<id>?page=N&q=…, où la visionneuse surligne les mots sur cette page seulement
   (la recherche de pdf.js, #search=, téléchargerait tout le livre).
 
+- Packs publiés par ODIN (2026-09-28, dev) : catalogue/packs-odin.json, à côté de packs.txt (Kiwix). Chaque entrée
+  porte tout (url https, taille, sha256, date, uuid, nom et variante : le fichier doit s'appeler <nom>_<variante>_…zim,
+  préfixe par lequel ODIN retrouve les fichiers d'un pack) : aucune requête avant le téléchargement ; entrée
+  incohérente ignorée avec un message (entreeOdin, lib/catalogue.mjs ; tests/packs-odin.test.mjs). Téléchargement par
+  telechargerFlux comme un pack Kiwix sans métalien, SHA-256 de l'entrée vérifié. Configuration : crédit, lien du site
+  (texte seul hors ligne), « généré le ». Lecteur : licence.mention (lib/licences.mjs, projet nopanic).
+  Pack NoPanic : scripts/packs/nopanic (README : accord du 27/09/2026, crédit en tête de chaque article, auteurs
+  autorisés admin et thom-mat seulement, liste EXCLUS de 9 articles d'invités). Mise à jour incrémentale (état
+  .cache/etat.json, modified_after avec 2 jours de marge, images reprises du ZIM précédent). Workflow
+  .github/workflows/pack-nopanic.yml : trimestriel + manuel, cache actions/cache sinon etat.json.gz et ZIM de la
+  dernière release nopanic-*, publie la release (ZIM, .sha256, etat.json.gz, rapport.json) puis commite l'entrée de
+  packs-odin.json sur la branche qui a tourné (« Catalogue : pack NoPanic <tag> »). Tant qu'il n'est que sur dev :
+  gh workflow run pack-nopanic.yml --ref dev (planification et bouton de l'interface = main seulement ; un push de
+  son fichier sur dev l'a fait connaître de GitHub, job ignoré sur push). Première release nopanic-2026-09-28-2 : crawl
+  complet sur GitHub en 1 h 23 (≈1,5 s par image), 568 articles, 3272 images, ZIM 473 Mo. Vérifié sur odintest :
+  installé depuis l'API du dashboard en 18 s (empreinte vérifiée), inscrit dans library.xml, lecture dans /lire
+  (en-tête, mention, images, liens internes), /recherche « paracorde » (20 liens NoPanic), recherche avancée (fort).
+  BANC avec NoPanic installé sur odintest : 3 échecs sur 34. La source wiki fait UNE recherche Kiwix sur tous les
+  packs et garde 15 articles en tout : un pack de plus prend des places aux autres. « radio du thorax » : Radiographie
+  du thorax (WikiMed) sort des candidats ; « appeler le 112 » : Centrale d'urgence 112 absent, NoPanic « Numéros
+  d'urgence » en tête ; « coupure de courant » : article NoPanic en tête, « Calculer son autonomie électrique » 2e.
+  Décision du propriétaire attendue (quota par pack, attentes, pack retiré d'odintest).
 - Recherche avancée (produit principal depuis le 2026-09-23 ; l'IA devient une option GPU). Plan en lots :
   0 remise à plat (fait), 1 moteur et 2 page (faits ensemble), 3 table de synonymes et mesure des trois
   configurations (BM25 + synonymes, hybride Ollama, hybride llama-server : le propriétaire tranche les
