@@ -5,6 +5,8 @@
 
 import { promises as fs } from 'fs';
 import { lire } from './http.mjs';
+import { classer } from './bm25.mjs';
+import { repartir } from './quota.mjs';
 
 const KIWIX = process.env.KIWIX_URL || 'http://kiwix:8080';
 const DELAI = 5000;
@@ -54,7 +56,9 @@ async function chercher(q, livres, n) {
   const xml = r.texte;
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, item]) => ({
     titre: decoder(item.match(/<title>([^<]*)/)?.[1] || ''),
-    chemin: decoder(item.match(/<link>([^<]*)/)?.[1] || '').split('#')[0]
+    chemin: decoder(item.match(/<link>([^<]*)/)?.[1] || '').split('#')[0],
+    // Kiwix's extract around the words found: scores the candidate for the per-pack quota
+    extrait: texte(decoder(item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || ''))
   })).filter((a) => a.chemin.startsWith('/kiwix/content/'));
 }
 
@@ -77,7 +81,13 @@ function paragraphes(html) {
 // table (« fièvre »): the article of that exact title is read first in every pack, when it exists.
 // Kiwix's own search can rank it far behind the particular cases (Fièvre jaune, Fièvre récurrente),
 // and the rules on titles can only prefer an article that is among the candidates.
-export async function passagesWikis(requetes, { articles = 15, titre = null } = {}) {
+// Per-pack quota (quota.mjs): Kiwix is asked for three times as many results as articles read, and a
+// pack holds at most PAR_PACK of them when another pack has a competing candidate (BM25 of the
+// query on the title and Kiwix's extract). Without competition the order of Kiwix stays.
+export const PAR_PACK = 6;
+const RESERVE = 3;
+
+export async function passagesWikis(requetes, { articles = 15, titre = null, quota = true } = {}) {
   let livres = await livresIndexes();
   if (!livres.length) return [];
   const exact = [];
@@ -87,7 +97,7 @@ export async function passagesWikis(requetes, { articles = 15, titre = null } = 
     const trouves = await Promise.all(chemins.map((c) => lire(KIWIX + c, DELAI).then((r) => (r.ok && r.type.includes('text/html') ? c : null), () => null)));
     for (const c of trouves) if (c) exact.push({ titre: t, chemin: c });
   }
-  const toutes = () => Promise.all([...new Set(requetes.filter(Boolean))].map((q) => chercher(q, livres, articles).catch(() => null)));
+  const toutes = () => Promise.all([...new Set(requetes.filter(Boolean))].map((q) => chercher(q, livres, quota && livres.length > 1 ? articles * RESERVE : articles).catch(() => null)));
   let listes = await toutes();
   // Kiwix refuses the whole search when a pack of the list was removed meanwhile: catalogue read
   // again, search done once more
@@ -96,15 +106,23 @@ export async function passagesWikis(requetes, { articles = 15, titre = null } = 
     listes = livres.length ? await toutes() : [];
   }
   listes = listes.map((l) => l || []);
+  // Both queries interleaved without duplicates: the first `articles` are the choice without quota
   const vus = new Set(exact.map((a) => a.chemin));
-  const retenus = [...exact];
-  for (let i = 0; retenus.length < articles && listes.some((l) => i < l.length); i++) {
+  const ordre = [...exact];
+  for (let i = 0; listes.some((l) => i < l.length); i++) {
     for (const l of listes) {
       const a = l[i];
-      if (a && !vus.has(a.chemin) && retenus.length < articles) { vus.add(a.chemin); retenus.push(a); }
+      if (a && !vus.has(a.chemin)) { vus.add(a.chemin); ordre.push(a); }
     }
   }
   const pack = (chemin) => livres.find((l) => chemin.startsWith(`/kiwix/content/${l.contenu}/`));
+  let retenus = ordre.slice(0, articles);
+  if (quota && livres.length > 1) {
+    const notes = new Map(classer(ordre.map((a) => ({ titre: a.titre, section: '', texte: a.extrait || '', chemin: a.chemin })), requetes, ordre.length)
+      .map((p) => [p.chemin, p.bm25]));
+    retenus = repartir(ordre.map((a) => ({ a, pack: pack(a.chemin)?.id || '', article: a.chemin, score: notes.get(a.chemin) || 0 })),
+      articles, { parPack: PAR_PACK, fixes: exact.length }).map((x) => x.a);
+  }
   const lus = await Promise.all(retenus.map(async (a) => {
     try {
       const r = await lire(KIWIX + a.chemin, DELAI);

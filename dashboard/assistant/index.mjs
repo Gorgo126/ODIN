@@ -11,6 +11,14 @@ import { messagesResume } from './prompt.mjs';
 import { classer, noterCouverture, termes } from './bm25.mjs';
 import { termePrincipal } from './terme.mjs';
 import { passagesWikis } from './wikis.mjs';
+import { repartir } from './quota.mjs';
+
+// Wiki paragraphs embedded: WIKI_PARAGRAPHES in all, at most 2 per article, and at most
+// WIKI_PAR_PACK per pack when another pack competes (quota.mjs)
+const WIKI_PARAGRAPHES = 8;
+const WIKI_PAR_ARTICLE = 2;
+const WIKI_PAR_PACK = 4;
+const packDuLien = (lien) => (lien || '').split('/')[2] || '';
 import { passagesLivres } from './source-livres.mjs';
 import { passagesGuides, PAR_ARTICLE, motsClesExacts } from './source-guides.mjs';
 import { CONSTANTES } from './constantes.mjs';
@@ -498,7 +506,7 @@ export class Index {
   // for the question (the question and its search terms). cfg.sansVecteurs: keywords only (measure).
   // garder: the indexing stays paused after the
   // search (until reprendre(jeton), when the answer is written); otherwise it resumes right away.
-  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes, terme = requetes?.[1], termeSur = false, secondaires = [], texteVecteur = question } = {}) {
+  async rechercher(question, { n = this.cfg.extraits, sources = ['documents'], garder = false, requetes, terme = requetes?.[1], termeSur = false, secondaires = [], texteVecteur = question, quota = true } = {}) {
     const debut = Date.now();
     const durees = {};
     const mesurer = (nom, promesse) => {
@@ -510,7 +518,7 @@ export class Index {
       });
     };
     const req = (requetes?.length ? requetes : [question]).filter(Boolean);
-    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15, titre: termeSur ? terme : null })) : Promise.resolve([]);
+    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15, titre: termeSur ? terme : null, quota })) : Promise.resolve([]);
     const pLivres = sources.includes('livres') ? mesurer('livres', passagesLivres(req)) : Promise.resolve([]);
     const pGuides = sources.includes('guides') ? mesurer('guides', passagesGuides(req)) : Promise.resolve([]);
 
@@ -542,7 +550,12 @@ export class Index {
     const principal = termeSur && terme
       ? { terme: normaliser(terme), source: 'synonymes' }
       : termePrincipal(terme, question, frequence, wikis.map((p) => p.titre), enTete);
-    const externes = [...classer(wikis, req, 8, { terme: principal.terme, secondaires }), ...classer(livres, req, 4, { terme: principal.terme, secondaires }), ...unParArticle(exactsDabord(classer(guides, req, 20, { terme: principal.terme, secondaires })), 4)];
+    const wikisClasses = classer(wikis, req, quota ? wikis.length : WIKI_PARAGRAPHES, { terme: principal.terme, secondaires });
+    const wikisRetenus = quota
+      ? repartir(wikisClasses.map((p) => ({ p, pack: packDuLien(p.lien), article: p.lien, score: p.bm25 })), WIKI_PARAGRAPHES,
+        { parPack: WIKI_PAR_PACK, parArticle: WIKI_PAR_ARTICLE }).map((x) => x.p)
+      : wikisClasses;
+    const externes = [...wikisRetenus, ...classer(livres, req, 4, { terme: principal.terme, secondaires }), ...unParArticle(exactsDabord(classer(guides, req, 20, { terme: principal.terme, secondaires })), 4)];
     if (q && externes.length) {
       const t = Date.now();
       try {
@@ -605,6 +618,8 @@ export class Index {
       meilleurs,
       meilleurCosinus: valeurs.length ? Math.max(...valeurs) : null,
       terme: principal,
+      // Wiki paragraphs sent to the embeddings (pack, article): shown by ?debug=1
+      wikisRetenus: wikisRetenus.map((p) => ({ pack: packDuLien(p.lien), titre: p.titre, section: p.section, bm25: p.bm25 })),
       vecteurs: !!q,
       durees: { ...durees, total: Date.now() - debut },
       duree: Date.now() - debut,

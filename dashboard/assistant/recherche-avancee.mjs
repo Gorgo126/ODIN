@@ -35,7 +35,7 @@ export function preparer(question, { synonymes = true } = {}) {
 
 // rechercher(question, options): Index.rechercher, directly or through the worker. reseau(): state
 // of the network for the emergency banner (« disponible », « indisponible », « inconnu »).
-export async function chercher({ question, rechercher, reglages, reseau, debug = false, synonymes = true }) {
+export async function chercher({ question, rechercher, reglages, reseau, debug = false, synonymes = true, quota = true }) {
   const urgence = signeDeGravite(question);
   // Asked at once, in parallel with the search: it never waits for a test
   const etatReseau = urgence && reseau ? Promise.resolve().then(reseau).catch(() => 'inconnu') : null;
@@ -47,7 +47,8 @@ export async function chercher({ question, rechercher, reglages, reseau, debug =
     terme: p.terme,
     termeSur: p.termeSur,
     secondaires: p.secondaires,
-    texteVecteur: p.texteVecteur
+    texteVecteur: p.texteVecteur,
+    quota
   });
   const g = grouper(r, question, reglages, { urgence, debug, termes: p.comprehension.cherche });
   return {
@@ -59,7 +60,8 @@ export async function chercher({ question, rechercher, reglages, reseau, debug =
     ...(debug ? {
       debug: {
         comprehension: p.comprehension, requetes: p.requetes, texteVecteur: p.texteVecteur,
-        terme: r.terme, meilleurs: r.meilleurs, seuils: reglages.seuils, couverture: reglages.couverture
+        terme: r.terme, meilleurs: r.meilleurs, seuils: reglages.seuils, couverture: reglages.couverture,
+        quota, wikisRetenus: r.wikisRetenus
       }
     } : {})
   };

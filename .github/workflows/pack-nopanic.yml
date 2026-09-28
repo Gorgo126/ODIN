@@ -1,18 +1,11 @@
 name: Pack NoPanic
 
 # Builds the NoPanic ZIM (scripts/packs/nopanic), publishes it on GitHub Releases with its SHA-256,
-# then points catalogue/packs-odin.json of the branch it ran on at the new file. Incremental: the
+# then points catalogue/packs-odin.json of dev at the new file. Manual only, on dev only: the new
+# entry reaches main through the usual merge, after a test on odintest (README of the pack). Incremental: the
 # cache of the previous run (actions/cache), otherwise etat.json.gz and the ZIM of the last release,
 # so that only modified articles are asked to the API and only missing images are downloaded.
 on:
-  schedule:
-    # Quarterly, 2 January/April/July/October (scheduled runs use the default branch)
-    - cron: '23 4 2 1,4,7,10 *'
-  # Only registers the workflow while it exists on dev alone (GitHub knows a workflow once it has run
-  # from any branch; the manual trigger then works with --ref dev): the job is skipped on push
-  push:
-    branches: [dev]
-    paths: ['.github/workflows/pack-nopanic.yml']
   workflow_dispatch:
     inputs:
       complet:
@@ -29,7 +22,6 @@ concurrency:
 
 jobs:
   pack:
-    if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     # A first run without cache nor release crawls ~3300 images, 1 request per second at most
     timeout-minutes: 300
@@ -39,6 +31,13 @@ jobs:
       run:
         working-directory: scripts/packs/nopanic
     steps:
+      - name: Dev only
+        working-directory: .
+        run: |
+          if [ "$GITHUB_REF_NAME" != "dev" ]; then
+            echo "::error::Ce workflow ne tourne que sur dev (lancé sur « $GITHUB_REF_NAME ») : gh workflow run pack-nopanic.yml --ref dev"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -95,8 +94,7 @@ jobs:
           echo "URL=https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$fichier" >> "$GITHUB_ENV"
           echo "TAG=$tag" >> "$GITHUB_ENV"
 
-      # Same pattern as the dashboard image: commit on the branch that ran, pushed with GITHUB_TOKEN
-      # (no workflow triggered by it)
+      # Commit on dev (the only branch it runs on), pushed with GITHUB_TOKEN (no workflow triggered)
       - name: Point the catalogue at the release
         run: |
           git fetch origin "$GITHUB_REF_NAME"

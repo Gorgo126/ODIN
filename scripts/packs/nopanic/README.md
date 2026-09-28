@@ -113,8 +113,9 @@ Résultats dans `out/` :
 
 ## Publication (GitHub Actions)
 
-`.github/workflows/pack-nopanic.yml` tourne chaque trimestre (le 2 janvier, avril, juillet et
-octobre), ou à la main (Actions → Pack NoPanic → Run workflow ; option « complet »).
+`.github/workflows/pack-nopanic.yml` ne se lance qu'à la main, et seulement sur dev. Lancé sur une
+autre branche, il échoue dès sa première étape avec un message explicite. Il n'y a pas de
+planification.
 
 1. Il reprend le cache de l'exécution précédente (actions/cache). S'il n'y en a pas, il
    télécharge `etat.json.gz` et le ZIM de la dernière release `nopanic-*`.
@@ -122,15 +123,30 @@ octobre), ou à la main (Actions → Pack NoPanic → Run workflow ; option « c
 3. Il publie une release `nopanic-<date>-<numéro d'exécution>` avec le ZIM, son `.sha256`,
    `etat.json.gz` et `rapport.json`.
 4. Il écrit l'adresse, la taille, le SHA-256 et la date dans `catalogue/packs-odin.json`, puis
-   commite sur la branche où il a tourné.
+   commite ce seul fichier sur dev (« Catalogue : pack NoPanic <tag> »). L'étape refuse de
+   committer si un autre fichier a été modifié.
 
-Le cache d'actions/cache disparaît après 7 jours sans usage : entre deux trimestres, c'est la
-release précédente qui sert de point de départ.
+Le cache d'actions/cache disparaît après 7 jours sans usage. Une mise à jour lancée plus tard
+repart donc de la release précédente.
 
-Les exécutions planifiées et le bouton « Run workflow » de l'interface ne voient que les
-workflows présents sur la branche par défaut (main). Tant que le workflow n'existe que sur dev,
-il se lance par `gh workflow run pack-nopanic.yml --ref dev`. Un déclencheur `push` limité à
-son propre fichier l'a fait connaître de GitHub ; son job est ignoré sur ce déclencheur.
+### Mettre le pack à jour
+
+1. Lancer le workflow sur dev, depuis le dépôt :
+   ```bash
+   gh workflow run pack-nopanic.yml --ref dev
+   gh run list --workflow pack-nopanic.yml --limit 1   # puis : gh run watch <numéro>
+   ```
+   Pour relire tous les articles au lieu des seuls modifiés : `-f complet=true`.
+2. Récupérer le commit du catalogue fait par le workflow (`git pull --rebase origin dev`),
+   puis mettre à jour odintest (voir « Pour tester » dans CLAUDE.md). Vérifier ensuite :
+   - le pack apparaît dans Configuration avec « Mettre à jour » ;
+   - la mise à jour s'installe (empreinte vérifiée) ;
+   - un article s'ouvre dans le lecteur ;
+   - « paracorde » donne des résultats NoPanic ;
+   - le banc de recherche est à 34/34 :
+     `multipass exec odintest -- /opt/odin/scripts/banc-recherche.sh`.
+3. Fusionner dev dans main par la procédure habituelle. C'est cette fusion qui publie la
+   nouvelle entrée du catalogue pour les installations depuis main.
 
 ## Tester le ZIM
 
