@@ -641,11 +641,10 @@ digest de l'étape « image » ; le workflow échoue si elle manque) : voir Flux
   complet sur GitHub en 1 h 23 (≈1,5 s par image), 568 articles, 3272 images, ZIM 473 Mo. Vérifié sur odintest :
   installé depuis l'API du dashboard en 18 s (empreinte vérifiée), inscrit dans library.xml, lecture dans /lire
   (en-tête, mention, images, liens internes), /recherche « paracorde » (20 liens NoPanic), recherche avancée (fort).
-  BANC avec NoPanic installé sur odintest : 3 échecs sur 34. La source wiki fait UNE recherche Kiwix sur tous les
-  packs et garde 15 articles en tout : un pack de plus prend des places aux autres. « radio du thorax » : Radiographie
-  du thorax (WikiMed) sort des candidats ; « appeler le 112 » : Centrale d'urgence 112 absent, NoPanic « Numéros
-  d'urgence » en tête ; « coupure de courant » : article NoPanic en tête, « Calculer son autonomie électrique » 2e.
-  Décision du propriétaire attendue (quota par pack, attentes, pack retiré d'odintest).
+  Banc avec NoPanic : 3 échecs sur 34 au départ, 34/34 après le quota des paragraphes wiki (voir « Recherche avancée :
+  règles de score ») et trois attentes sans rangMax (décision du propriétaire, 2026-09-28, notes dans le banc).
+  Workflow MANUEL et limité à dev (échec explicite ailleurs, plus de planification) : gh workflow run pack-nopanic.yml
+  --ref dev, test sur odintest, puis fusion habituelle (README du pack). Son commit ne peut porter que packs-odin.json.
 - Recherche avancée (produit principal depuis le 2026-09-23 ; l'IA devient une option GPU). Plan en lots :
   0 remise à plat (fait), 1 moteur et 2 page (faits ensemble), 3 table de synonymes et mesure des trois
   configurations (BM25 + synonymes, hybride Ollama, hybride llama-server : le propriétaire tranche les
@@ -876,6 +875,13 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
 - Sources et candidats : wikis (recherche plein texte de Kiwix, 15 articles, paragraphes classés par BM25, 8 vectorisés),
   livres (pages de pages.json, 5 pages les plus riches, 4 paragraphes vectorisés), Mes documents (index FTS5 + vecteurs),
   « Comment faire ? » (sections de guides.json : 6 au plus, 2 par article ; 4 paragraphes vectorisés, 2 par article).
+  Quota des paragraphes wiki (assistant/quota.mjs, index.mjs, 2026-09-28) : parmi les paragraphes classés par BM25, 8
+  vectorisés, au plus 2 par article, et au plus 4 par pack SEULEMENT si un autre pack a un paragraphe concurrent (BM25
+  ≥ 50 % du meilleur, SEUIL_CONCURRENCE) ; les places rendues ne vont qu'à des concurrents, sinon le pack les garde.
+  Pas de quota sur les 15 articles Kiwix (essayé : jamais déclenché, +0,4 s ; retiré). ?debug=1 montre wikisRetenus ;
+  &quota=0 (avec debug) les choisit sans limites, pour comparer. Mesuré sur odintest (3 packs, NoPanic compris) :
+  +0,10 s en moyenne par question ; radio du thorax, coup de soleil et appeler le 112 retrouvent leurs articles WikiMed.
+  Tests : node --test tests/quota.test.mjs.
   Livres et articles comptent les mots comme le BM25 (occurrences() de bm25.mjs : mot entier, ou début de mot dès 5 lettres ;
   jamais à l'intérieur d'un mot : « sonne » ne trouve pas « personne »).
 - Mots porteurs de sens (peutEtreNom, assistant/lexique.mjs) : 3 lettres ou plus, ni mot outil, ni verbe courant, ni nombre,
@@ -909,7 +915,8 @@ NE PAS modifier ces règles sans l'accord du propriétaire, et jamais sans faire
   pas-de-docteur, 9 articles par identifiant — ou dashboard injoignable). Version des articles : guidesReference (version
   avec laquelle les attentes ont été écrites, c139f8128106cf7f depuis le 2026-09-26) ; une autre version installée donne un
   AVERTISSEMENT, pas un blocage (le contenu du site évolue). Attentes par source et début de titre : niveau (fort, present, proche), rangMax, tete (premier
-  de sa source), absent, pasFort ; jamais de score exact. 16 questions (10 de référence + 6 keywords génériques), 34 attentes,
+  de sa source), absent, pasFort ; jamais de score exact. 16 questions (10 de référence + 6 keywords génériques), 34 attentes (3 sans
+  rangMax depuis le 2026-09-28 : coupure de courant, appeler le 112, coup de soleil ; raison dans leur champ note),
   ~45 s. Vérifié le 2026-09-26 : 34/34 ; attentes inversées exprès → code 1 ; article requis inexistant → code 2 ;
   autre version de référence → avertissement et code 0.
   RÈGLE : toute modification de la recherche (assistant/*.mjs de recherche, sources, bm25, synonymes, constantes, lib/
