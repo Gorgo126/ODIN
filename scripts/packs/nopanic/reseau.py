@@ -75,7 +75,8 @@ class Reseau:
         if hote not in self.robots:
             rp = urllib.robotparser.RobotFileParser()
             try:
-                meta, corps = self.get(hote + "/robots.txt", verifier_robots=False, accepter=(200, 404))
+                meta, corps = self.get(hote + "/robots.txt", verifier_robots=False, accepter=(200, 404),
+                                      garder=False)
                 rp.parse(corps.decode("utf-8", "replace").splitlines() if meta["status"] == 200 else [])
             except Exception:
                 # robots.txt unreachable: be conservative, allow nothing on that host
@@ -84,12 +85,13 @@ class Reseau:
         return self.robots[hote].can_fetch(UA, url)
 
     # --- public ----------------------------------------------------------
-    def get(self, url, verifier_robots=True, accepter=(200,), essais=3, rafraichir=False):
+    def get(self, url, verifier_robots=True, accepter=(200,), essais=3, rafraichir=False, garder=True):
         """Return (meta, body). meta = {status, type, headers subset}.
 
-        rafraichir=True downloads again even if cached (used for API listings,
-        whose content changes; images never change under the same URL)."""
-        if self.en_cache(url) and not (rafraichir and not self.hors_ligne):
+        rafraichir=True downloads again even if cached. garder=False neither reads nor
+        writes the cache (API listings and robots.txt, whose content changes; images
+        never change under the same URL)."""
+        if garder and self.en_cache(url) and not (rafraichir and not self.hors_ligne):
             return self._lire_cache(url)
         if self.hors_ligne:
             raise HorsLigne(url)
@@ -123,10 +125,15 @@ class Reseau:
                 "date": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             }
             self.octets += len(r.content)
-            self._ecrire_cache(url, meta, r.content)
+            if garder:
+                self._ecrire_cache(url, meta, r.content)
             return meta, r.content
         raise derniere
 
-    def json(self, url, rafraichir=False):
-        meta, corps = self.get(url, rafraichir=rafraichir)
+    def ajouter(self, url, meta, corps):
+        """Put a resource found elsewhere (previous ZIM) into the cache."""
+        self._ecrire_cache(url, meta, corps)
+
+    def json(self, url, rafraichir=False, garder=True):
+        meta, corps = self.get(url, rafraichir=rafraichir, garder=garder)
         return meta, json.loads(corps)

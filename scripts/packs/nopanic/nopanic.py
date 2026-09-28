@@ -1,33 +1,51 @@
 #!/usr/bin/env python3
 """NoPanic articles -> ZIM pack for ODIN.
 
-  python nopanic.py recuperer [--rafraichir]   API + images, polite and cached (network)
-  python nopanic.py construire                 ZIM from the cache only (no network)
-  python nopanic.py tout [--rafraichir]        both
+  python nopanic.py recuperer [--complet]   API + images, polite and cached (network)
+  python nopanic.py construire              ZIM from the cache only (no network)
+  python nopanic.py tout [--complet]        both
+  python nopanic.py fiche --url URL         catalogue entry of ODIN for the ZIM just built
 
-The cache (.cache/) is never downloaded twice; --rafraichir only re-reads the
-API listings (categories, posts), never an image already cached.
+recuperer is incremental: it asks the API only for the articles modified since the last
+generation (.cache/etat.json, or etat.json.gz of the last release put in .precedent/) and
+downloads only the images missing from the cache and from the previous ZIM (.precedent/).
+--complet reads every article again (images already cached are never downloaded again).
 """
 import argparse
+import gzip
+import hashlib
 import html
+import shutil
 import io
 import json
 import os
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote, unquote, urlsplit
 
 from nettoyage import Nettoyeur
-from reseau import CACHE, ICI, HorsLigne, Reseau
+from reseau import CACHE, ICI, Reseau
 
 SITE = "https://nopanic.fr"
 API = SITE + "/wp-json/wp/v2"
 RUBRIQUES = ["outdoor", "autonomie", "low-tech", "survivaliste-prepper"]
-CHAMPS_POSTS = "id,date,modified,slug,link,title,content,categories"
+CHAMPS_POSTS = "id,date,modified,modified_gmt,slug,link,title,content,categories,author"
 SORTIE = os.path.join(ICI, "out")
+ETAT = os.path.join(CACHE, "etat.json")
+PRECEDENT = os.path.join(ICI, ".precedent")
 NOM = "nopanic_fr_articles"
+VARIANTE = "maxi"
 LOGO = SITE + "/wp-content/uploads/2021/09/np-logo-simple.png"
+CHEMIN_LOGO = "logo-nopanic.png"
+# ODIN catalogue (catalogue/packs-odin.json): fixed part of the entry
+CATALOGUE = os.path.join(ICI, "..", "..", "..", "catalogue", "packs-odin.json")
+FICHE = {
+    "id": "nopanic",
+    "libelle": "Articles de NoPanic",
+    "credit": "Articles créés et publiés par NoPanic, intégrés tels quels dans ODIN avec l'autorisation de NoPanic.",
+    "site": "https://nopanic.fr",
+}
 # Articles written by readers or friends of NoPanic, not by NoPanic itself: outside the
 # agreement (content created and published by NoPanic). Owner's decision, 2026-09-28.
 EXCLUS = {
@@ -66,14 +84,16 @@ def journal(*a):
 
 
 # --- API -----------------------------------------------------------------
-def lire_categories(reseau, rafraichir):
-    cats, page = [], 1
+# API listings are always read again and never cached: the state file (.cache/etat.json)
+# is the record of what was fetched. Images are cached forever (same URL = same file).
+def lister(reseau, url):
+    """All pages of an API listing."""
+    tout, page = [], 1
     while True:
-        meta, j = reseau.json(f"{API}/categories?per_page=100&page={page}&_fields=id,name,slug,parent,count,link",
-                              rafraichir=rafraichir)
-        cats += j
+        meta, j = reseau.json(f"{url}&per_page=100&page={page}", rafraichir=True, garder=False)
+        tout += j
         if page >= int(meta.get("pages") or 1):
-            return cats
+            return tout
         page += 1
 
 
@@ -94,52 +114,8 @@ def perimetre(cats):
     return racines, sorted(ids)
 
 
-def lire_articles(reseau, ids, rafraichir):
-    posts, page = [], 1
-    liste = ",".join(map(str, ids))
-    while True:
-        meta, j = reseau.json(f"{API}/posts?categories={liste}&per_page=100&page={page}"
-                              f"&orderby=id&order=asc&_fields={CHAMPS_POSTS}", rafraichir=rafraichir)
-        posts += j
-        if page >= int(meta.get("pages") or 1):
-            break
-        page += 1
-    # dedup by id (an article can sit in several categories)
-    uniques = {}
-    for p in posts:
-        uniques.setdefault(p["id"], p)
-    return list(uniques.values()), len(posts)
-
-
-def logo_urls(reseau, rafraichir):
-    meta, j = reseau.json(SITE + "/wp-json/?_fields=name,description,site_icon_url", rafraichir=rafraichir)
-    return j.get("site_icon_url") or None
-
-
-def lire_auteurs(reseau, ids, rafraichir):
-    """Author id of each post, and author names (users endpoint, if public)."""
-    par_post, page, liste = {}, 1, ",".join(map(str, ids))
-    while True:
-        meta, j = reseau.json(f"{API}/posts?categories={liste}&per_page=100&page={page}"
-                              f"&orderby=id&order=asc&_fields=id,author", rafraichir=rafraichir)
-        par_post.update({p["id"]: p["author"] for p in j})
-        if page >= int(meta.get("pages") or 1):
-            break
-        page += 1
-    users = {}
-    for aid in sorted(set(par_post.values())):
-        try:
-            _, u = reseau.json(f"{API}/users/{aid}?_fields=id,name,slug", rafraichir=rafraichir)
-            users[aid] = {"name": html.unescape(u.get("name") or ""), "slug": u.get("slug")}
-        except HorsLigne:
-            raise
-        except Exception as e:  # users endpoint may be closed (401/404): author unknown
-            journal(f"Auteur {aid} illisible : {str(e)[:80]}")
-    return par_post, users
-
-
 def nom_auteur(users, aid):
-    u = users.get(aid)
+    u = users.get(str(aid))
     return f"{u['name']} ({u['slug']})" if u else f"auteur {aid} inconnu"
 
 
@@ -148,22 +124,102 @@ def ancre(c):
     return c["slug"] if c["parent"] == 0 else "cat-" + c["slug"]
 
 
-def preparer(reseau, rafraichir=False):
-    cats = lire_categories(reseau, rafraichir)
+# --- state ----------------------------------------------------------------
+def lire_etat(chemin=ETAT):
+    if chemin.endswith(".gz"):
+        with gzip.open(chemin, "rt", encoding="utf-8") as f:
+            return json.load(f)
+    with open(chemin, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def ecrire_etat(etat, chemin=ETAT):
+    os.makedirs(os.path.dirname(chemin), exist_ok=True)
+    with open(chemin + ".part", "w", encoding="utf-8") as f:
+        json.dump(etat, f, ensure_ascii=False)
+    os.replace(chemin + ".part", chemin)
+
+
+def etat_initial(precedent):
+    """State of the last generation: local cache, else the one published with the last release."""
+    if os.path.exists(ETAT):
+        return lire_etat(ETAT), "cache local"
+    gz = os.path.join(precedent, "etat.json.gz")
+    if os.path.exists(gz):
+        return lire_etat(gz), "dernière release"
+    return None, None
+
+
+def synchroniser(reseau, etat, complet):
+    """Update the state from the API: only articles modified since the last generation."""
+    debut = datetime.now(timezone.utc)
+    cats = lister(reseau, f"{API}/categories?_fields=id,name,slug,parent,count,link")
     racines, ids = perimetre(cats)
-    posts, bruts = lire_articles(reseau, ids, rafraichir)
+    liste = ",".join(map(str, ids))
+    base = f"{API}/posts?categories={liste}&orderby=id&order=asc"
+    anciens = {} if complet or not etat else etat["articles"]
+
+    if anciens:
+        # every article in scope, light fields only: detects removed articles and changes of
+        # category or author (which do not always change the modification date)
+        legers = lister(reseau, f"{base}&_fields=id,modified_gmt,author,categories")
+        # modified_after compares the site's local time: 2 days of margin
+        depuis = (datetime.fromisoformat(etat["generation"]) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S")
+        modifies = {str(p["id"]): p for p in lister(reseau, f"{base}&modified_after={depuis}&_fields={CHAMPS_POSTS}")}
+    else:
+        modifies = {str(p["id"]): p for p in lister(reseau, f"{base}&_fields={CHAMPS_POSTS}")}
+        legers = list(modifies.values())
+
+    articles, a_lire = {}, []
+    for leger in legers:
+        i = str(leger["id"])
+        if i in modifies:
+            a = modifies[i]
+        elif i in anciens and anciens[i].get("modified_gmt") == leger["modified_gmt"]:
+            a = anciens[i]
+        else:
+            a_lire.append(i)  # new in scope without a recent modification
+            continue
+        a.update(categories=leger["categories"], author=leger["author"])
+        articles[i] = a
+    for n in range(0, len(a_lire), 100):
+        for p in lister(reseau, f"{API}/posts?include={','.join(a_lire[n:n + 100])}&_fields={CHAMPS_POSTS}"):
+            articles[str(p["id"])] = p
+
+    users = dict((etat or {}).get("users") or {})
+    for aid in sorted({str(a["author"]) for a in articles.values()} - set(users)):
+        try:
+            _, u = reseau.json(f"{API}/users/{aid}?_fields=id,name,slug", rafraichir=True, garder=False)
+            users[aid] = {"name": html.unescape(u.get("name") or ""), "slug": u.get("slug")}
+        except Exception as e:  # users endpoint may be closed (401/404): author unknown, article left out
+            journal(f"Auteur {aid} illisible : {str(e)[:80]}")
+    _, j = reseau.json(SITE + "/wp-json/?_fields=site_icon_url", rafraichir=True, garder=False)
+
+    nouveaux = set(articles) - set(anciens)
+    changes = {i for i in set(articles) & set(anciens) if articles[i].get("modified_gmt") != anciens[i].get("modified_gmt")}
+    retires = set(anciens) - set(articles)
+    journal(f"API : {len(articles)} articles dans le périmètre ({len(nouveaux)} nouveaux, {len(changes)} modifiés, "
+            f"{len(retires)} retirés), {reseau.requetes} requêtes")
+    return {"version": 1, "generation": debut.isoformat(timespec="seconds"), "categories": cats,
+            "articles": articles, "users": users, "icone": j.get("site_icon_url") or None}
+
+
+def preparer(etat):
+    """Articles kept for the pack (EXCLUS and AUTEURS_AUTORISES applied), and the cleaner."""
+    cats = etat["categories"]
+    racines, ids = perimetre(cats)
+    posts = list(etat["articles"].values())
+    bruts = len(posts)
     exclus = [p for p in posts if unquote(p["slug"]) in EXCLUS]
     posts = [p for p in posts if unquote(p["slug"]) not in EXCLUS]
     if len(exclus) != len(EXCLUS):
         journal(f"Attention : {len(EXCLUS) - len(exclus)} article(s) exclu(s) introuvable(s) dans l'API")
-    auteur_de, users = lire_auteurs(reseau, ids, rafraichir)
-    for p in posts:
-        p["author"] = auteur_de.get(p["id"])
-    refuses = [p for p in posts if (users.get(p["author"]) or {}).get("slug") not in AUTEURS_AUTORISES]
+    users = etat["users"]
+    refuses = [p for p in posts if (users.get(str(p["author"])) or {}).get("slug") not in AUTEURS_AUTORISES]
     for p in refuses:
         journal(f"Exclu (auteur non autorisé : {nom_auteur(users, p['author'])}) : {p['link']}")
     posts = [p for p in posts if p not in refuses]
-    posts.sort(key=lambda p: p["date"], reverse=True)
+    posts.sort(key=lambda p: (p["date"], p["id"]), reverse=True)
     par_chemin, par_id = {}, {}
     for p in posts:
         chemin = unquote(urlsplit(p["link"]).path).strip("/")
@@ -174,7 +230,6 @@ def preparer(reseau, rafraichir=False):
     dans = set(ids)
     rubriques = {unquote(urlsplit(c["link"]).path).strip("/"): ancre(c) for c in cats if c["id"] in dans}
     nettoyeur = Nettoyeur(par_chemin, par_id, set(par_chemin), rubriques)
-    preparer.users = users
     return cats, racines, ids, posts, bruts, nettoyeur
 
 
@@ -185,20 +240,47 @@ def nettoyer_tout(posts, nettoyeur):
     return images, rapports, corps
 
 
+class Precedent:
+    """Files of the previous ZIM(s), used before any download (no cache on a new runner)."""
+
+    def __init__(self, dossier):
+        from libzim.reader import Archive
+        self.archives = [Archive(os.path.join(dossier, f)) for f in sorted(os.listdir(dossier))
+                         if f.endswith(".zim")] if os.path.isdir(dossier) else []
+
+    def lire(self, chemin):
+        for z in self.archives:
+            if z.has_entry_by_path(chemin):
+                it = z.get_entry_by_path(chemin).get_item()
+                return {"type": it.mimetype, "status": 200, "source": "zim précédent"}, bytes(it.content)
+        return None
+
+
 # --- commands -------------------------------------------------------------
-def recuperer(rafraichir):
+def recuperer(complet=False, precedent=PRECEDENT):
     debut = time.monotonic()
     reseau = Reseau()
-    cats, racines, ids, posts, bruts, nettoyeur = preparer(reseau, rafraichir)
-    journal(f"{len(posts)} articles ({bruts} avant dédoublonnage), {len(ids)} catégories")
+    etat, origine = etat_initial(precedent)
+    if etat and not complet:
+        journal(f"Mise à jour incrémentale depuis le {etat['generation']} (état : {origine})")
+    else:
+        journal("Récupération complète")
+    etat = synchroniser(reseau, etat, complet)
+    cats, racines, ids, posts, bruts, nettoyeur = preparer(etat)
     images, _, _ = nettoyer_tout(posts, nettoyeur)
-    icone = logo_urls(reseau, rafraichir)
-    a_prendre = sorted(images) + [LOGO] + ([icone] if icone else [])
-    deja = sum(1 for u in a_prendre if reseau.en_cache(u))
-    journal(f"{len(a_prendre)} images, {deja} déjà en cache")
-    echecs = []
-    for n, url in enumerate(a_prendre, 1):
-        if reseau.en_cache(url):
+    a_prendre = {url: chemin for url, chemin in images.items()}
+    a_prendre[LOGO] = CHEMIN_LOGO
+    if etat["icone"]:
+        a_prendre[etat["icone"]] = None
+    manquantes = [u for u in sorted(a_prendre) if not reseau.en_cache(u)]
+    journal(f"{len(posts)} articles retenus, {len(a_prendre)} images, {len(manquantes)} absentes du cache")
+    ancien = Precedent(precedent)
+    echecs, du_zim = [], 0
+    for n, url in enumerate(manquantes, 1):
+        trouve = ancien.lire(a_prendre[url]) if a_prendre[url] else None
+        if trouve:
+            reseau.ajouter(url, {"url": url, **trouve[0]}, trouve[1])
+            du_zim += 1
             continue
         try:
             reseau.get(url)
@@ -206,15 +288,17 @@ def recuperer(rafraichir):
             echecs.append({"url": url, "erreur": str(e)})
             journal(f"  échec {url} : {e}")
         if n % 100 == 0:
-            journal(f"  {n}/{len(a_prendre)} ({reseau.requetes} requêtes, {reseau.octets / 1e6:.1f} Mo)")
+            journal(f"  {n}/{len(manquantes)} ({reseau.requetes} requêtes, {reseau.octets / 1e6:.1f} Mo)")
+    ecrire_etat(etat)
     duree = time.monotonic() - debut
     os.makedirs(SORTIE, exist_ok=True)
-    etat = {"date": datetime.now().isoformat(timespec="seconds"), "duree_s": round(duree),
-            "requetes": reseau.requetes, "octets": reseau.octets, "echecs_images": echecs}
+    bilan = {"date": datetime.now().isoformat(timespec="seconds"), "duree_s": round(duree),
+             "requetes": reseau.requetes, "octets": reseau.octets, "images_du_zim_precedent": du_zim,
+             "echecs_images": echecs}
     with open(os.path.join(SORTIE, "recuperation.json"), "w", encoding="utf-8") as f:
-        json.dump(etat, f, ensure_ascii=False, indent=1)
+        json.dump(bilan, f, ensure_ascii=False, indent=1)
     journal(f"Récupération terminée en {duree:.0f} s : {reseau.requetes} requêtes, "
-            f"{reseau.octets / 1e6:.1f} Mo, {len(echecs)} échec(s)")
+            f"{reseau.octets / 1e6:.1f} Mo, {du_zim} image(s) reprise(s) du ZIM précédent, {len(echecs)} échec(s)")
 
 
 def page_html(titre, corps):
@@ -310,14 +394,14 @@ def construire():
 
     debut = time.monotonic()
     reseau = Reseau(hors_ligne=True)
-    try:
-        cats, racines, ids, posts, bruts, nettoyeur = preparer(reseau)
-    except HorsLigne as e:
-        raise SystemExit(f"Cache incomplet, lancer d'abord « recuperer » : {e}")
+    if not os.path.exists(ETAT):
+        raise SystemExit("Aucun état (.cache/etat.json) : lancer d'abord « recuperer »")
+    etat = lire_etat()
+    cats, racines, ids, posts, bruts, nettoyeur = preparer(etat)
     images, rapports, corps = nettoyer_tout(posts, nettoyeur)
     auteurs = {}
     for p in posts:
-        auteurs.setdefault(nom_auteur(preparer.users, p["author"]), []).append(unquote(p["slug"]))
+        auteurs.setdefault(nom_auteur(etat["users"], p["author"]), []).append(unquote(p["slug"]))
 
     class Entree(Item):
         def __init__(self, chemin, titre, mime, contenu=None, fichier=None, front=False):
@@ -335,13 +419,16 @@ def construire():
             return {Hint.FRONT_ARTICLE: self.front, Hint.COMPRESS: self.m.startswith("text/")}
 
     os.makedirs(SORTIE, exist_ok=True)
-    mois = date.today().strftime("%Y-%m")
-    zim = os.path.join(SORTIE, f"{NOM}_{mois}.zim")
-    if os.path.exists(zim):
-        os.remove(zim)
+    # Kiwix naming (<name>_<flavour>_<date>): ODIN finds the files of a pack by this prefix;
+    # the full date tells two generations of the same month apart
+    jour = date.today().isoformat()
+    zim = os.path.join(SORTIE, f"{NOM}_{VARIANTE}_{jour}.zim")
+    for f in os.listdir(SORTIE):
+        if f.startswith(f"{NOM}_") and (f.endswith(".zim") or f.endswith(".zim.part") or f.endswith(".sha256")):
+            os.remove(os.path.join(SORTIE, f))
 
     manquantes, poids, presentes = [], 0, 0
-    icone_url = logo_urls(reseau, False)
+    icone_url = etat.get("icone")
     logo_url = LOGO
     logo = None
 
@@ -353,7 +440,7 @@ def construire():
                          ("LongDescription", "Articles des rubriques Outdoor, Autonomie, Low Tech et Prepper "
                           "du site NoPanic (https://nopanic.fr), intégrés dans ODIN avec l'autorisation de NoPanic."),
                          ("Source", SITE), ("Tags", "_category:other;_pictures:yes;_videos:no;_details:yes;_ftindex:yes"),
-                         ("Flavour", "maxi")]:
+                         ("Flavour", VARIANTE)]:
             c.add_metadata(cle, val)
         if icone_url and reseau.en_cache(icone_url):
             _, octets = reseau.get(icone_url)
@@ -362,7 +449,7 @@ def construire():
             im.save(tampon, "PNG")
             c.add_illustration(48, tampon.getvalue())
         if reseau.en_cache(logo_url):
-            logo = "logo-nopanic.png"
+            logo = CHEMIN_LOGO
             _, octets = reseau.get(logo_url)
             c.add_item(Entree(logo, "Logo NoPanic", "image/png", contenu=octets))
 
@@ -383,6 +470,22 @@ def construire():
         c.add_item(Entree("accueil", "NoPanic — Articles", "text/html",
                           contenu=page_accueil(cats, racines, posts, logo), front=True))
     os.replace(zim + ".part", zim)
+    empreinte = sha256(zim)
+    with open(zim + ".sha256", "w", encoding="utf-8") as f:
+        f.write(f"{empreinte}  {os.path.basename(zim)}\n")
+    # published with the ZIM: lets the next run (without cache) update incrementally
+    with open(ETAT, "rb") as src, gzip.open(os.path.join(SORTIE, "etat.json.gz"), "wb") as dst:
+        shutil.copyfileobj(src, dst)
+    from libzim.reader import Archive
+    lu = Archive(zim)
+    fiche = {"nom": NOM, "variante": VARIANTE, "fichier": os.path.basename(zim), "titre": "NoPanic — Articles",
+             "description": "Articles NoPanic : outdoor, autonomie, low-tech, prepper", "langue": "fra",
+             "createur": "NoPanic", "editeur": "ODIN",
+             "tags": "_category:other;_pictures:yes;_videos:no;_details:yes;_ftindex:yes",
+             "date": jour, "articles": lu.article_count, "medias": lu.media_count,
+             "taille": os.path.getsize(zim), "sha256": empreinte, "uuid": str(lu.uuid)}
+    with open(os.path.join(SORTIE, "fiche.json"), "w", encoding="utf-8") as f:
+        json.dump(fiche, f, ensure_ascii=False, indent=1)
 
     # report
     externes = sorted({u for r in rapports.values() for u in r["images_externes"]})
@@ -422,13 +525,45 @@ def construire():
     journal(f"{len(manquantes)} image(s) absente(s) du cache")
 
 
+def sha256(chemin):
+    h = hashlib.sha256()
+    with open(chemin, "rb") as f:
+        for morceau in iter(lambda: f.read(1 << 20), b""):
+            h.update(morceau)
+    return h.hexdigest()
+
+
+def fiche(url):
+    """Writes the pack entry of catalogue/packs-odin.json for the ZIM just built (out/fiche.json)."""
+    with open(os.path.join(SORTIE, "fiche.json"), encoding="utf-8") as f:
+        f_zim = json.load(f)
+    if not url.startswith("https://") or not url.endswith("/" + f_zim["fichier"]):
+        raise SystemExit(f"Adresse inattendue pour {f_zim['fichier']} : {url}")
+    try:
+        with open(CATALOGUE, encoding="utf-8") as f:
+            cat = json.load(f)
+    except FileNotFoundError:
+        cat = {"packs": []}
+    entree = {**FICHE, **{k: v for k, v in f_zim.items() if k != "fichier"}, "url": url}
+    cat["packs"] = [p for p in cat["packs"] if p.get("id") != FICHE["id"]] + [entree]
+    with open(CATALOGUE, "w", encoding="utf-8") as f:
+        json.dump(cat, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    journal(f"Catalogue : {FICHE['id']} → {url} ({entree['taille']} octets, {entree['date']})")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("commande", choices=["recuperer", "construire", "tout"])
-    ap.add_argument("--rafraichir", action="store_true", help="relire les listes de l'API (nouveaux articles)")
+    ap.add_argument("commande", choices=["recuperer", "construire", "tout", "fiche"])
+    ap.add_argument("--complet", action="store_true", help="relire tous les articles, pas seulement les modifiés")
+    ap.add_argument("--url", help="adresse de téléchargement du ZIM publié (commande fiche)")
     a = ap.parse_args()
+    if a.commande == "fiche":
+        if not a.url:
+            ap.error("--url est obligatoire")
+        return fiche(a.url)
     if a.commande in ("recuperer", "tout"):
-        recuperer(a.rafraichir)
+        recuperer(a.complet)
     if a.commande in ("construire", "tout"):
         construire()
 

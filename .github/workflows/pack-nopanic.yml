@@ -1,0 +1,105 @@
+name: Pack NoPanic
+
+# Builds the NoPanic ZIM (scripts/packs/nopanic), publishes it on GitHub Releases with its SHA-256,
+# then points catalogue/packs-odin.json of the branch it ran on at the new file. Incremental: the
+# cache of the previous run (actions/cache), otherwise etat.json.gz and the ZIM of the last release,
+# so that only modified articles are asked to the API and only missing images are downloaded.
+on:
+  schedule:
+    # Quarterly, 2 January/April/July/October (scheduled runs use the default branch)
+    - cron: '23 4 2 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      complet:
+        description: 'Relire tous les articles (les images en cache ne sont jamais retéléchargées)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pack-nopanic
+  cancel-in-progress: false
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    # A first run without cache nor release crawls ~3300 images, 1 request per second at most
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: scripts/packs/nopanic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+
+      - name: Cache of the previous run
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: scripts/packs/nopanic/.cache
+          key: nopanic-${{ github.run_id }}
+          restore-keys: nopanic-
+
+      - name: Last release (when there is no cache)
+        if: steps.cache.outputs.cache-matched-key == ''
+        run: |
+          tag=$(gh release list --limit 100 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("nopanic-"))] | sort_by(.createdAt) | last | .tagName // empty')
+          if [ -z "$tag" ]; then echo "Aucune release précédente : récupération complète"; exit 0; fi
+          echo "Reprise depuis la release $tag"
+          gh release download "$tag" --dir .precedent --pattern 'etat.json.gz' --pattern '*.zim'
+
+      - name: Retrieve (network, one request per second at most)
+        run: python nopanic.py recuperer ${{ inputs.complet && '--complet' || '' }}
+
+      # Saved even after a failure: images already received are not asked again
+      - name: Save the cache
+        if: always() && hashFiles('scripts/packs/nopanic/.cache/etat.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/packs/nopanic/.cache
+          key: nopanic-${{ github.run_id }}
+
+      - name: Build the ZIM (no network)
+        run: python nopanic.py construire
+
+      - name: Publish the release
+        run: |
+          fichier=$(jq -r .fichier out/fiche.json)
+          (cd out && sha256sum -c "$fichier.sha256")
+          tag="nopanic-$(jq -r .date out/fiche.json)-$GITHUB_RUN_NUMBER"
+          {
+            echo "Articles de NoPanic (https://nopanic.fr) : rubriques Outdoor, Autonomie, Low Tech et Prepper."
+            echo "Articles créés et publiés par NoPanic, intégrés tels quels dans ODIN avec l'autorisation de NoPanic."
+            echo
+            echo "- Fichier : \`$fichier\` ($(jq -r .taille out/fiche.json) octets)"
+            echo "- SHA-256 : \`$(jq -r .sha256 out/fiche.json)\`"
+            echo "- Articles : $(jq -r .articles out/rapport.json), images : $(jq -r .images out/rapport.json)"
+            echo "- Généré le $(jq -r .date out/fiche.json) depuis $GITHUB_REF_NAME ($GITHUB_SHA)"
+          } > notes.md
+          gh release create "$tag" "out/$fichier" "out/$fichier.sha256" out/etat.json.gz out/rapport.json \
+            --target "$GITHUB_SHA" --title "NoPanic — Articles ($(jq -r .date out/fiche.json))" --notes-file notes.md
+          echo "URL=https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$fichier" >> "$GITHUB_ENV"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      # Same pattern as the dashboard image: commit on the branch that ran, pushed with GITHUB_TOKEN
+      # (no workflow triggered by it)
+      - name: Point the catalogue at the release
+        run: |
+          git fetch origin "$GITHUB_REF_NAME"
+          git checkout -B "$GITHUB_REF_NAME" "origin/$GITHUB_REF_NAME"
+          python nopanic.py fiche --url "$URL"
+          cd "$GITHUB_WORKSPACE"
+          git add catalogue/packs-odin.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Catalogue : pack NoPanic $TAG"
+          git push origin "HEAD:$GITHUB_REF_NAME"

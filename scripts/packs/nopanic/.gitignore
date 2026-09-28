@@ -4,3 +4,4 @@
 out/
 .kiwix/
 __pycache__/
+.precedent/
