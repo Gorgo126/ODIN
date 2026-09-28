@@ -27,7 +27,7 @@ services:
   # only (and DAC_READ_SEARCH to walk any folder), no network, read-only, then stops (« Terminé » on
   # /sante). Same image as the dashboard: the GitHub workflow pins both lines.
   droits:
-    image: ghcr.io/gorgo126/odin-dashboard:06e7d698d3eb1d91ca72fe53de9a2802f457dc71@sha256:a9984f6fe3c47641d8a460c6f20109edaab355c11be390f8adb53e10f7659a68
+    image: ghcr.io/gorgo126/odin-dashboard:5562d43dd938fd2acfddaf86c122009425c831e5@sha256:899cd6e52bc8109b95afb95740132b642bce0a6dd144a4bb48ea373711b5dd19
     container_name: dashboard-droits
     user: "0:0"
     entrypoint: ["/app/droits.sh"]
@@ -53,7 +53,7 @@ services:
     restart: "no"
 
   dashboard:
-    image: ghcr.io/gorgo126/odin-dashboard:06e7d698d3eb1d91ca72fe53de9a2802f457dc71@sha256:a9984f6fe3c47641d8a460c6f20109edaab355c11be390f8adb53e10f7659a68
+    image: ghcr.io/gorgo126/odin-dashboard:5562d43dd938fd2acfddaf86c122009425c831e5@sha256:899cd6e52bc8109b95afb95740132b642bce0a6dd144a4bb48ea373711b5dd19
     container_name: dashboard
     # Runs as node (image USER); nothing it does needs a capability
     cap_drop:
