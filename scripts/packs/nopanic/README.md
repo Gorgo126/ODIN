@@ -34,8 +34,9 @@ Le nettoyage ne touche qu'à la structure (`nettoyage.py`) :
   1024 px de large, sinon `src`. L'image est enregistrée dans le ZIM sous `images/`. Les
   images hébergées hors de nopanic.fr restent sur le web et sont listées dans
   `out/images-externes.txt` ;
-- un lien vers un autre article inclus devient un lien interne au ZIM. Tous les autres liens
-  restent vers le web, y compris ceux vers les pages de rubrique du site.
+- un lien vers un autre article inclus devient un lien interne au ZIM. Un lien vers une
+  page de rubrique ou de sous-rubrique incluse mène à sa section de l'accueil du ZIM
+  (`accueil#outdoor`, `accueil#cat-bivouac`). Tous les autres liens restent vers le web.
 
 ## Articles exclus
 
@@ -71,7 +72,8 @@ déjà présente dans le cache.
 Résultats dans `out/` :
 
 - `nopanic_fr_articles_<AAAA-MM>.zim` ;
-- `rapport.json` : articles par rubrique, images, vidéos remplacées, liens internes ;
+- `rapport.json` : articles par rubrique, auteurs (champ author de l'API, noms par
+  /wp-json/wp/v2/users), images, vidéos remplacées, liens internes et de rubrique ;
 - `recuperation.json` : durée, requêtes, octets, échecs ;
 - `images-externes.txt`.
 

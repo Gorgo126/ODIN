@@ -89,11 +89,23 @@ def lien_video(src):
 
 
 class Nettoyeur:
-    def __init__(self, articles_par_chemin, articles_par_id, slugs):
-        # site path ("slug") -> ZIM path, post id -> ZIM path, slug set
+    def __init__(self, articles_par_chemin, articles_par_id, slugs, rubriques=None):
+        # site path ("slug") -> ZIM path, post id -> ZIM path, slug set,
+        # section path ("outdoor/bivouac") -> anchor on the home page
         self.par_chemin = articles_par_chemin
         self.par_id = articles_par_id
         self.slugs = slugs
+        self.rubriques = rubriques or {}
+
+    def rubrique_interne(self, url):
+        """Home page anchor of an included section or sub-section page, else None."""
+        u = urlsplit(url)
+        if u.netloc.lower() not in HOTES_SITE or u.query:
+            return None
+        chemin = unquote(u.path).strip("/")
+        if chemin.startswith("category/"):
+            chemin = chemin[len("category/"):]
+        return self.rubriques.get(chemin)
 
     def article_interne(self, url):
         """ZIM path of an included article targeted by url, else None."""
@@ -115,7 +127,7 @@ class Nettoyeur:
     def nettoyer(self, html, base, images):
         """Return (clean html, report). images: dict url -> ZIM path, filled here."""
         s = BeautifulSoup(html, "html.parser")
-        r = {"retires": [], "videos": [], "integres": [], "images_externes": [], "liens_internes": 0}
+        r = {"retires": [], "videos": [], "integres": [], "images_externes": [], "liens_internes": 0, "liens_rubriques": 0}
 
         for c in s.find_all(string=lambda t: isinstance(t, Comment)):
             c.extract()
@@ -200,10 +212,14 @@ class Nettoyeur:
                 continue
             absolu = urljoin(base, h)
             interne = self.article_interne(absolu)
+            ancre = None if interne else self.rubrique_interne(absolu)
             if interne:
                 frag = urlsplit(absolu).fragment
                 a["href"] = quote(interne) + (f"#{frag}" if frag else "")
                 r["liens_internes"] += 1
+            elif ancre:
+                a["href"] = "accueil#" + ancre
+                r["liens_rubriques"] += 1
             else:
                 a["href"] = absolu
 

@@ -108,6 +108,31 @@ def logo_urls(reseau, rafraichir):
     return j.get("site_icon_url") or None
 
 
+def lire_auteurs(reseau, ids, rafraichir):
+    """Author id of each post, and author names (users endpoint, if public)."""
+    par_post, page, liste = {}, 1, ",".join(map(str, ids))
+    while True:
+        meta, j = reseau.json(f"{API}/posts?categories={liste}&per_page=100&page={page}"
+                              f"&orderby=id&order=asc&_fields=id,author", rafraichir=rafraichir)
+        par_post.update({p["id"]: p["author"] for p in j})
+        if page >= int(meta.get("pages") or 1):
+            break
+        page += 1
+    noms = {}
+    for aid in sorted(set(par_post.values())):
+        try:
+            _, u = reseau.json(f"{API}/users/{aid}?_fields=id,name,slug", rafraichir=rafraichir)
+            noms[aid] = f"{html.unescape(u.get('name') or '')} ({u.get('slug')})"
+        except Exception as e:  # users endpoint may be closed (401/404)
+            noms[aid] = f"inconnu ({str(e)[:60]})"
+    return par_post, noms
+
+
+def ancre(c):
+    """Anchor of a section on the home page: its slug for the four sections, cat-<slug> below."""
+    return c["slug"] if c["parent"] == 0 else "cat-" + c["slug"]
+
+
 def preparer(reseau, rafraichir=False):
     cats = lire_categories(reseau, rafraichir)
     racines, ids = perimetre(cats)
@@ -124,7 +149,9 @@ def preparer(reseau, rafraichir=False):
         par_chemin[chemin] = zim
         par_chemin.setdefault(zim, zim)
         par_id[p["id"]] = zim
-    nettoyeur = Nettoyeur(par_chemin, par_id, set(par_chemin))
+    dans = set(ids)
+    rubriques = {unquote(urlsplit(c["link"]).path).strip("/"): ancre(c) for c in cats if c["id"] in dans}
+    nettoyeur = Nettoyeur(par_chemin, par_id, set(par_chemin), rubriques)
     return cats, racines, ids, posts, bruts, nettoyeur
 
 
@@ -143,6 +170,7 @@ def recuperer(rafraichir):
     journal(f"{len(posts)} articles ({bruts} avant dédoublonnage), {len(ids)} catégories")
     images, _, _ = nettoyer_tout(posts, nettoyeur)
     icone = logo_urls(reseau, rafraichir)
+    lire_auteurs(reseau, ids, rafraichir)
     a_prendre = sorted(images) + [LOGO] + ([icone] if icone else [])
     deja = sum(1 for u in a_prendre if reseau.en_cache(u))
     journal(f"{len(a_prendre)} images, {deja} déjà en cache")
@@ -208,7 +236,7 @@ def page_accueil(cats, racines, posts, logo):
             propres = liste_articles(c["id"], sauf=dessous)
             if dessous and propres:
                 propres = f"<h{min(niveau + 1, 6)}>Autres articles</h{min(niveau + 1, 6)}>{propres}"
-            morceaux.append(f"<h{niveau}>{html.escape(texte(c['name']))} <span class=\"nb\">({n})</span></h{niveau}>"
+            morceaux.append(f"<h{niveau} id=\"{ancre(c)}\">{html.escape(texte(c['name']))} <span class=\"nb\">({n})</span></h{niveau}>"
                             + sous_arbre(c["id"], min(niveau + 1, 6)) + propres)
         return "".join(morceaux)
 
@@ -265,6 +293,15 @@ def construire():
     except HorsLigne as e:
         raise SystemExit(f"Cache incomplet, lancer d'abord « recuperer » : {e}")
     images, rapports, corps = nettoyer_tout(posts, nettoyeur)
+    try:
+        auteur_de, noms = lire_auteurs(reseau, ids, False)
+    except HorsLigne:
+        auteur_de, noms = {}, {}
+    auteurs = {}
+    for p in posts:
+        a = auteur_de.get(p["id"])
+        nom = noms.get(a, "inconnu") if a is not None else "inconnu (relancer recuperer)"
+        auteurs.setdefault(nom, []).append(unquote(p["slug"]))
 
     class Entree(Item):
         def __init__(self, chemin, titre, mime, contenu=None, fichier=None, front=False):
@@ -356,7 +393,9 @@ def construire():
         "videos_remplacees": sum(len(r["videos"]) for r in rapports.values()),
         "integres_remplaces": sum(len(r["integres"]) for r in rapports.values()),
         "liens_internes": sum(r["liens_internes"] for r in rapports.values()),
+        "liens_rubriques": sum(r["liens_rubriques"] for r in rapports.values()),
         "elements_retires": sorted({x for r in rapports.values() for x in r["retires"]}),
+        "auteurs": {n: (len(l) if len(l) > 5 else l) for n, l in sorted(auteurs.items(), key=lambda x: -len(x[1]))},
         "articles_vides": [p["link"] for p in posts if not corps[p["id"]].strip()],
         "duree_construction_s": round(time.monotonic() - debut),
     }
