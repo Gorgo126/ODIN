@@ -28,6 +28,14 @@ CHAMPS_POSTS = "id,date,modified,slug,link,title,content,categories"
 SORTIE = os.path.join(ICI, "out")
 NOM = "nopanic_fr_articles"
 LOGO = SITE + "/wp-content/uploads/2021/09/np-logo-simple.png"
+# Articles written by readers or friends of NoPanic, not by NoPanic itself: outside the
+# agreement (content created and published by NoPanic). Owner's decision, 2026-09-28.
+EXCLUS = {
+    "deplacer-ville-effondrement": "texte rédigé par un lecteur",
+    "guide-survie-inondation": "article écrit par un ami, pompier",
+    "se-soigner-dans-la-nature": "article écrit par un infirmier invité",
+    "review-lampe-tactique": "article écrit par un abonné",
+}
 MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
         "septembre", "octobre", "novembre", "décembre"]
 MIMES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
@@ -104,6 +112,10 @@ def preparer(reseau, rafraichir=False):
     cats = lire_categories(reseau, rafraichir)
     racines, ids = perimetre(cats)
     posts, bruts = lire_articles(reseau, ids, rafraichir)
+    exclus = [p for p in posts if unquote(p["slug"]) in EXCLUS]
+    posts = [p for p in posts if unquote(p["slug"]) not in EXCLUS]
+    if len(exclus) != len(EXCLUS):
+        journal(f"Attention : {len(EXCLUS) - len(exclus)} article(s) exclu(s) introuvable(s) dans l'API")
     posts.sort(key=lambda p: p["date"], reverse=True)
     par_chemin, par_id = {}, {}
     for p in posts:

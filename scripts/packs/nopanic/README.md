@@ -37,6 +37,13 @@ Le nettoyage ne touche qu'à la structure (`nettoyage.py`) :
 - un lien vers un autre article inclus devient un lien interne au ZIM. Tous les autres liens
   restent vers le web, y compris ceux vers les pages de rubrique du site.
 
+## Articles exclus
+
+Quatre articles ont été écrits par un lecteur ou un ami de NoPanic, et non par NoPanic : ils
+sont retirés du pack (liste `EXCLUS` de `nopanic.py`, décision du 28/09/2026). Ce sont
+`deplacer-ville-effondrement`, `guide-survie-inondation`, `se-soigner-dans-la-nature` et
+`review-lampe-tactique`. Les liens des autres articles vers eux restent des liens vers le web.
+
 ## Récupération polie
 
 - Le script lit robots.txt et le respecte.
