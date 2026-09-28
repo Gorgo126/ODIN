@@ -38,12 +38,23 @@ Le nettoyage ne touche qu'à la structure (`nettoyage.py`) :
   page de rubrique ou de sous-rubrique incluse mène à sa section de l'accueil du ZIM
   (`accueil#outdoor`, `accueil#cat-bivouac`). Tous les autres liens restent vers le web.
 
-## Articles exclus
+## Articles retenus : auteurs autorisés et exclusions
 
-Quatre articles ont été écrits par un lecteur ou un ami de NoPanic, et non par NoPanic : ils
-sont retirés du pack (liste `EXCLUS` de `nopanic.py`, décision du 28/09/2026). Ce sont
-`deplacer-ville-effondrement`, `guide-survie-inondation`, `se-soigner-dans-la-nature` et
-`review-lampe-tactique`. Les liens des autres articles vers eux restent des liens vers le web.
+L'accord porte sur les contenus créés et publiés par NoPanic. Deux règles s'appliquent à chaque
+génération, mises à jour comprises (décisions du 28/09/2026) :
+
+- seuls les articles des auteurs WordPress de NoPanic sont retenus : `admin` (Sven) et
+  `thom-mat` (Mat & Thom), liste `AUTEURS_AUTORISES` de `nopanic.py`. L'auteur vient du champ
+  `author` de l'API, et son identifiant de `/wp-json/wp/v2/users`. Un article d'un autre
+  auteur est exclu automatiquement, et le journal l'indique (« Exclu (auteur non autorisé :
+  … ) ») ;
+- la liste `EXCLUS` retire des articles précis, avec leur raison. Elle contient 9 articles :
+  4 écrits par un lecteur, un ami ou un abonné (`deplacer-ville-effondrement`,
+  `guide-survie-inondation`, `se-soigner-dans-la-nature`, `review-lampe-tactique`) et 5
+  articles d'auteurs invités (`se-liberer-du-smartphone`, `suivi-mesure-trail`,
+  `tir-arc-nature`, `chargeur-solaire-rohs`, `aquaponie`).
+
+Les liens des autres articles vers un article écarté restent des liens vers le web.
 
 ## Récupération polie
 

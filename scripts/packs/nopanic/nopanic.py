@@ -35,7 +35,15 @@ EXCLUS = {
     "guide-survie-inondation": "article écrit par un ami, pompier",
     "se-soigner-dans-la-nature": "article écrit par un infirmier invité",
     "review-lampe-tactique": "article écrit par un abonné",
+    "se-liberer-du-smartphone": "article d'un auteur invité",
+    "suivi-mesure-trail": "article d'un auteur invité",
+    "tir-arc-nature": "article d'un auteur invité",
+    "chargeur-solaire-rohs": "article d'un auteur invité",
+    "aquaponie": "article d'un auteur invité",
 }
+# Only these WordPress authors (user slugs) are NoPanic itself: any other author's article
+# is left out automatically and reported. Owner's decision, 2026-09-28.
+AUTEURS_AUTORISES = {"admin": "Sven", "thom-mat": "Mat & Thom"}
 MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
         "septembre", "octobre", "novembre", "décembre"]
 MIMES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
@@ -118,14 +126,21 @@ def lire_auteurs(reseau, ids, rafraichir):
         if page >= int(meta.get("pages") or 1):
             break
         page += 1
-    noms = {}
+    users = {}
     for aid in sorted(set(par_post.values())):
         try:
             _, u = reseau.json(f"{API}/users/{aid}?_fields=id,name,slug", rafraichir=rafraichir)
-            noms[aid] = f"{html.unescape(u.get('name') or '')} ({u.get('slug')})"
-        except Exception as e:  # users endpoint may be closed (401/404)
-            noms[aid] = f"inconnu ({str(e)[:60]})"
-    return par_post, noms
+            users[aid] = {"name": html.unescape(u.get("name") or ""), "slug": u.get("slug")}
+        except HorsLigne:
+            raise
+        except Exception as e:  # users endpoint may be closed (401/404): author unknown
+            journal(f"Auteur {aid} illisible : {str(e)[:80]}")
+    return par_post, users
+
+
+def nom_auteur(users, aid):
+    u = users.get(aid)
+    return f"{u['name']} ({u['slug']})" if u else f"auteur {aid} inconnu"
 
 
 def ancre(c):
@@ -141,6 +156,13 @@ def preparer(reseau, rafraichir=False):
     posts = [p for p in posts if unquote(p["slug"]) not in EXCLUS]
     if len(exclus) != len(EXCLUS):
         journal(f"Attention : {len(EXCLUS) - len(exclus)} article(s) exclu(s) introuvable(s) dans l'API")
+    auteur_de, users = lire_auteurs(reseau, ids, rafraichir)
+    for p in posts:
+        p["author"] = auteur_de.get(p["id"])
+    refuses = [p for p in posts if (users.get(p["author"]) or {}).get("slug") not in AUTEURS_AUTORISES]
+    for p in refuses:
+        journal(f"Exclu (auteur non autorisé : {nom_auteur(users, p['author'])}) : {p['link']}")
+    posts = [p for p in posts if p not in refuses]
     posts.sort(key=lambda p: p["date"], reverse=True)
     par_chemin, par_id = {}, {}
     for p in posts:
@@ -152,6 +174,7 @@ def preparer(reseau, rafraichir=False):
     dans = set(ids)
     rubriques = {unquote(urlsplit(c["link"]).path).strip("/"): ancre(c) for c in cats if c["id"] in dans}
     nettoyeur = Nettoyeur(par_chemin, par_id, set(par_chemin), rubriques)
+    preparer.users = users
     return cats, racines, ids, posts, bruts, nettoyeur
 
 
@@ -170,7 +193,6 @@ def recuperer(rafraichir):
     journal(f"{len(posts)} articles ({bruts} avant dédoublonnage), {len(ids)} catégories")
     images, _, _ = nettoyer_tout(posts, nettoyeur)
     icone = logo_urls(reseau, rafraichir)
-    lire_auteurs(reseau, ids, rafraichir)
     a_prendre = sorted(images) + [LOGO] + ([icone] if icone else [])
     deja = sum(1 for u in a_prendre if reseau.en_cache(u))
     journal(f"{len(a_prendre)} images, {deja} déjà en cache")
@@ -293,15 +315,9 @@ def construire():
     except HorsLigne as e:
         raise SystemExit(f"Cache incomplet, lancer d'abord « recuperer » : {e}")
     images, rapports, corps = nettoyer_tout(posts, nettoyeur)
-    try:
-        auteur_de, noms = lire_auteurs(reseau, ids, False)
-    except HorsLigne:
-        auteur_de, noms = {}, {}
     auteurs = {}
     for p in posts:
-        a = auteur_de.get(p["id"])
-        nom = noms.get(a, "inconnu") if a is not None else "inconnu (relancer recuperer)"
-        auteurs.setdefault(nom, []).append(unquote(p["slug"]))
+        auteurs.setdefault(nom_auteur(preparer.users, p["author"]), []).append(unquote(p["slug"]))
 
     class Entree(Item):
         def __init__(self, chemin, titre, mime, contenu=None, fichier=None, front=False):
