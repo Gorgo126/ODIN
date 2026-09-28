@@ -56,9 +56,15 @@ export default function Lecteur({ livre, livreLien, titre, html, licence, liaiso
       />
       {licence && (
         <footer className={`lecture-licence${horsLiaison ? ' hors-liaison' : ''}`} onClick={cliquer}>
-          Texte{licence.auteurs ? ` : ${licence.auteurs}` : ''}, licence{' '}
-          {licence.url ? <a href={licence.url} data-externe="">{licence.licence}</a> : licence.licence}.
-          {licence.note && ` ${licence.note}`}
+          {licence.mention ? (
+            <>{licence.mention} <a href={licence.url} data-externe="">{licence.lien}</a>.</>
+          ) : (
+            <>
+              Texte{licence.auteurs ? ` : ${licence.auteurs}` : ''}, licence{' '}
+              {licence.url ? <a href={licence.url} data-externe="">{licence.licence}</a> : licence.licence}.
+              {licence.note && ` ${licence.note}`}
+            </>
+          )}
         </footer>
       )}
     </div>

@@ -17,10 +17,14 @@ export async function GET() {
   // Offline or radio silence: no request to the catalogue at all
   const [connecte, dernieres] = await Promise.all([enLigne(), dernieresTailles()]);
   const liste = await Promise.all(packs.map(async (p) => {
-    const e = connecte ? await infos(p).catch(() => null) : null;
+    // A pack of ODIN carries its own entry: known offline too, without any request
+    const e = connecte || p.source === 'odin' ? await infos(p).catch(() => null) : null;
     return {
       id: p.id,
       libelle: p.libelle,
+      source: p.source,
+      // Pack of ODIN: credit, site of the author, generation date
+      fiche: p.source === 'odin' ? { credit: p.fiche.credit || '', site: p.fiche.site || '', date: p.fiche.date || '' } : null,
       licence: licenceZim(p.nom).licence,
       taille: e?.taille || 0,
       // Offline, the last size read while online

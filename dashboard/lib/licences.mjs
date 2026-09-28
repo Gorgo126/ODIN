@@ -19,6 +19,13 @@ export function licenceZim(nom) {
   if (projet === 'gutenberg') {
     return { licence: 'domaine public (licence et marque Project Gutenberg)', url: 'https://www.gutenberg.org/policy/license.html', auteurs: 'Projet Gutenberg', note: '' };
   }
+  // Pack built by ODIN from nopanic.fr, with the written permission of NoPanic (scripts/packs/nopanic)
+  if (projet === 'nopanic') {
+    return {
+      licence: 'reproduction autorisée par NoPanic', url: 'https://nopanic.fr', auteurs: 'NoPanic', note: '',
+      mention: 'Article créé et publié par NoPanic, intégré dans ODIN avec son autorisation. Source :', lien: 'nopanic.fr'
+    };
+  }
   // A pack added by hand: its licence is in the pack itself
   return { licence: 'voir la source du pack', url: null, auteurs: '', note: '' };
 }

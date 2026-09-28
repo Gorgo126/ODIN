@@ -236,13 +236,15 @@ async function telecharger(pack, e, t, controle) {
         controle = remplacer(pack.id, controle);
       }
     }
-    if (lien?.sha256) {
+    // A pack of ODIN (packs-odin.json) has no metalink: its SHA-256 is in its catalogue entry
+    const attendue = lien?.sha256 || e.sha256 || null;
+    if (attendue) {
       t.verification = true;
       const recue = await empreinteFichier(part);
       t.verification = false;
-      if (recue !== lien.sha256) {
+      if (recue !== attendue) {
         await fs.rm(part, { force: true });
-        console.error(`Pack ${pack.id} : empreinte différente, attendue ${lien.sha256}, reçue ${recue}`);
+        console.error(`Pack ${pack.id} : empreinte différente, attendue ${attendue}, reçue ${recue}`);
         throw new Error('Fichier reçu incorrect (empreinte SHA-256 différente) : supprimé, réessayez.');
       }
     }

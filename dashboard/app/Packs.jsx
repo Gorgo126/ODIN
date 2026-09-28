@@ -5,6 +5,9 @@ import { octets } from '../lib/format.mjs';
 import { useLiaison, messageHorsLigne } from './useLiaison';
 import { suppressionZim, supprimer } from '../lib/suppressions.mjs';
 
+// « 2026-09-28 » → « 28/09/2026 » (no Date object: same text on the server and in the browser)
+const dateCourte = (d) => d.split('-').reverse().join('/');
+
 export default function Packs({ liaisonInitiale }) {
   const [packs, setPacks] = useState(null);
   const liaison = useLiaison(liaisonInitiale);
@@ -60,7 +63,7 @@ export default function Packs({ liaisonInitiale }) {
   return (
     <>
       {!enLigne && <p className="hors-liaison">{horsLigne}. Le contenu installé reste consultable.</p>}
-      {enLigne && packs.length > 0 && packs.every((p) => !p.disponible) && (
+      {enLigne && packs.some((p) => p.source === 'kiwix') && packs.filter((p) => p.source === 'kiwix').every((p) => !p.disponible) && (
         <p>Catalogue Kiwix injoignable pour le moment.</p>
       )}
       {packs.map((p) => {
@@ -100,7 +103,15 @@ export default function Packs({ liaisonInitiale }) {
           <div key={p.id} className="carte pack">
             <div>
               <strong>{p.libelle}</strong>
-              <em>{p.taille ? octets(p.taille) : p.derniereMesure ? `${octets(p.derniereMesure)} (dernière mesure)` : ''}{p.licence ? ` · licence ${p.licence}` : ''}</em>
+              <em>{p.taille ? octets(p.taille) : p.derniereMesure ? `${octets(p.derniereMesure)} (dernière mesure)` : ''}{p.licence && !p.fiche ? ` · licence ${p.licence}` : ''}{p.fiche?.date ? ` · généré le ${dateCourte(p.fiche.date)}` : ''}</em>
+              {p.fiche && (
+                <small className="fiche-pack">
+                  {p.fiche.credit}{' '}
+                  {p.fiche.site && (enLigne
+                    ? <a href={p.fiche.site} target="_blank" rel="noopener noreferrer">{p.fiche.site.replace(/^https:\/\//, '')}</a>
+                    : <span title={horsLigne}>{p.fiche.site.replace(/^https:\/\//, '')}</span>)}
+                </small>
+              )}
             </div>
             {action}
           </div>

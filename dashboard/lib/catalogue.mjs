@@ -3,6 +3,9 @@ import { ecrireJson, lireJson } from './fichiers.mjs';
 
 const OPDS = 'https://library.kiwix.org/catalog/v2/entries';
 const CATALOGUE = '/catalogue/packs.txt';
+// Packs built and published by ODIN itself (GitHub Releases), outside the Kiwix catalogue: their
+// entry carries everything (address, size, SHA-256), so nothing is asked to the network before a download
+const CATALOGUE_ODIN = '/catalogue/packs-odin.json';
 // Whole OPDS catalogue, read in one request and kept 1 h (1 min after a failure), shared by all packs
 const cache = globalThis.__odinOpdsCatalogue ??= { t: 0, v: null, p: null };
 const DUREE = 3600000;
@@ -40,16 +43,43 @@ const balise = (bloc, nom) => {
   return m ? decoder(m[1].trim()) : '';
 };
 
+// Entry of packs-odin.json: kept only when complete and consistent (its file must carry the Kiwix
+// name <nom>_<variante>_…, by which ODIN finds the files of a pack)
+export function entreeOdin(p) {
+  let fichier = '';
+  try { fichier = typeof p?.url === 'string' ? decodeURIComponent(p.url.split('/').pop() || '') : ''; } catch {}
+  const ok = !!p && /^[a-z0-9-]+$/.test(p.id) && /^[a-z0-9_-]+$/.test(p.nom) && /^[a-z0-9-]+$/.test(p.variante)
+    && typeof p.libelle === 'string' && typeof p.url === 'string' && p.url.startsWith('https://')
+    && /^[0-9a-f]{64}$/.test(p.sha256)
+    && Number.isSafeInteger(p.taille) && p.taille > 0 && fichier.startsWith(`${p.nom}_${p.variante}_`)
+    && fichier.endsWith('.zim');
+  if (!ok) console.error(`packs-odin.json : entrée ignorée (${p?.id || 'sans identifiant'})`);
+  return ok;
+}
+
 export async function lirePacks() {
   const texte = await fs.readFile(CATALOGUE, 'utf8');
-  return texte.split('\n')
+  const kiwix = texte.split('\n')
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#'))
     .map((l) => {
       const [id, nom, variante, libelle] = l.split('|');
-      return { id, nom, variante, libelle };
+      return { id, nom, variante, libelle, source: 'kiwix' };
     });
+  const odin = ((await lireJson(CATALOGUE_ODIN, { packs: [] }))?.packs || [])
+    .filter(entreeOdin)
+    .filter((p) => !kiwix.some((k) => k.id === p.id))
+    .map((p) => ({ id: p.id, nom: p.nom, variante: p.variante, libelle: p.libelle, source: 'odin', fiche: p }));
+  return [...kiwix, ...odin];
 }
+
+// Same shape as an entry of the Kiwix catalogue, plus the SHA-256 checked after the download
+export const entreeFiche = (f) => ({
+  uuid: f.uuid || '', titre: f.titre || f.libelle, description: f.description || '', langue: f.langue || '',
+  nom: f.nom, variante: f.variante, tags: f.tags || '', date: f.date || '', articles: f.articles || 0,
+  medias: f.medias || 0, createur: f.createur || '', editeur: f.editeur || '', url: f.url, taille: f.taille,
+  sha256: f.sha256
+});
 
 const entree = (b) => {
   const lien = b.match(/<link[^>]*acquisition\/open-access[^>]*>/)?.[0] || '';
@@ -97,6 +127,11 @@ async function catalogue() {
 }
 
 export async function infos(pack) {
+  if (pack.source === 'odin') {
+    const e = entreeFiche(pack.fiche);
+    await memoriser(pack.id, e.taille);
+    return e;
+  }
   const tout = await catalogue();
   if (!tout) return null;
   const liste = tout.get(pack.nom) || [];

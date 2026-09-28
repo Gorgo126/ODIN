@@ -14,6 +14,7 @@ a.carte:hover { background: var(--fond); }
 .jauge div { height: 100%; background: currentColor; opacity: .5; }
 .pack { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .pack > div:first-child { display: flex; flex-direction: column; }
+.pack .fiche-pack { font-size: .85em; opacity: .85; }
 .pack button { font: inherit; padding: .4rem .9rem; border-radius: .4rem; border: 1px solid var(--bord); background: var(--fond); color: inherit; cursor: pointer; }
 .pack button:disabled { opacity: .4; cursor: default; }
 .progression { min-width: 12rem; text-align: right; }

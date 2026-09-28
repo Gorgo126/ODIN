@@ -72,28 +72,70 @@ python3 -m venv .venv          # ou : uv venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python nopanic.py tout                 # récupère (réseau), puis construit le ZIM
 .venv/bin/python nopanic.py construire           # reconstruit depuis le cache, sans réseau
-.venv/bin/python nopanic.py tout --rafraichir    # relit l'API pour trouver les nouveaux articles
+.venv/bin/python nopanic.py tout --complet       # relit tous les articles de l'API
 ```
 
-La commande `construire` ne fait aucune requête réseau. Si une ressource manque dans le cache,
-elle s'arrête ou signale l'image manquante dans le rapport. L'option `--rafraichir` relit
-seulement les listes de l'API (catégories et articles). Elle ne retélécharge jamais une image
-déjà présente dans le cache.
+`recuperer` est incrémental :
+
+1. Il repart de l'état de la dernière génération : `.cache/etat.json` (articles, catégories,
+   auteurs, date de génération), sinon `.precedent/etat.json.gz`, publié avec la dernière
+   release.
+2. Il relit la liste des catégories et la liste légère des articles du périmètre
+   (identifiant, date de modification, auteur, catégories). Cette liste détecte les articles
+   retirés, déplacés ou changés d'auteur.
+3. Il ne demande le contenu que des articles modifiés depuis la dernière génération
+   (`modified_after`, avec une marge de 2 jours, car l'API compare l'heure locale du site),
+   ainsi que des articles entrés dans le périmètre.
+4. Il télécharge seulement les images absentes, à la fois du cache et du ZIM précédent
+   (`.precedent/*.zim`).
+
+Une mise à jour sans changement fait une dizaine de requêtes. Les listes de l'API ne sont
+jamais mises en cache ; les images le sont pour toujours (même adresse, même fichier).
+
+`construire` ne fait aucune requête réseau. Il lit `.cache/etat.json` et les images du cache.
 
 Résultats dans `out/` :
 
-- `nopanic_fr_articles_<AAAA-MM>.zim` ;
-- `rapport.json` : articles par rubrique, auteurs (champ author de l'API, noms par
-  /wp-json/wp/v2/users), images, vidéos remplacées, liens internes et de rubrique ;
-- `recuperation.json` : durée, requêtes, octets, échecs ;
+- `nopanic_fr_articles_maxi_<AAAA-MM-JJ>.zim` : nom au format Kiwix, par lequel ODIN retrouve
+  les fichiers du pack ;
+- `<même nom>.sha256` ;
+- `etat.json.gz` : état publié avec la release, pour la mise à jour suivante ;
+- `fiche.json` : entrée du catalogue d'ODIN (taille, SHA-256, UUID, date, nombre d'entrées) ;
+- `rapport.json` : articles par rubrique, auteurs, images, vidéos remplacées, liens internes
+  et de rubrique ;
+- `recuperation.json` : durée, requêtes, octets, images reprises du ZIM précédent, échecs ;
 - `images-externes.txt`.
 
-`.venv/`, `.uv/`, `.cache/`, `out/` et `.kiwix/` ne vont pas dans git.
+`nopanic.py fiche --url <adresse du ZIM publié>` écrit l'entrée `nopanic` de
+`catalogue/packs-odin.json`.
+
+`.venv/`, `.uv/`, `.cache/`, `.precedent/`, `out/` et `.kiwix/` ne vont pas dans git.
+
+## Publication (GitHub Actions)
+
+`.github/workflows/pack-nopanic.yml` tourne chaque trimestre (le 2 janvier, avril, juillet et
+octobre), ou à la main (Actions → Pack NoPanic → Run workflow ; option « complet »).
+
+1. Il reprend le cache de l'exécution précédente (actions/cache). S'il n'y en a pas, il
+   télécharge `etat.json.gz` et le ZIM de la dernière release `nopanic-*`.
+2. Il lance `recuperer`, puis `construire`.
+3. Il publie une release `nopanic-<date>-<numéro d'exécution>` avec le ZIM, son `.sha256`,
+   `etat.json.gz` et `rapport.json`.
+4. Il écrit l'adresse, la taille, le SHA-256 et la date dans `catalogue/packs-odin.json`, puis
+   commite sur la branche où il a tourné.
+
+Le cache d'actions/cache disparaît après 7 jours sans usage : entre deux trimestres, c'est la
+release précédente qui sert de point de départ.
+
+Les exécutions planifiées et le bouton « Run workflow » de l'interface ne voient que les
+workflows présents sur la branche par défaut (main). Tant que le workflow n'existe que sur dev,
+il se lance par `gh workflow run pack-nopanic.yml --ref dev`. Un déclencheur `push` limité à
+son propre fichier l'a fait connaître de GitHub ; son job est ignoré sur ce déclencheur.
 
 ## Tester le ZIM
 
 ```bash
-.kiwix/kiwix-serve --port 8095 out/nopanic_fr_articles_*.zim
+.kiwix/kiwix-serve --port 8095 out/nopanic_fr_articles_maxi_*.zim
 ```
 
 Ouvrir ensuite http://localhost:8095. Pour obtenir kiwix-serve, prendre l'archive
