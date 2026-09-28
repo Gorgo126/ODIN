@@ -518,7 +518,7 @@ export class Index {
       });
     };
     const req = (requetes?.length ? requetes : [question]).filter(Boolean);
-    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15, titre: termeSur ? terme : null, quota })) : Promise.resolve([]);
+    const pWikis = sources.includes('wikis') ? mesurer('wikis', passagesWikis(req, { articles: this.cfg.articlesWiki || 15, titre: termeSur ? terme : null })) : Promise.resolve([]);
     const pLivres = sources.includes('livres') ? mesurer('livres', passagesLivres(req)) : Promise.resolve([]);
     const pGuides = sources.includes('guides') ? mesurer('guides', passagesGuides(req)) : Promise.resolve([]);
 

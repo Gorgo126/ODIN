@@ -120,7 +120,7 @@
           "source": "comment-faire",
           "titre": "Calculer son autonomie électrique",
           "niveau": "fort",
-          "rangMax": 1
+          "note": "2026-09-28, décision du propriétaire : rangMax 1 retiré, attendu fort à n'importe quel rang. Raison : l'article NoPanic « Que faire en cas de coupure de courant » (pack ajouté le 2026-09-28) passe devant, pertinent."
         },
         {
           "source": "comment-faire",
@@ -179,7 +179,7 @@
           "source": "wiki",
           "titre": "Centrale d'urgence 112",
           "niveau": "fort",
-          "rangMax": 1
+          "note": "2026-09-28, décision du propriétaire : rangMax 1 retiré, attendu fort à n'importe quel rang. Raison : l'article NoPanic « Quels sont les Numéros d'Urgence en France » et d'autres articles WikiMed sur le 112 passent devant, pertinents."
         },
         {
           "source": "comment-faire",
@@ -211,7 +211,7 @@
           "source": "livre",
           "titre": "Là où il n'y a pas de docteur",
           "niveau": "fort",
-          "rangMax": 1
+          "note": "2026-09-28, décision du propriétaire : rangMax 1 retiré, attendu fort à n'importe quel rang. Raison : l'article WikiMed « Coup de soleil », retrouvé grâce à la limite de 2 paragraphes par article de la source wiki, passe devant, pertinent."
         },
         {
           "source": "comment-faire",
