@@ -1,0 +1,6 @@
+.venv/
+.uv/
+.cache/
+out/
+.kiwix/
+__pycache__/
