@@ -1,0 +1,25 @@
+{
+  "packs": [
+    {
+      "id": "nopanic",
+      "libelle": "Articles de NoPanic",
+      "credit": "Articles créés et publiés par NoPanic, intégrés tels quels dans ODIN avec l'autorisation de NoPanic.",
+      "site": "https://nopanic.fr",
+      "nom": "nopanic_fr_articles",
+      "variante": "maxi",
+      "titre": "NoPanic — Articles",
+      "description": "Articles NoPanic : outdoor, autonomie, low-tech, prepper",
+      "langue": "fra",
+      "createur": "NoPanic",
+      "editeur": "ODIN",
+      "tags": "_category:other;_pictures:yes;_videos:no;_details:yes;_ftindex:yes",
+      "date": "2026-09-28",
+      "articles": 569,
+      "medias": 3273,
+      "taille": 472758027,
+      "sha256": "9fc205be563491c9b857069f3edd6a8142d548dd11f0024d61e5badaf240405f",
+      "uuid": "dcb4573e-0815-647b-5f5b-46cf063cc144",
+      "url": "https://github.com/Gorgo126/ODIN/releases/download/nopanic-2026-09-28-2/nopanic_fr_articles_maxi_2026-09-28.zim"
+    }
+  ]
+}
