@@ -8,6 +8,11 @@ on:
   schedule:
     # Quarterly, 2 January/April/July/October (scheduled runs use the default branch)
     - cron: '23 4 2 1,4,7,10 *'
+  # Only registers the workflow while it exists on dev alone (GitHub knows a workflow once it has run
+  # from any branch; the manual trigger then works with --ref dev): the job is skipped on push
+  push:
+    branches: [dev]
+    paths: ['.github/workflows/pack-nopanic.yml']
   workflow_dispatch:
     inputs:
       complet:
@@ -24,6 +29,7 @@ concurrency:
 
 jobs:
   pack:
+    if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     # A first run without cache nor release crawls ~3300 images, 1 request per second at most
     timeout-minutes: 300
